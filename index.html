@@ -3,424 +3,460 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Synthwave Goose – Blade Runner 20 | Audio-Visualisierung</title>
+<title>Blade Runner 20 – Audio-Visualisierung</title>
 <style>
 :root {
-  --bg: #f3f3ef; --panel: #ffffff; --ink: #121212; --muted: #6f6f69;
-  --line: #d9d9d3; --line-strong: #8d8d86; --grid-minor: #ececE6;
-  --playhead: #ff6a00; --wave: #3b3b38; --wave-bg: #fafaf7;
-  --flute: #17994a; --trumpet: #1d22d8; --frog: #d11a1a; --riser: #ff0f8f;
-  --m-red: #ff4d4d; --m-magenta: #e74fd8; --m-cyan: #3ee0ee;
-  --shadow: 0 1px 2px rgba(0,0,0,.06), 0 8px 24px rgba(0,0,0,.06);
+  --bg: #f4f2ed; --panel: #fbfaf7; --ink: #1b1b22; --muted: #7b7a82; --faint: #a9a8ae;
+  --line: #e3e0d8; --line-2: #cfcbc0; --grid: #e9e6de; --accent: #ff6a14;
+  --hero: #efece5;
+  --c0: #12985f; --c1: #2558e8; --c2: #d8304c; --c3: #d98400; --c4: #e5158f; --c5: #7a4cff; --c6: #0c95ad; --c7: #7ea000;
+  --wave: rgba(30,30,44,.78);
 }
 :root[data-theme="dark"] {
-  --bg: #0c0d11; --panel: #15171d; --ink: #f1f1ee; --muted: #8d909a;
-  --line: #2a2d37; --line-strong: #4b4f5c; --grid-minor: #1d2028;
-  --playhead: #ff8a1f; --wave: #9aa3ff; --wave-bg: #11131a;
-  --flute: #3fe086; --trumpet: #6f7bff; --frog: #ff5f5f; --riser: #ff3fa8;
-  --m-red: #ff5f5f; --m-magenta: #f06be2; --m-cyan: #3ee0ee;
-  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 30px rgba(0,0,0,.35);
+  --bg: #0b0c10; --panel: #11131a; --ink: #eeeef2; --muted: #8b8d99; --faint: #5d5f6b;
+  --line: #1f222c; --line-2: #2d313e; --grid: #181b24; --accent: #ff8a2a;
+  --hero: #0e1017;
+  --c0: #3ddc97; --c1: #5ba3ff; --c2: #ff5f76; --c3: #ffb454; --c4: #ff3fa6; --c5: #b88cff; --c6: #46d9ee; --c7: #d6f45c;
+  --wave: rgba(238,238,250,.8);
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; }
+html, body { margin: 0; height: 100%; overflow: hidden; }
 body {
   background: var(--bg); color: var(--ink);
-  font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  display: flex; flex-direction: column; padding: 20px 24px; gap: 16px;
-  transition: background .2s, color .2s;
+  font: 13px/1.4 "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 12px; padding: 14px 16px;
+  -webkit-font-smoothing: antialiased;
 }
-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-h1 { margin: 0; font-size: 20px; font-weight: 650; letter-spacing: -.01em; }
-h1 small { display: block; font-size: 12px; font-weight: 500; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 2px; }
-.bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
-.controls { padding: 10px 14px; justify-content: space-between; }
-button, select, input {
-  font: inherit; color: inherit; background: var(--bg); border: 1px solid var(--line);
-  border-radius: 9px; padding: 6px 11px; height: 34px;
-}
-button { cursor: pointer; }
-button:hover { border-color: var(--line-strong); }
-button:focus-visible, input:focus-visible { outline: 2px solid var(--playhead); outline-offset: 1px; }
-#play {
-  width: 46px; height: 46px; border-radius: 50%; padding: 0; border: 0;
-  background: var(--playhead); color: #fff; display: grid; place-items: center;
-}
-#play svg { width: 20px; height: 20px; fill: currentColor; }
-#play .i-pause { display: none; }
-#play.on .i-play { display: none; } #play.on .i-pause { display: block; }
-#stop { width: 34px; padding: 0; display: grid; place-items: center; }
-.clock { font-variant-numeric: tabular-nums; min-width: 150px; }
-.clock b { font-size: 22px; font-weight: 650; display: block; line-height: 1.1; }
-.clock span { font-size: 12px; color: var(--muted); }
-.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
-.seg button { border: 0; border-radius: 0; background: transparent; }
-.seg button.on { background: var(--ink); color: var(--panel); }
-label.f { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
-label.f input { width: 62px; text-align: right; }
-input[type=range] { width: 110px; padding: 0; accent-color: var(--playhead); }
-.hide { display: none !important; }
+.num { font-variant-numeric: tabular-nums; }
 
-#daw { display: flex; overflow: hidden; flex: 0 0 auto; }
-#labels { flex: 0 0 112px; border-right: 1px solid var(--line); background: var(--panel); z-index: 3; }
-#labels div { display: flex; align-items: center; padding-left: 14px; font-weight: 650; border-bottom: 1px solid var(--line); }
-#labels .sp { color: var(--muted); font-weight: 500; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
-#scroll { flex: 1; overflow-x: auto; overflow-y: hidden; position: relative; }
-#stage { position: relative; }
-#ruler { display: block; cursor: pointer; }
-#wavewrap { position: absolute; left: 0; background: var(--wave-bg); }
-#wave { display: block; height: 100%; }
-#body { position: absolute; left: 0; pointer-events: none; }
-#playhead { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--playhead); pointer-events: none; z-index: 2; box-shadow: 0 0 8px var(--playhead); }
-#playhead::before { content: ""; position: absolute; top: 0; left: -6px; border: 7px solid transparent; border-top: 11px solid var(--playhead); border-bottom: 0; }
-#shade { position: absolute; top: 0; bottom: 0; left: 0; background: var(--playhead); opacity: .06; pointer-events: none; }
-#wavemsg { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 13px; text-align: center; padding: 8px; z-index: 1; }
-#wavemsg button { margin-left: 8px; height: 28px; }
-.hint { color: var(--muted); font-size: 12px; }
-kbd { background: var(--panel); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 0 6px; font: 11px ui-monospace, monospace; }
+/* Kopfzeile */
+header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 0 4px; }
+.title { display: flex; align-items: baseline; gap: 14px; min-width: 0; }
+.title h1 { margin: 0; font-size: 15px; font-weight: 650; letter-spacing: -.01em; white-space: nowrap; }
+.title h1 span { color: var(--muted); font-weight: 450; }
+.facts { display: flex; gap: 6px; flex-wrap: wrap; }
+.fact { font-size: 11.5px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 2px 9px; background: var(--panel); white-space: nowrap; }
+.fact b { color: var(--ink); font-weight: 600; }
+.right { display: flex; align-items: center; gap: 8px; }
 
-/* Visuals */
-svg .t { fill: var(--muted); font: 11px system-ui, sans-serif; }
-svg .gm { stroke: var(--line); stroke-width: 1; }
-svg .gM { stroke: var(--line-strong); stroke-width: 1; }
-svg .gn { stroke: var(--grid-minor); stroke-width: 1; }
-svg .rowsep { stroke: var(--line); stroke-width: 1; }
-svg .flute { fill: none; stroke: var(--flute); stroke-width: 1.6; }
-svg .trumpet { fill: none; stroke: var(--trumpet); stroke-width: 1.6; stroke-linejoin: round; }
-svg .frog { fill: none; stroke: var(--frog); stroke-width: 1.8; stroke-linejoin: round; }
-svg .bld { fill: none; stroke: var(--ink); stroke-width: 1.5; stroke-linejoin: round; }
-svg .bld.g { stroke: var(--line-strong); opacity: .75; }
-svg .riser { fill: var(--riser); }
-svg .ink { fill: var(--ink); }
+button { font: inherit; color: inherit; background: var(--panel); border: 1px solid var(--line-2); border-radius: 8px; height: 30px; padding: 0 12px; cursor: pointer; transition: border-color .15s, background .15s; }
+button:hover { border-color: var(--muted); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.seg { display: inline-flex; border: 1px solid var(--line-2); border-radius: 8px; overflow: hidden; background: var(--panel); }
+.seg button { border: 0; border-radius: 0; height: 28px; background: transparent; color: var(--muted); }
+.seg button.on { background: var(--ink); color: var(--bg); }
+.icon { width: 30px; padding: 0; display: grid; place-items: center; }
+.icon svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+/* DAW */
+#daw { display: flex; min-height: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); overflow: hidden; }
+#labels { flex: 0 0 118px; border-right: 1px solid var(--line); background: var(--panel); position: relative; z-index: 3; }
+#labels .l { display: flex; align-items: center; gap: 9px; padding-left: 14px; border-bottom: 1px solid var(--line); font-weight: 600; font-size: 12.5px; }
+#labels .l i { width: 3px; height: 14px; border-radius: 2px; background: var(--c); }
+#labels .l.hero { align-items: flex-start; padding-top: 11px; flex-direction: column; gap: 2px; }
+#labels .l.hero small { color: var(--muted); font-weight: 450; font-size: 11px; }
+#labels .l.ruler { color: var(--faint); font-weight: 500; font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; }
+#scroll { flex: 1; overflow-x: auto; overflow-y: hidden; position: relative; scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; }
+#stage { position: relative; user-select: none; touch-action: none; }
+#ruler { position: absolute; left: 0; top: 0; cursor: pointer; }
+#hero { position: absolute; left: 0; background: var(--hero); border-bottom: 1px solid var(--line); cursor: pointer; }
+#hero canvas { position: absolute; left: 0; top: 0; }
+#played { position: absolute; left: 0; top: 0; bottom: 0; overflow: hidden; width: 0; }
+#body, #heroGrid { position: absolute; left: 0; }
+#heroGrid { pointer-events: none; }
+#body .fixed { pointer-events: none; }
+#body .el { cursor: grab; }
+#body .el.drag { cursor: grabbing; }
+#body .hit { fill: transparent; stroke: transparent; }
+#body .el:hover .hit, #body .el.sel .hit { fill: color-mix(in srgb, var(--c) 9%, transparent); stroke: color-mix(in srgb, var(--c) 40%, transparent); stroke-dasharray: 3 3; }
+.gM { stroke: var(--line-2); } .gm { stroke: var(--grid); } .gb { stroke: var(--grid); stroke-opacity: .55; } .rs { stroke: var(--line); }
+#heroGrid .gM { opacity: .5; } #heroGrid .gm, #heroGrid .gb { stroke: var(--line-2); opacity: .2; }
+#playhead { position: absolute; top: 0; bottom: 0; width: 0; pointer-events: none; z-index: 4; }
+#playhead::after { content: ""; position: absolute; top: 0; bottom: 0; left: -.75px; width: 1.5px; background: var(--accent); }
+#playhead::before { content: ""; position: absolute; top: 0; left: -6px; border: 6px solid transparent; border-top: 9px solid var(--accent); border-bottom: 0; }
+#tip { position: absolute; z-index: 5; pointer-events: none; font-size: 11px; background: var(--ink); color: var(--bg); padding: 2px 7px; border-radius: 6px; transform: translate(-50%, -125%); white-space: nowrap; display: none; }
+
+/* Transport */
+#transport { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 22px; padding: 10px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.tl { display: flex; align-items: center; gap: 12px; }
+#play { width: 44px; height: 44px; border-radius: 50%; padding: 0; border: 0; background: var(--ink); color: var(--bg); display: grid; place-items: center; }
+#play:hover { background: var(--accent); }
+#play svg { width: 18px; height: 18px; fill: currentColor; }
+#play .p2 { display: none; } #play.on .p1 { display: none; } #play.on .p2 { display: block; }
+.clock { min-width: 168px; }
+.clock b { font-size: 21px; font-weight: 600; letter-spacing: -.01em; display: block; line-height: 1.15; }
+.clock span { color: var(--muted); font-size: 12px; }
+#eq { width: 100%; height: 44px; display: block; }
+.tr { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; }
+input[type=range] { width: 120px; accent-color: var(--accent); }
+.hint { color: var(--faint); font-size: 11.5px; white-space: nowrap; }
+kbd { font: 10.5px ui-monospace, Consolas, monospace; color: var(--muted); border: 1px solid var(--line-2); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--bg); }
+@media (max-width: 1100px) { .hint, #eq { display: none; } #transport { grid-template-columns: 1fr auto; } }
 </style>
 </head>
 <body>
 
 <header>
-  <h1><small>Audio-Visualisierung</small>Synthwave goose – Blade Runner 20</h1>
-  <div class="bar hint">
-    <span><kbd>Leertaste</kbd> / <kbd>⏯</kbd> Play·Pause</span>
-    <span><kbd>←</kbd><kbd>→</kbd> Spulen</span>
-    <span><kbd>Strg</kbd>+Mausrad Zoom</span>
+  <div class="title">
+    <h1>Synthwave goose <span>–</span> Blade Runner 20</h1>
+    <div class="facts" id="facts"></div>
+  </div>
+  <div class="right">
+    <span class="hint"><kbd>Leertaste</kbd> Play/Pause &nbsp; <kbd>←</kbd><kbd>→</kbd> Spulen</span>
+    <div class="seg" role="group" aria-label="Anzeige">
+      <button id="m-bars" class="on">Takte</button><button id="m-time">Zeit</button>
+    </div>
+    <button id="theme" class="icon" title="Dark / Light" aria-label="Dark / Light">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/></svg>
+    </button>
   </div>
 </header>
 
-<div class="card bar controls">
-  <div class="bar">
-    <button id="play" aria-label="Abspielen / Pausieren" title="Abspielen / Pausieren (Leertaste)">
-      <svg class="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5z"/></svg>
-      <svg class="i-pause" viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
-    </button>
-    <button id="stop" aria-label="Zum Anfang" title="Zum Anfang (Pos1)">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M5 4h3v16H5zM21 4v16L9 12z"/></svg>
-    </button>
-    <div class="clock"><b id="clk1">Takt 1 · 1</b><span id="clk2">0:00.0</span></div>
-  </div>
-  <div class="bar">
-    <div class="seg" role="group" aria-label="Anzeige">
-      <button id="m-bars" class="on">Takte</button>
-      <button id="m-time">Zeit</button>
-    </div>
-    <span id="barset" class="bar">
-      <label class="f">BPM <input id="bpm" type="number" min="30" max="300" step="0.5" value="120"></label>
-      <label class="f">Takt <select id="beats"><option>3</option><option selected>4</option><option>5</option><option>6</option><option>7</option></select></label>
-      <label class="f">Start&nbsp;(s) <input id="off" type="number" step="0.01" value="0"></label>
-    </span>
-    <label class="f">Zoom <input id="zoom" type="range" min="0" max="100" value="0"></label>
-    <button id="theme" title="Dark / Light">◐</button>
-  </div>
-</div>
-
-<div id="daw" class="card">
+<div id="daw">
   <div id="labels"></div>
   <div id="scroll"><div id="stage"></div></div>
 </div>
 
-<audio id="audio" src="song.m4a" preload="auto"></audio>
-<input id="file" type="file" accept="audio/*" class="hide">
+<div id="transport">
+  <div class="tl">
+    <button id="play" aria-label="Abspielen / Pausieren" title="Abspielen / Pausieren (Leertaste)">
+      <svg class="p1" viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5z"/></svg>
+      <svg class="p2" viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
+    </button>
+    <button id="stop" class="icon" title="Zum Anfang (Pos1)" aria-label="Zum Anfang">
+      <svg viewBox="0 0 24 24"><path d="M6 5v14M19 5.5v13L9 12z"/></svg>
+    </button>
+    <div class="clock num"><b id="clk1">Takt 1 · 1</b><span id="clk2">0:00.0</span></div>
+  </div>
+  <canvas id="eq"></canvas>
+  <div class="tr">
+    <span class="hint" id="posHint">Elemente per Ziehen verschieben</span>
+    <button id="reset" title="Verschobene Elemente zurücksetzen">Zurücksetzen</button>
+    <button id="copy" title="Positionen in die Zwischenablage kopieren">Positionen kopieren</button>
+    <span>Zoom</span><input id="zoom" type="range" min="0" max="100" value="0" aria-label="Zoom">
+  </div>
+</div>
 
+<audio id="audio" src="song.m4a" preload="auto"></audio>
+<script src="analysis.js"></script>
+<script src="data.js"></script>
 <script>
 'use strict';
-/* ====================================================================
-   DATEN – exakt aus dem Figma-Bild übernommen.
-   Alle Positionen stehen als Pixel-x des Figma-Bildes (0:00 = x 70, 20.14 px je Sekunde)
-   und werden unten in Sekunden umgerechnet. Zum Feinjustieren einfach die Zahlen ändern.
-   ==================================================================== */
-const FIG_X0 = 70, FIG_PPS = 20.14;
-const sec = x => (x - FIG_X0) / FIG_PPS;
+const SONG = window.SONG, ELEMENTS = window.ELEMENTS;
+const NAMES = ['Flute', 'Trumpet', 'Frog', 'Building', 'Riser', 'Jagdhorn', 'Drums', 'Ringtone'];
+const FIG_ROW_H = 40.75, RULER_H = 30, SB = 12, LS_KEY = 'blade-runner-av-positionen-v1';
 
-const ROW_H = 40, WAVE_H = 96, RULER_H = 30;
-const FIG_ROW_TOP = [12, 49, 85, 121, 157, 193, 229, 266];   // Figma-y der Zeilen
-const K = ROW_H / 36.3;
-const ly = (row, y) => (y - FIG_ROW_TOP[row]) * K;             // Figma-y -> Zeilen-y
-
-const TRACKS = ['Flute', 'Trumpet', 'Frog', 'Building', 'Riser', 'Jagdhorn', 'Drums', 'Ringtone'];
-
-const D = {
-  fluteStart: sec(70), fluteEnd: sec(1392),                    // 1 Bogen pro Sekunde
-  trumpet: [[403,437],[453,472],[475,507],[575,597],[625,647],[650,672],[697,740],[787,808],[810,830],[857,895],[907,940],[957,990],[1030,1068]],
-  frog: [[403,450],[452,522],[524,572],[575,622],[625,672],[675,695],[697,745],[747,795],[797,812],[814,860],[862,910],[912,960],[962,1010],[1012,1035],[1037,1085]],
-  buildingGrey: [829, 875],
-  building: [[877,920],[922,970],[972,1017],[1019,1063]],
-  riser: [997, 1035, 1062],
-  jagd: [1043, 1080],
-  drums: { start: sec(1040), step: 0.5, n: 44 },
-  ring: { start: sec(1040), step: 0.25, n: 88,
-          pat: [3,1,2,0,3,1,2,-1, 3,1,2,0,4,2,1,-1] },
-  // Marker (Figma-x, bis wo die Linie nach unten läuft [Figma-y], Farbe)
-  markers: [[403,108,'red'],[856,120,'magenta'],[1037,120,'magenta'],[1077,120,'magenta'],[1088,115,'red']],
-};
-
-/* ====================================================================
-   Zustand
-   ==================================================================== */
 const $ = id => document.getElementById(id);
-const audio = $('audio'), scroll = $('scroll'), stage = $('stage');
-let duration = 72.1, pps = 20.14, mode = 'bars', peaks = null;
-let bpm = 120, beats = 4, offset = 0;
-let lastToggle = 0;
+const audio = $('audio'), scroll = $('scroll'), stage = $('stage'), daw = $('daw');
+const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+const peaks = new Int8Array(b64(SONG.peaks).buffer);
+const spec = b64(SONG.spec.data), NB = SONG.spec.bands, SF = SONG.spec.fps, SFR = SONG.spec.frames;
 
-const fmtTime = t => { t = Math.max(0, t); const m = Math.floor(t / 60); return m + ':' + (t % 60).toFixed(1).padStart(4, '0'); };
+const bpm = SONG.bpm, beats = SONG.beats, offset = SONG.offset, beatLen = 60 / bpm, barLen = beatLen * beats;
+const audioDur = SONG.dur;
+const nBars = Math.floor((audioDur - offset) / barLen);
+
+let mode = 'bars', pps = 20, L = {}, selected = null, force = false;
+let saved = {};
+try { saved = JSON.parse(localStorage.getItem(LS_KEY)) || {}; } catch {}
+const els = ELEMENTS.map(e => ({ ...e, t0: e.id in saved ? saved[e.id] : e.t0, orig: e.t0 }));
+els.forEach(e => {                      // Breite eines Elements in Sekunden
+  e.w = e.k === 'l' ? Math.max(...e.p.flatMap(p => p[1].map(q => q[0])))
+      : e.k === 'f' ? Math.max(...e.p.flatMap(pl => pl.map(q => q[0])))
+      : e.p[e.p.length - 1][0] + 0.15;
+});
+const TL = Math.max(audioDur, ...els.map(e => e.t0 + e.w)) + 0.4;   // Länge der Zeitachse
+
+const fmt = t => { t = Math.max(0, t); return Math.floor(t / 60) + ':' + (t % 60).toFixed(1).padStart(4, '0'); };
 const X = t => t * pps;
-const fx = x => X(sec(x));
+const cssv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 
-/* ====================================================================
-   Aufbau
-   ==================================================================== */
-function buildLabels() {
+$('facts').innerHTML =
+  `<span class="fact"><b>${String(bpm).replace(/\.0$/, '')}</b> BPM</span><span class="fact"><b>${beats}/4</b></span>` +
+  `<span class="fact"><b>${nBars}</b> Takte</span><span class="fact">${fmt(audioDur).replace(/\.\d$/, '')} min</span>`;
+
+/* ---------- Layout ---------- */
+function layout() {
+  const H = daw.clientHeight - SB;
+  const hero = Math.round((H - RULER_H) * 0.34), row = (H - RULER_H - hero) / 8;
+  L = { H, hero, row, ky: row / FIG_ROW_H, bodyY: RULER_H + hero, bodyH: row * 8 };
   $('labels').innerHTML =
-    `<div class="sp" style="height:${RULER_H}px">Spur</div>` +
-    `<div style="height:${WAVE_H}px">Audio</div>` +
-    TRACKS.map(n => `<div style="height:${ROW_H}px">${n}</div>`).join('');
+    `<div class="l ruler" style="height:${RULER_H}px">${mode === 'bars' ? 'Takt' : 'Zeit'}</div>` +
+    `<div class="l hero" style="height:${hero}px">Audio<small>Spektrum · Welle</small></div>` +
+    NAMES.map((n, i) => `<div class="l" style="height:${row}px;--c:var(--c${i})"><i></i>${n}</div>`).join('');
 }
 
-function gridSvg(W) {
-  const out = []; const H = WAVE_H + ROW_H * TRACKS.length;
-  let tick = '';
-  const line = (x, cls) => `<line class="${cls}" x1="${x.toFixed(2)}" x2="${x.toFixed(2)}" y1="0" y2="${H}"/>`;
-  let rul = '';
+/* ---------- Lineal & Raster ---------- */
+function gridParts() {
+  let ruler = '', lines = '';
+  const vline = (x, cls) => lines += `<line class="${cls}" x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="0" y2="${L.hero + L.bodyH}"/>`;
+  const tick = (x, y, major) => ruler += `<line x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${y}" y2="${RULER_H}" stroke="var(${major ? '--line-2' : '--line'})"/>`;
+  const label = (x, s) => ruler += `<text x="${(x + 5).toFixed(1)}" y="15" fill="var(--muted)" font-size="10.5" font-family="inherit">${s}</text>`;
   if (mode === 'time') {
-    const steps = [0.5,1,2,5,10,15,30,60]; const major = steps.find(s => s * pps >= 70) || 60;
-    const minor = major <= 1 ? major / 2 : major / (major % 5 === 0 || major === 15 ? 5 : 2);
-    for (let t = 0; t <= duration + 1e-6; t += minor) {
-      const x = X(t), isM = Math.abs(t / major - Math.round(t / major)) < 1e-6;
-      if (isM) { out.push(line(x, 'gM')); rul += `<text class="t" x="${x + 4}" y="20">${Math.floor(t/60)}:${String(Math.round(t%60*10)/10).padStart(2,'0')}</text><line class="gM" x1="${x}" x2="${x}" y1="14" y2="${RULER_H}"/>`; }
-      else if (minor * pps >= 12) { out.push(line(x, 'gn')); rul += `<line class="gm" x1="${x}" x2="${x}" y1="22" y2="${RULER_H}"/>`; }
+    const major = [1, 2, 5, 10, 15, 30, 60].find(s => s * pps >= 64) || 60, minor = major >= 5 ? major / 5 : major / 2;
+    for (let t = 0; t <= TL; t += minor) {
+      const isM = Math.abs(t / major - Math.round(t / major)) < 1e-6, x = X(t);
+      if (isM) { vline(x, 'gM'); tick(x, 8, true); label(x, `${Math.floor(t / 60)}:${String(Math.round(t % 60)).padStart(2, '0')}`); }
+      else if (minor * pps >= 10) { vline(x, 'gm'); tick(x, 21, false); }
     }
   } else {
-    const beat = 60 / bpm, bar = beat * beats;
-    const every = [1,2,4,8,16].find(n => bar * n * pps >= 44) || 16;
+    const every = [1, 2, 4, 8, 16].find(n => barLen * n * pps >= 36) || 16;
     for (let i = 0; ; i++) {
-      const t = offset + i * beat; if (t > duration + 1e-6) break; if (t < -1e-6) continue;
-      const x = X(t), isBar = i % beats === 0, barNo = Math.floor(i / beats) + 1;
-      if (isBar && (barNo - 1) % every === 0) { out.push(line(x, 'gM')); rul += `<text class="t" x="${x + 4}" y="20">${barNo}</text><line class="gM" x1="${x}" x2="${x}" y1="14" y2="${RULER_H}"/>`; }
-      else if (isBar) { out.push(line(x, 'gm')); rul += `<line class="gm" x1="${x}" x2="${x}" y1="22" y2="${RULER_H}"/>`; }
-      else if (beat * pps >= 14) { out.push(line(x, 'gn')); rul += `<line class="gm" x1="${x}" x2="${x}" y1="26" y2="${RULER_H}"/>`; }
+      const t = offset + i * beatLen; if (t > TL) break;
+      const x = X(t), isBar = i % beats === 0, bar = i / beats + 1;
+      if (isBar && (bar - 1) % every === 0) { vline(x, 'gM'); tick(x, 8, true); label(x, bar); }
+      else if (isBar) { vline(x, 'gm'); tick(x, 21, false); }
+      else if (beatLen * pps >= 12) { vline(x, 'gb'); tick(x, 25, false); }
     }
   }
-  return { grid: out.join(''), rul };
+  return { ruler, lines };
 }
 
-function tracksSvg() {
-  const o = [], y0 = i => WAVE_H + i * ROW_H;
-  const g = (i, inner) => o.push(`<g transform="translate(0 ${y0(i)})">${inner}</g>`);
-
-  // Flute: 1 Bogen pro Sekunde
-  { let p = ''; const n = Math.round(D.fluteEnd - D.fluteStart);
-    for (let i = 0; i < n; i++) { const a = X(D.fluteStart + i), b = X(D.fluteStart + i + 1);
-      p += `M${a.toFixed(1)} ${ly(0,40).toFixed(1)}A${((b-a)/2).toFixed(1)} ${(18*K).toFixed(1)} 0 0 1 ${b.toFixed(1)} ${ly(0,40).toFixed(1)}`; }
-    g(0, `<path class="flute" d="${p}"/>`); }
-
-  // Trumpet: senkrechter Einsatz, dann abfallend
-  g(1, D.trumpet.map(([a, b]) => { const x0 = fx(a), x1 = fx(b), m = (x0 + x1) / 2;
-    return `<path class="trumpet" d="M${x0} ${ly(1,80)}L${x0} ${ly(1,59)}Q${m} ${ly(1,64)} ${x1} ${ly(1,79)}"/>`; }).join(''));
-
-  // Frog: ansteigende Kurve, dann Abbruch + kleiner Haken
-  g(2, D.frog.map(([a, b]) => { const x0 = fx(a), x1 = fx(b), w = x1 - x0;
-    return `<path class="frog" d="M${x0} ${ly(2,113)}C${x0 + w*.35} ${ly(2,103)} ${x0 + w*.6} ${ly(2,95)} ${x1 - 2} ${ly(2,94)}L${x1 - 2} ${ly(2,114)}L${x1 + 1} ${ly(2,112)}"/>`; }).join(''));
-
-  // Building: Zickzack, am Ende senkrechter Abbruch
-  const zig = (a, b, lo, hi, seed) => { const x0 = fx(a), x1 = fx(b), n = Math.max(6, Math.round((x1 - x0) / (pps * .15)));
-    let p = `M${x0} ${ly(3,lo)}`;
-    for (let i = 1; i <= n; i++) { const u = i / n, e = Math.min(1, u * 1.6);
-      const jitter = ((i * 7 + seed * 5) % 5 - 2) * 1.8 * (1 - e * .75);
-      p += `L${(x0 + (x1 - x0) * u).toFixed(1)} ${ly(3, lo + (hi - lo) * e + (i % 2 ? -3 : 3) * (1 - e * .8) + jitter).toFixed(1)}`; }
-    return p + `L${x1} ${ly(3,lo)}`; };
-  g(3, `<path class="bld g" d="${zig(D.buildingGrey[0], D.buildingGrey[1], 148, 128, 1).replace(/L[\d.]+ [\d.-]+$/, '')}"/>` +
-       D.building.map(([a, b], i) => `<path class="bld" d="${zig(a, b, 147, 127, i + 2)}"/>`).join(''));
-
-  // Riser: pinkes Dreieck
-  g(4, `<polygon class="riser" points="${fx(D.riser[0])},${ly(4,193)} ${fx(D.riser[1])},${ly(4,165)} ${fx(D.riser[1])},${ly(4,176)} ${fx(D.riser[2])},${ly(4,193)}"/>`);
-
-  // Jagdhorn: Verlauf schwarz -> transparent
-  { const a = fx(D.jagd[0]), b = fx(D.jagd[1]);
-    g(5, `<defs><linearGradient id="jg" x1="0" x2="1"><stop offset="0" stop-color="var(--ink)"/><stop offset="1" stop-color="var(--ink)" stop-opacity="0"/></linearGradient></defs>` +
-         `<path fill="url(#jg)" d="M${a} ${ly(5,229)}C${a + (b-a)*.55} ${ly(5,228)} ${a + (b-a)*.8} ${ly(5,222)} ${b} ${ly(5,205)}L${b} ${ly(5,229)}Z"/>`); }
-
-  // Drums: Punkte
-  { let c = ''; for (let i = 0; i < D.drums.n; i++) c += `<circle class="ink" cx="${X(D.drums.start + i * D.drums.step).toFixed(1)}" cy="${ly(6,247).toFixed(1)}" r="3.6"/>`; g(6, c); }
-
-  // Ringtone: kleine Quadrate (Melodie)
-  { let c = ''; const r = D.ring;
-    for (let i = 0; i < r.n; i++) { const v = r.pat[i % r.pat.length] + (Math.floor(i / 16) % 2 ? 0 : 0);
-      c += `<rect class="ink" x="${(X(r.start + i * r.step) - 2).toFixed(1)}" y="${(ly(7, 285) - v * 2.2 - 2).toFixed(1)}" width="4" height="4"/>`; }
-    g(7, c); }
-
-  return o.join('');
-}
-
-function markersSvg() {
-  const color = { red: 'var(--m-red)', magenta: 'var(--m-magenta)', cyan: 'var(--m-cyan)' };
-  let s = D.markers.map(([x, yEnd, c]) => `<line x1="${fx(x)}" x2="${fx(x)}" y1="0" y2="${WAVE_H + (yEnd - 12) * K}" stroke="${color[c]}" stroke-width="1.3"/>`).join('');
-  s += `<line x1="${X(duration) - 1}" x2="${X(duration) - 1}" y1="0" y2="${WAVE_H + ROW_H * 5}" stroke="${color.cyan}" stroke-width="1.5"/>`;
-  return s;
-}
-
-function render() {
-  const W = Math.ceil(X(duration)), H = WAVE_H + ROW_H * TRACKS.length;
-  stage.style.width = W + 'px'; stage.style.height = RULER_H + H + 'px';
-  const { grid, rul } = gridSvg(W);
-  let seps = ''; for (let i = 0; i <= TRACKS.length; i++) seps += `<line class="rowsep" x1="0" x2="${W}" y1="${WAVE_H + i * ROW_H - .5}" y2="${WAVE_H + i * ROW_H - .5}"/>`;
-  stage.innerHTML =
-    `<svg id="ruler" width="${W}" height="${RULER_H}">${rul}<line class="rowsep" x1="0" x2="${W}" y1="${RULER_H - .5}" y2="${RULER_H - .5}"/></svg>` +
-    `<div id="wavewrap" style="top:${RULER_H}px;width:${W}px;height:${WAVE_H}px"><canvas id="wave"></canvas><div id="wavemsg" class="${peaks ? 'hide' : ''}"></div></div>` +
-    `<svg id="body" style="top:${RULER_H}px" width="${W}" height="${H}">${grid}${seps}${tracksSvg()}${markersSvg()}</svg>` +
-    `<div id="shade"></div><div id="playhead"></div>`;
-  drawWave(); updateMsg(); tick(true);
-}
-
-/* ====================================================================
-   Waveform
-   ==================================================================== */
-function drawWave() {
-  const cv = $('wave'); if (!cv) return;
-  const W = Math.ceil(X(duration)), dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const cw = Math.min(Math.round(W * dpr), 16000);
-  cv.width = cw; cv.height = Math.round(WAVE_H * dpr); cv.style.width = W + 'px'; cv.style.height = WAVE_H + 'px';
-  if (!peaks) return;
-  const c = cv.getContext('2d'), mid = cv.height / 2;
-  c.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--wave').trim();
-  const n = peaks.length / 2;
-  for (let px = 0; px < cw; px++) {
-    const a = Math.floor(px / cw * n), b = Math.max(a + 1, Math.floor((px + 1) / cw * n));
-    let mn = 0, mx = 0;
-    for (let i = a; i < b && i < n; i++) { if (peaks[2*i] < mn) mn = peaks[2*i]; if (peaks[2*i+1] > mx) mx = peaks[2*i+1]; }
-    c.fillRect(px, mid - mx * mid * .92, 1, Math.max(1, (mx - mn) * mid * .92));
+/* ---------- Elemente (aus dem Figma-Bild nachgezeichnet) ---------- */
+function smooth(pts, ky) {            // Kurven runden, scharfe Ecken bleiben scharf
+  const P = pts.map(q => [X(q[0]), q[1] * ky]), f = q => q[0].toFixed(1) + ' ' + q[1].toFixed(1);
+  if (P.length < 3) return 'M' + P.map(f).join('L');
+  let d = 'M' + f(P[0]);
+  for (let i = 1; i < P.length - 1; i++) {
+    const a = P[i - 1], b = P[i], c = P[i + 1];
+    const v1 = [b[0] - a[0], b[1] - a[1]], v2 = [c[0] - b[0], c[1] - b[1]];
+    const cos = (v1[0] * v2[0] + v1[1] * v2[1]) / (Math.hypot(...v1) * Math.hypot(...v2) || 1);
+    d += cos < 0.55 ? 'L' + f(b) : 'Q' + f(b) + ' ' + f([(b[0] + c[0]) / 2, (b[1] + c[1]) / 2]);
   }
+  return d + 'L' + f(P[P.length - 1]);
 }
-function computePeaks(buf) {
-  const n = Math.ceil(buf.duration * 250), per = buf.length / n, ch = buf.numberOfChannels;
-  const p = new Float32Array(n * 2), data = [...Array(ch)].map((_, i) => buf.getChannelData(i));
+
+function elementSvg(e, i) {
+  const ky = L.ky, c = `var(--c${e.row})`;
+  let inner = '';
+  if (e.k === 'l') {
+    const byOp = {};
+    for (const [op, pts] of e.p) (byOp[op] ||= []).push(smooth(pts, ky));
+    for (const op in byOp) inner += `<path d="${byOp[op].join('')}" fill="none" stroke="${c}" stroke-opacity="${op}" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>`;
+  } else if (e.k === 'f') {
+    const d = e.p.map(pl => 'M' + pl.map(q => X(q[0]).toFixed(1) + ' ' + (q[1] * ky).toFixed(1)).join('L') + 'Z').join('');
+    if (e.g) {
+      const stops = e.g.map((a, j) => `<stop offset="${j / (e.g.length - 1)}" stop-color="${c}" stop-opacity="${a}"/>`).join('');
+      inner += `<defs><linearGradient id="gr${i}" gradientUnits="userSpaceOnUse" x1="0" x2="${X(e.w)}" y1="0" y2="0">${stops}</linearGradient></defs><path d="${d}" fill="url(#gr${i})"/>`;
+    } else inner += `<path d="${d}" fill="${c}"/>`;
+  } else if (e.k === 'd') {
+    inner += e.p.map(q => `<circle cx="${(X(q[0]) + 3.6).toFixed(1)}" cy="${(q[1] * ky).toFixed(1)}" r="3.6" fill="${c}"/>`).join('');
+  } else {
+    inner += e.p.map(q => `<rect x="${(X(q[0]) - 2).toFixed(1)}" y="${(q[1] * ky - 2).toFixed(1)}" width="4" height="4" fill="${c}"/>`).join('');
+  }
+  const w = X(e.w) + 8;
+  return `<g class="${e.w > 30 ? 'fixed' : 'el'}" data-i="${i}" style="--c:${c}" transform="translate(${X(e.t0).toFixed(1)} ${(e.row * L.row).toFixed(1)})">` +
+    `<rect class="hit" x="-4" y="1" width="${w.toFixed(1)}" height="${(L.row - 2).toFixed(1)}" rx="5"/>${inner}</g>`;
+}
+
+/* ---------- Hero: Spektrogramm + Wellenform ---------- */
+let specCanvas = null;
+function lut() {
+  const dark = document.documentElement.dataset.theme === 'dark';
+  const st = dark ? [[0, 14, 16, 30, 0], [.25, 40, 52, 150, .55], [.5, 118, 62, 230, .8], [.75, 255, 95, 140, .9], [1, 255, 214, 130, 1]]
+                  : [[0, 240, 237, 229, 0], [.25, 190, 200, 255, .6], [.5, 150, 128, 255, .8], [.75, 255, 120, 150, .9], [1, 255, 176, 70, 1]];
+  const out = new Uint8ClampedArray(256 * 4);
+  for (let i = 0; i < 256; i++) {
+    const v = i / 255; let a = st[0], b = st[st.length - 1];
+    for (let j = 0; j < st.length - 1; j++) if (v >= st[j][0] && v <= st[j + 1][0]) { a = st[j]; b = st[j + 1]; break; }
+    const u = (v - a[0]) / (b[0] - a[0] || 1);
+    for (let k = 0; k < 3; k++) out[i * 4 + k] = a[k + 1] + (b[k + 1] - a[k + 1]) * u;
+    out[i * 4 + 3] = (a[4] + (b[4] - a[4]) * u) * 255;
+  }
+  return out;
+}
+function buildSpec() {
+  const c = document.createElement('canvas'); c.width = SFR; c.height = NB;
+  const ctx = c.getContext('2d'), img = ctx.createImageData(SFR, NB), map = lut();
+  for (let f = 0; f < SFR; f++) for (let b = 0; b < NB; b++) {
+    const v = spec[f * NB + b], o = ((NB - 1 - b) * SFR + f) * 4;
+    img.data[o] = map[v * 4]; img.data[o + 1] = map[v * 4 + 1]; img.data[o + 2] = map[v * 4 + 2]; img.data[o + 3] = map[v * 4 + 3];
+  }
+  ctx.putImageData(img, 0, 0); specCanvas = c;
+}
+function sizeCanvas(cv) {
+  const W = Math.ceil(X(TL)), dpr = Math.min(devicePixelRatio || 1, 2), cw = Math.min(Math.round(W * dpr), 16000);
+  cv.width = cw; cv.height = Math.round(L.hero * dpr); cv.style.width = W + 'px'; cv.style.height = L.hero + 'px';
+  return { cw, dpr, W };
+}
+function envelope() {                  // Hüllkurve (mittlere Spitze je 24 ms), auf 0..1 normiert
+  if (envelope.v) return envelope.v;
+  const n = peaks.length / 2, win = 6, out = new Float32Array(n);
   for (let i = 0; i < n; i++) {
-    let mn = 0, mx = 0; const s = Math.floor(i * per), e = Math.min(buf.length, Math.floor((i + 1) * per));
-    for (let j = s; j < e; j += 2) { let v = 0; for (let k = 0; k < ch; k++) v += data[k][j]; v /= ch; if (v < mn) mn = v; if (v > mx) mx = v; }
-    p[2*i] = mn; p[2*i+1] = mx;
+    let s = 0, c = 0;
+    for (let j = Math.max(0, i - win); j <= Math.min(n - 1, i + win); j++) { s += Math.max(Math.abs(peaks[2 * j]), peaks[2 * j + 1]); c++; }
+    out[i] = s / c / 127;
   }
-  let m = 0; for (const v of p) m = Math.max(m, Math.abs(v)); if (m > 0) for (let i = 0; i < p.length; i++) p[i] /= m;
-  return p;
+  const sorted = Float32Array.from(out).sort(), ref = sorted[Math.floor(n * .985)] || 1;
+  for (let i = 0; i < n; i++) out[i] = Math.min(1, out[i] / ref);
+  return envelope.v = out;
 }
-async function decode(arrayBuf) {
-  const ctx = new (window.AudioContext || window.webkitAudioContext)();
-  const buf = await ctx.decodeAudioData(arrayBuf); ctx.close();
-  peaks = computePeaks(buf); drawWave(); updateMsg();
-}
-function updateMsg() {
-  const m = $('wavemsg'); if (!m) return;
-  m.classList.toggle('hide', !!peaks);
-  if (!peaks) m.innerHTML = window.__waveFail
-    ? 'Wellenform braucht einen lokalen Server (start.bat) – oder Datei hier laden: <button id="pick">Audiodatei wählen</button>'
-    : 'Wellenform wird berechnet …';
-  const b = $('pick'); if (b) b.onclick = () => $('file').click();
-}
-$('file').onchange = async e => { const f = e.target.files[0]; if (f) { try { await decode(await f.arrayBuffer()); } catch { alert('Datei konnte nicht dekodiert werden.'); } } };
-fetch('song.m4a').then(r => r.arrayBuffer()).then(decode).catch(() => { window.__waveFail = true; updateMsg(); });
-
-/* ====================================================================
-   Wiedergabe / Playhead
-   ==================================================================== */
-function toggle() {
-  const now = performance.now(); if (now - lastToggle < 200) return; lastToggle = now;
-  audio.paused ? audio.play().catch(() => {}) : audio.pause();
-}
-function seek(t) { audio.currentTime = Math.min(Math.max(0, t), duration); tick(true); }
-
-function tick(force) {
-  const t = audio.currentTime, x = X(t);
-  const ph = $('playhead'), sh = $('shade'); if (!ph) return;
-  ph.style.left = x + 'px'; sh.style.width = x + 'px';
-  const beat = 60 / bpm, rel = t - offset;
-  if (rel < 0) $('clk1').textContent = 'Vorlauf';
-  else { const bi = Math.floor(rel / beat); $('clk1').textContent = mode === 'bars'
-    ? `Takt ${Math.floor(bi / beats) + 1} · ${bi % beats + 1}` : fmtTime(t); }
-  $('clk2').textContent = mode === 'bars' ? fmtTime(t) : (rel < 0 ? '' : `Takt ${Math.floor(Math.floor(rel / beat) / beats) + 1}`);
-  if (!audio.paused || force === 'follow') {
-    const vw = scroll.clientWidth;
-    if (x > scroll.scrollLeft + vw * .85 || x < scroll.scrollLeft) scroll.scrollLeft = x - vw * .15;
+function drawWave(cv, color) {
+  const { cw, dpr, W } = sizeCanvas(cv), c = cv.getContext('2d'); c.fillStyle = color;
+  const env = envelope(), n = env.length, mid = cv.height / 2, amp = mid * .86, end = X(audioDur) * dpr * (cw / (W * dpr));
+  const bw = 2 * dpr, step = 3 * dpr * (cw / (W * dpr));
+  for (let px = 0; px < end; px += step) {
+    const a = Math.floor(px / end * n), b = Math.max(a + 1, Math.floor((px + step) / end * n));
+    let v = 0; for (let i = a; i < b && i < n; i++) v = Math.max(v, env[i]);
+    const h = Math.max(1.5 * dpr, v ** 1.1 * amp);
+    c.beginPath(); c.roundRect(px, mid - h, bw, h * 2, bw / 2); c.fill();
   }
+  c.fillRect(end, mid - dpr / 2, cw - end, dpr);                 // flache Linie nach dem Audio-Ende
+}
+function drawHero() {
+  const bg = $('bgc'), { cw } = sizeCanvas(bg), c = bg.getContext('2d');
+  c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
+  c.globalAlpha = .55; c.drawImage(specCanvas, 0, 0, SFR, NB, 0, 0, Math.round(X(audioDur) / Math.ceil(X(TL)) * cw), bg.height);
+  drawWave($('wv'), cssv('--wave'));
+  drawWave($('wp'), cssv('--accent'));
+}
+
+/* ---------- Aufbau ---------- */
+function render() {
+  layout();
+  const W = Math.ceil(X(TL)), { ruler, lines } = gridParts();
+  stage.style.width = W + 'px'; stage.style.height = L.H + 'px';
+  let seps = ''; for (let i = 1; i < 8; i++) seps += `<line class="rs" x1="0" x2="${W}" y1="${(i * L.row).toFixed(1)}" y2="${(i * L.row).toFixed(1)}"/>`;
+  stage.innerHTML =
+    `<svg id="ruler" width="${W}" height="${RULER_H}">${ruler}<line x1="0" x2="${W}" y1="${RULER_H - .5}" y2="${RULER_H - .5}" stroke="var(--line)"/></svg>` +
+    `<div id="hero" style="top:${RULER_H}px;width:${W}px;height:${L.hero}px"><canvas id="bgc"></canvas><canvas id="wv"></canvas>` +
+      `<div id="played"><canvas id="wp"></canvas></div></div>` +
+    `<svg id="heroGrid" style="top:${RULER_H}px" width="${W}" height="${L.hero}">${lines.replace(/y2="[\d.]+"/g, `y2="${L.hero}"`)}</svg>` +
+    `<svg id="body" style="top:${L.bodyY}px" width="${W}" height="${L.bodyH}"><g transform="translate(0 ${-L.hero})">${lines}</g>${seps}${els.map(elementSvg).join('')}</svg>` +
+    `<div id="playhead"></div><div id="tip"></div>`;
+  drawHero(); select(selected); tick(true);
+}
+
+/* ---------- Wiedergabe ---------- */
+let lastToggle = 0;
+function toggle() { const n = performance.now(); if (n - lastToggle < 200) return; lastToggle = n; audio.paused ? audio.play().catch(() => {}) : audio.pause(); }
+function seek(t) { audio.currentTime = Math.min(Math.max(0, t), audioDur); tick(true); }
+
+const eq = $('eq'), eqc = eq.getContext('2d'), EQN = 48, eqv = new Float32Array(EQN);
+function drawEq(t) {
+  const dpr = Math.min(devicePixelRatio || 1, 2), w = eq.clientWidth, h = eq.clientHeight;
+  if (!w) return;
+  if (eq.width !== Math.round(w * dpr)) { eq.width = Math.round(w * dpr); eq.height = Math.round(h * dpr); }
+  eqc.setTransform(dpr, 0, 0, dpr, 0, 0); eqc.clearRect(0, 0, w, h);
+  const f = Math.min(SFR - 1, Math.max(0, Math.round(t * SF))), gap = 3, bw = (w - gap * (EQN - 1)) / EQN;
+  const col = cssv('--accent'), dim = cssv('--line-2');
+  for (let i = 0; i < EQN; i++) {
+    const b0 = Math.floor(i * NB / EQN), b1 = Math.max(b0 + 1, Math.floor((i + 1) * NB / EQN)); let v = 0;
+    for (let b = b0; b < b1; b++) v = Math.max(v, spec[f * NB + b] / 255);
+    eqv[i] = force ? v : Math.max(v, eqv[i] * .82);
+    const bh = Math.max(2, eqv[i] ** 1.4 * h);
+    eqc.fillStyle = eqv[i] > .05 ? col : dim; eqc.globalAlpha = .4 + .6 * eqv[i];
+    eqc.beginPath(); eqc.roundRect(i * (bw + gap), h - bh, bw, bh, 1.5); eqc.fill();
+  }
+  eqc.globalAlpha = 1;
+}
+function tick(f) {
+  force = f === true;
+  const t = audio.currentTime, x = X(t), ph = $('playhead'); if (!ph) return;
+  ph.style.left = x + 'px';
+  const pl = $('played'); if (pl) pl.style.width = x + 'px';
+  const rel = Math.max(0, t - offset), bi = Math.floor(rel / beatLen);
+  const bars = `Takt ${Math.floor(bi / beats) + 1} · ${bi % beats + 1}`;
+  $('clk1').textContent = mode === 'bars' ? bars : fmt(t);
+  $('clk2').textContent = mode === 'bars' ? fmt(t) + ' s' : bars;
+  drawEq(t);
+  if (!audio.paused) { const vw = scroll.clientWidth; if (x > scroll.scrollLeft + vw * .88 || x < scroll.scrollLeft) scroll.scrollLeft = x - vw * .12; }
 }
 (function loop() { if (!audio.paused) tick(); requestAnimationFrame(loop); })();
 audio.addEventListener('play', () => $('play').classList.add('on'));
-audio.addEventListener('pause', () => $('play').classList.remove('on'));
+audio.addEventListener('pause', () => { $('play').classList.remove('on'); tick(true); });
 audio.addEventListener('ended', () => $('play').classList.remove('on'));
 audio.addEventListener('seeked', () => tick(true));
-audio.addEventListener('loadedmetadata', () => { if (isFinite(audio.duration)) { duration = audio.duration; fit(); } });
+$('play').onclick = toggle; $('stop').onclick = () => seek(0);
 
-$('play').onclick = toggle;
-$('stop').onclick = () => seek(0);
+/* ---------- Interaktion: Position setzen & Elemente verschieben ---------- */
+let drag = null;
+const elNode = i => i == null ? null : stage.querySelector(`.el[data-i="${i}"]`);
+function select(i) { elNode(selected)?.classList.remove('sel'); selected = i; elNode(selected)?.classList.add('sel'); }
+function saveOverrides() {
+  const o = {}; els.forEach(e => { if (Math.abs(e.t0 - e.orig) > 1e-4) o[e.id] = +e.t0.toFixed(3); });
+  try { localStorage.setItem(LS_KEY, JSON.stringify(o)); } catch {}
+  const n = Object.keys(o).length;
+  $('posHint').textContent = n ? `${n} Element${n > 1 ? 'e' : ''} verschoben` : 'Elemente per Ziehen verschieben';
+}
+function moveEl(i, t0) {
+  const e = els[i]; e.t0 = Math.max(0, t0);
+  elNode(i).setAttribute('transform', `translate(${X(e.t0).toFixed(1)} ${(e.row * L.row).toFixed(1)})`);
+}
+function showTip(i, clientX) {
+  const e = els[i], tip = $('tip'), rel = e.t0 - offset;
+  tip.style.display = 'block';
+  tip.textContent = fmt(e.t0) + ' s' + (rel < 0 ? '' : ` · Takt ${(rel / barLen + 1).toFixed(2)}`);
+  tip.style.left = clientX - stage.getBoundingClientRect().left + 'px'; tip.style.top = L.bodyY + e.row * L.row + 'px';
+}
+const seekFrom = ev => seek((ev.clientX - stage.getBoundingClientRect().left) / pps);
+stage.addEventListener('pointerdown', ev => {
+  const g = ev.target.closest('.el');
+  stage.setPointerCapture(ev.pointerId);
+  if (g) { const i = +g.dataset.i; select(i); g.classList.add('drag'); drag = { i, x: ev.clientX, t0: els[i].t0, moved: false }; }
+  else { drag = { seek: true }; seekFrom(ev); select(null); }
+});
+stage.addEventListener('pointermove', ev => {
+  if (!drag) return;
+  if (drag.seek) return seekFrom(ev);
+  if (Math.abs(ev.clientX - drag.x) > 2) drag.moved = true;
+  if (drag.moved) { const dt = (ev.clientX - drag.x) / pps; moveEl(drag.i, drag.t0 + (ev.altKey ? dt / 10 : dt)); showTip(drag.i, ev.clientX); }
+});
+const endDrag = () => { if (drag && !drag.seek) { elNode(drag.i)?.classList.remove('drag'); $('tip').style.display = 'none'; saveOverrides(); } drag = null; };
+stage.addEventListener('pointerup', endDrag); stage.addEventListener('pointercancel', endDrag);
 
-document.addEventListener('keydown', e => {
-  if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName) && e.code === 'Space') return;
-  if (e.target.tagName === 'BUTTON' && e.code === 'Space') e.preventDefault();
-  if (e.code === 'Space' || e.code === 'MediaPlayPause') { e.preventDefault(); toggle(); }
-  else if (e.code === 'ArrowRight') seek(audio.currentTime + (e.shiftKey ? 5 : 1));
-  else if (e.code === 'ArrowLeft') seek(audio.currentTime - (e.shiftKey ? 5 : 1));
-  else if (e.code === 'Home') seek(0);
+document.addEventListener('keydown', ev => {
+  if (ev.target.tagName === 'INPUT' && ev.code === 'Space') return;
+  if (ev.target.tagName === 'BUTTON' && ev.code === 'Space') ev.preventDefault();
+  if (ev.code === 'Space' || ev.code === 'MediaPlayPause') { ev.preventDefault(); toggle(); }
+  else if (ev.altKey && selected != null && (ev.code === 'ArrowLeft' || ev.code === 'ArrowRight')) {
+    ev.preventDefault(); moveEl(selected, els[selected].t0 + (ev.code === 'ArrowLeft' ? -1 : 1) * (ev.shiftKey ? .1 : .01)); saveOverrides();
+  }
+  else if (ev.code === 'ArrowRight') seek(audio.currentTime + (ev.shiftKey ? 5 : 1));
+  else if (ev.code === 'ArrowLeft') seek(audio.currentTime - (ev.shiftKey ? 5 : 1));
+  else if (ev.code === 'Home') seek(0);
 });
 if ('mediaSession' in navigator) {
   navigator.mediaSession.metadata = new MediaMetadata({ title: 'Blade Runner 20', artist: 'Synthwave goose' });
   navigator.mediaSession.setActionHandler('play', () => audio.play());
   navigator.mediaSession.setActionHandler('pause', () => audio.pause());
 }
+$('reset').onclick = () => { els.forEach(e => { e.t0 = e.orig; }); saveOverrides(); render(); };
+$('copy').onclick = async () => {
+  const o = {}; els.forEach(e => { o[e.id] = +e.t0.toFixed(3); });
+  try { await navigator.clipboard.writeText(JSON.stringify(o, null, 1)); $('copy').textContent = 'Kopiert'; } catch { console.log(o); $('copy').textContent = 'Siehe Konsole'; }
+  setTimeout(() => $('copy').textContent = 'Positionen kopieren', 1600);
+};
 
-// Klick / Ziehen = Position setzen
-let dragging = false;
-const seekFromEvent = e => { const r = stage.getBoundingClientRect(); seek((e.clientX - r.left) / pps); };
-stage.addEventListener('pointerdown', e => { dragging = true; stage.setPointerCapture(e.pointerId); seekFromEvent(e); });
-stage.addEventListener('pointermove', e => { if (dragging) seekFromEvent(e); });
-stage.addEventListener('pointerup', () => dragging = false);
-
-/* ====================================================================
-   Zoom, Modus, Theme
-   ==================================================================== */
-const minPps = () => Math.max(2, scroll.clientWidth / duration), maxPps = () => 160;
-function setPps(v, anchorX) {
-  const old = pps; pps = Math.min(maxPps(), Math.max(minPps(), v));
-  const ax = anchorX ?? scroll.clientWidth / 2, tAnchor = (scroll.scrollLeft + ax) / old;
-  render(); scroll.scrollLeft = tAnchor * pps - ax;
-  $('zoom').value = Math.round(Math.log(pps / minPps()) / Math.log(maxPps() / minPps()) * 100);
+/* ---------- Zoom / Modus / Theme ---------- */
+const minPps = () => scroll.clientWidth / TL, maxPps = 220;
+function setPps(v, ax) {
+  const old = pps; pps = Math.min(maxPps, Math.max(minPps(), v));
+  ax = ax ?? scroll.clientWidth / 2; const tA = (scroll.scrollLeft + ax) / old;
+  render(); scroll.scrollLeft = tA * pps - ax;
+  $('zoom').value = Math.round(Math.log(pps / minPps()) / Math.log(maxPps / minPps()) * 100);
 }
-function fit() { pps = minPps(); render(); $('zoom').value = 0; }
-$('zoom').oninput = e => setPps(minPps() * Math.pow(maxPps() / minPps(), e.target.value / 100));
-scroll.addEventListener('wheel', e => {
-  if (!e.ctrlKey) return; e.preventDefault();
-  setPps(pps * Math.exp(-e.deltaY * .0025), e.clientX - scroll.getBoundingClientRect().left);
-}, { passive: false });
-window.addEventListener('resize', () => { if (pps < minPps()) fit(); });
+const fit = () => { pps = minPps(); render(); $('zoom').value = 0; };
+$('zoom').oninput = e => setPps(minPps() * Math.pow(maxPps / minPps(), e.target.value / 100));
+scroll.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); setPps(pps * Math.exp(-e.deltaY * .0025), e.clientX - scroll.getBoundingClientRect().left); }, { passive: false });
+let rz, lastH = 0, lastW = 0;
+new ResizeObserver(() => { if (daw.clientHeight === lastH && scroll.clientWidth === lastW) return; clearTimeout(rz); rz = setTimeout(() => { lastH = daw.clientHeight; lastW = scroll.clientWidth; pps = Math.max(pps, minPps()); render(); }, 60); }).observe(daw);
 
-function setMode(m) { mode = m; $('m-bars').classList.toggle('on', m === 'bars'); $('m-time').classList.toggle('on', m === 'time');
-  $('barset').classList.toggle('hide', m !== 'bars'); render(); try { localStorage.mode = m; } catch {} }
+function setMode(m) {
+  mode = m; $('m-bars').classList.toggle('on', m === 'bars'); $('m-time').classList.toggle('on', m === 'time'); render();
+  try { localStorage.setItem('av-mode', m); } catch {}
+}
 $('m-bars').onclick = () => setMode('bars'); $('m-time').onclick = () => setMode('time');
-$('bpm').onchange = e => { bpm = Math.min(300, Math.max(30, +e.target.value || 120)); e.target.value = bpm; render(); };
-$('beats').onchange = e => { beats = +e.target.value; render(); };
-$('off').onchange = e => { offset = +e.target.value || 0; render(); };
-
-function setTheme(t) { document.documentElement.dataset.theme = t; try { localStorage.theme = t; } catch {} drawWave(); }
+function setTheme(t) {
+  document.documentElement.dataset.theme = t; try { localStorage.setItem('av-theme', t); } catch {}
+  if (specCanvas) { buildSpec(); render(); }
+}
 $('theme').onclick = () => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
-{ let t; try { t = localStorage.theme; } catch {} setTheme(t || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')); }
 
-buildLabels(); fit();
-// Labels exakt auf Stage-Höhe halten
-document.getElementById('labels').style.minHeight = (RULER_H + WAVE_H + ROW_H * TRACKS.length) + 'px';
+{ let t, m; try { t = localStorage.getItem('av-theme'); m = localStorage.getItem('av-mode'); } catch {}
+  document.documentElement.dataset.theme = t || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  if (m === 'time') { mode = 'time'; $('m-bars').classList.remove('on'); $('m-time').classList.add('on'); } }
+buildSpec(); fit(); saveOverrides();
 </script>
 </body>
 </html>

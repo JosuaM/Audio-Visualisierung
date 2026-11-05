@@ -117,6 +117,11 @@ input[type=range] { width: 120px; accent-color: var(--accent); }
 .hint { color: var(--faint); font-size: 11.5px; white-space: nowrap; }
 kbd { font: 10.5px ui-monospace, Consolas, monospace; color: var(--muted); border: 1px solid var(--line-2); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--bg); }
 @media (max-width: 1100px) { .hint { display: none; } }
+#labels .l .aup { margin-left: auto; margin-right: 6px; width: 24px; height: 24px; padding: 0; border: 0; background: transparent; color: var(--faint); display: grid; place-items: center; border-radius: 6px; cursor: pointer; flex: none; }
+#labels .l .aup:hover { color: var(--ink); background: var(--bg); }
+#labels .l .aup.has { color: var(--c); }
+#labels .l .aup + .up { margin-left: 0; }
+#labels .l .aup svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 </style>
 </head>
 <body>
@@ -179,6 +184,28 @@ const NAMES = ['Flute', 'Trumpet', 'Frog', 'Building', 'Riser', 'Jagdhorn', 'Dru
 const FIG_ROW_H = 40.75, RULER_H = 30, SB = 12, LS_KEY = 'blade-runner-av-zustand-v2';
 
 const $ = id => document.getElementById(id);
+/* ---------- Einzelspuren (Audio pro Instrument), gemeinsam mit dem Morphologischen Kasten ---------- */
+const Stems = (() => {
+  const open = () => new Promise((ok, no) => { const r = indexedDB.open('av-stems', 1); r.onupgradeneeded = () => r.result.createObjectStore('s'); r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error); });
+  const run = async (mode, fn) => { const db = await open(); return new Promise((ok, no) => { const tx = db.transaction('s', mode), q = fn(tx.objectStore('s')); tx.oncomplete = () => ok(q && q.result); tx.onerror = tx.onabort = () => no(tx.error); }); };
+  return {
+    names: () => run('readonly', s => s.getAllKeys()).catch(() => []),
+    get: n => run('readonly', s => s.get(n)).catch(() => null),
+    put: (n, f) => run('readwrite', s => s.put({ blob: f, file: f.name }, n)),
+    del: n => run('readwrite', s => s.delete(n)),
+  };
+})();
+let stemSet = new Set();
+function refreshStems() { Stems.names().then(k => { stemSet = new Set(k); document.querySelectorAll('#labels .aup').forEach(b => { const on = stemSet.has(b.dataset.name); b.classList.toggle('has', on); b.title = on ? `Tonspur von ${b.dataset.name} vorhanden – klicken zum Ersetzen, Umschalt+Klick entfernt sie` : `Tonspur (Audiodatei) für ${b.dataset.name} hochladen`; }); }); }
+const AUP = n => `<button class="aup" data-name="${n}" aria-label="Tonspur für ${n} hochladen"><svg viewBox="0 0 24 24"><path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/></svg></button>`;
+{ const f = document.createElement('input'); f.type = 'file'; f.accept = 'audio/*'; f.hidden = true; document.body.appendChild(f); let cur = null;
+  document.addEventListener('click', async ev => {
+    const b = ev.target.closest('#labels .aup'); if (!b) return; ev.stopPropagation(); cur = b.dataset.name;
+    if (ev.shiftKey && stemSet.has(cur)) { await Stems.del(cur); refreshStems(); toast(`Tonspur von ${cur} entfernt`); return; }
+    f.click();
+  });
+  f.onchange = async () => { const file = f.files[0]; f.value = ''; if (!file || !cur) return; try { await Stems.put(cur, file); toast(`Tonspur für ${cur} gespeichert: ${file.name} – im Morphologischen Kasten wählbar`); } catch (e) { toast('Tonspur konnte nicht gespeichert werden'); } refreshStems(); };
+}
 const audio = $('audio'), scroll = $('scroll'), stage = $('stage'), daw = $('daw');
 const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
 const peaks = new Int8Array(b64(SONG.peaks).buffer);
@@ -233,8 +260,9 @@ function layout() {
   $('labels').innerHTML =
     `<div class="l ruler" style="height:${RULER_H}px">${mode === 'bars' ? 'Takt' : 'Zeit'}</div>` +
     `<div class="l hero" style="height:${hero}px">Audio<small>Spektrum</small></div>` +
-    NAMES.map((n, i) => `<div class="l" style="height:${row}px;--c:var(--c${i})"><i></i>${n}` +
+    NAMES.map((n, i) => `<div class="l" style="height:${row}px;--c:var(--c${i})"><i></i>${n}${AUP(n)}` +
       `<button class="up" data-row="${i}" title="Bild hochladen" aria-label="Bild zu ${n} hochladen"><svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></svg></button></div>`).join('');
+  refreshStems();
 }
 
 /* ---------- Lineal & Raster ---------- */

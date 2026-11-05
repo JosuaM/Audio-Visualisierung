@@ -1,0 +1,1609 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Morphologischer Kasten – Audio-Visualisierung</title>
+<style>
+:root {
+  --bg: #f4f2ed; --panel: #fbfaf7; --ink: #1b1b22; --muted: #7b7a82; --faint: #a9a8ae;
+  --line: #e3e0d8; --line-2: #cfcbc0; --accent: #ff6a14; --accent-ink: #fff;
+  --stage: #ebe8e0; --chip: #f3f1ec; --chip-h: #e9e6df;
+  --grid: rgba(40,40,60,.08); --ctxp: rgba(110,108,124,.20); --ctxs: rgba(110,108,124,.45); --hide: #d6d2c7;
+  --c0: #12985f; --c1: #2558e8; --c2: #d8304c; --c3: #d98400; --c4: #e5158f; --c5: #7a4cff; --c6: #0c95ad; --c7: #7ea000;
+}
+:root[data-theme="dark"] {
+  --bg: #0b0c10; --panel: #11131a; --ink: #eeeef2; --muted: #8b8d99; --faint: #5d5f6b;
+  --line: #1f222c; --line-2: #2d313e; --accent: #ff8a2a; --accent-ink: #15120e;
+  --stage: #07080b; --chip: #161922; --chip-h: #1d212c;
+  --grid: rgba(220,225,255,.07); --ctxp: rgba(150,156,180,.13); --ctxs: rgba(150,156,180,.32); --hide: #1a1d27;
+  --c0: #3ddc97; --c1: #5ba3ff; --c2: #ff5f76; --c3: #ffb454; --c4: #ff3fa6; --c5: #b88cff; --c6: #46d9ee; --c7: #d6f45c;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; }
+body {
+  background: var(--bg); color: var(--ink);
+  font: 13px/1.4 "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 12px; padding: 14px 16px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Kopfzeile */
+header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 0 4px; }
+h1 { margin: 0; font-size: 15px; font-weight: 650; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+h1 span { color: var(--muted); font-weight: 450; }
+.right { display: flex; align-items: center; gap: 10px; }
+
+button, .btn { font: inherit; color: inherit; background: var(--panel); border: 1px solid var(--line-2); border-radius: 8px; height: 30px; padding: 0 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; white-space: nowrap; transition: border-color .15s, background .15s, color .15s; }
+button:hover, .btn:hover { border-color: var(--muted); }
+button:focus-visible, .btn:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.icon { width: 30px; padding: 0; justify-content: center; }
+svg.i { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.seg { display: inline-flex; border: 1px solid var(--line-2); border-radius: 8px; overflow: hidden; background: var(--panel); }
+.seg button { border: 0; border-radius: 0; height: 28px; background: transparent; color: var(--muted); padding: 0 10px; }
+.seg button.on { background: var(--ink); color: var(--bg); }
+select { font: inherit; color: inherit; background: var(--panel); border: 1px solid var(--line-2); border-radius: 8px; height: 30px; padding: 0 30px 0 10px; cursor: pointer; appearance: none; -webkit-appearance: none; }
+.sel { position: relative; display: inline-flex; }
+.sel::after { content: ""; position: absolute; right: 12px; top: 50%; width: 6px; height: 6px; margin-top: -5px; border: solid var(--muted); border-width: 0 1.6px 1.6px 0; transform: rotate(45deg); pointer-events: none; }
+
+/* Hauptlayout */
+.wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(400px, 500px); gap: 12px; min-height: 0; }
+.left { display: grid; grid-template-rows: minmax(0, 1fr) auto auto auto; gap: 10px; min-height: 0; min-width: 0; }
+.stagebox { position: relative; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--stage); min-height: 220px; }
+.stagebox canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.badge { position: absolute; left: 12px; top: 10px; display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--muted); background: color-mix(in srgb, var(--panel) 82%, transparent); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; backdrop-filter: blur(6px); pointer-events: none; }
+.badge i { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
+.badge b { color: var(--ink); font-weight: 600; }
+.badge em { font-style: normal; color: var(--accent); }
+.preview-tag { position: absolute; right: 12px; top: 10px; font-size: 11px; color: var(--accent-ink); background: var(--accent); border-radius: 999px; padding: 3px 10px; opacity: 0; transition: opacity .15s; pointer-events: none; }
+.preview-tag.on { opacity: 1; }
+
+.bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.bar .grp { display: flex; gap: 8px; margin-left: auto; }
+.tempo { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; }
+.tempo b { color: var(--ink); font-variant-numeric: tabular-nums; min-width: 54px; }
+input[type=range] { -webkit-appearance: none; appearance: none; width: 96px; height: 14px; background: transparent; cursor: pointer; }
+input[type=range]::-webkit-slider-runnable-track { height: 3px; border-radius: 3px; background: var(--line-2); }
+input[type=range]::-moz-range-track { height: 3px; border-radius: 3px; background: var(--line-2); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 13px; height: 13px; border-radius: 50%; background: var(--ink); margin-top: -5px; border: 0; }
+input[type=range]::-moz-range-thumb { width: 13px; height: 13px; border-radius: 50%; background: var(--ink); border: 0; }
+.meters { display: flex; flex-direction: column; gap: 3px; font-size: 10px; color: var(--faint); }
+.meter { display: flex; align-items: center; gap: 5px; }
+.meter span { width: 38px; }
+.meter div { width: 70px; height: 4px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.meter div i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 3px; }
+.meters.off { display: none; }
+
+.notes { display: flex; flex-wrap: wrap; gap: 6px; min-height: 22px; }
+.note { font-size: 11.5px; color: var(--muted); border: 1px dashed var(--line-2); border-radius: 999px; padding: 2px 10px; }
+.note b { color: var(--ink); font-weight: 600; }
+
+/* Instrumente */
+.inst { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: 10px 12px; min-width: 0; }
+.ih { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.ih h3 { margin: 0; font-size: 12.5px; font-weight: 650; margin-right: auto; }
+.ih h3 span { color: var(--muted); font-weight: 450; }
+.ih button, .ih select { height: 28px; font-size: 12px; }
+.cards { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+.card { flex: 0 0 172px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); cursor: pointer; overflow: hidden; position: relative; transition: border-color .15s, transform .15s; }
+.card:hover { border-color: var(--line-2); transform: translateY(-1px); }
+.card.cur { border-color: var(--accent); }
+.card canvas { display: block; width: 100%; height: 88px; background: var(--stage); }
+.card .cm { display: flex; align-items: center; gap: 6px; padding: 6px 8px 0; font-size: 12px; font-weight: 600; }
+.card .cm i { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.card small { display: block; padding: 2px 8px 7px; color: var(--muted); font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card .x { position: absolute; top: 5px; right: 5px; width: 22px; height: 22px; padding: 0; justify-content: center; border-radius: 6px; opacity: 0; font-size: 14px; line-height: 1; }
+.card:hover .x, .card .x:focus-visible { opacity: 1; }
+.empty { color: var(--faint); font-size: 12px; padding: 14px 4px; }
+
+/* Kasten-Panel */
+.panel { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; overflow: hidden; }
+.tabs { display: flex; gap: 4px; padding: 8px; border-bottom: 1px solid var(--line); align-items: center; }
+.tabs button.t { flex: 1; border: 0; background: transparent; color: var(--muted); height: 30px; justify-content: center; }
+.tabs button.t.on { background: var(--ink); color: var(--bg); }
+.tabs button.t b { font-weight: 600; margin-right: 2px; }
+.tabs .eye { border-color: var(--line); }
+.tabs .eye.on { color: var(--accent); border-color: var(--accent); }
+.scroll { overflow: auto; padding: 0 14px 30px; }
+.box { padding: 16px 0 12px; border-bottom: 1px solid var(--line); }
+.box:last-child { border-bottom: 0; }
+.bh { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.bh h2 { font-size: 13.5px; margin: 0; font-weight: 650; letter-spacing: -.01em; }
+.bh h2 span { color: var(--muted); font-weight: 450; }
+.bq { color: var(--muted); font-size: 12px; margin: 2px 0 10px; }
+.acts { display: flex; gap: 4px; }
+.acts button { height: 24px; font-size: 11.5px; padding: 0 8px; border-color: var(--line); color: var(--muted); }
+.acts button:hover { color: var(--ink); }
+.rows { position: relative; }
+.rows svg.path { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; z-index: 0; }
+.row { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 8px; padding: 5px 0; align-items: start; position: relative; border-radius: 8px; }
+.row.flash { animation: flash 1.4s ease-out; }
+@keyframes flash { 0% { background: color-mix(in srgb, var(--accent) 22%, transparent); } 100% { background: transparent; } }
+.rl { display: flex; flex-direction: column; padding-top: 5px; min-width: 0; }
+.rl .nm { display: flex; align-items: center; gap: 4px; font-weight: 560; font-size: 12px; }
+.rl .nm .opt { color: var(--faint); font-weight: 400; font-size: 10.5px; }
+.rl small { color: var(--faint); font-size: 10.5px; line-height: 1.25; margin-top: 2px; }
+.lock { width: 18px; height: 18px; padding: 0; border: 0; background: transparent; color: var(--faint); opacity: 0; justify-content: center; flex: none; margin-left: -3px; }
+.lock svg { width: 12px; height: 12px; }
+.row:hover .lock, .lock.on, .lock:focus-visible { opacity: 1; }
+.lock.on { color: var(--accent); }
+.opts { display: flex; flex-wrap: wrap; gap: 5px; position: relative; z-index: 1; }
+.chip { height: 28px; padding: 0 10px; border-radius: 999px; background: var(--chip); border: 1px solid var(--line); font-size: 12px; color: var(--ink); gap: 6px; }
+.chip:hover { background: var(--chip-h); border-color: var(--line-2); }
+.chip.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.chip.cmp { box-shadow: 0 0 0 2px var(--cc); }
+.chip svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; flex: none; }
+.sw { width: 11px; height: 11px; border-radius: 50%; display: inline-block; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18); flex: none; }
+.derive { margin-top: 10px; display: flex; gap: 10px; align-items: center; padding: 10px 12px; border: 1px dashed var(--line-2); border-radius: 10px; }
+.derive p { margin: 0; color: var(--muted); font-size: 11.5px; flex: 1; }
+.derive button { border-color: var(--accent); color: var(--accent); }
+
+#toast { position: fixed; left: 50%; bottom: 22px; transform: translate(-50%, 20px); background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 10px; font-size: 12.5px; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; display: flex; gap: 12px; align-items: center; z-index: 10; }
+#toast.on { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+#toast button { height: 24px; font-size: 12px; background: transparent; color: var(--bg); border-color: color-mix(in srgb, var(--bg) 40%, transparent); }
+
+@media (max-width: 1180px) { .hide-m { display: none; } }
+@media (max-width: 980px) {
+  html, body { height: auto; overflow: auto; }
+  body { grid-template-rows: auto auto; }
+  .wrap { grid-template-columns: minmax(0, 1fr); }
+  .left { grid-template-rows: auto auto auto auto; }
+  .stagebox { height: 56vh; }
+  .scroll { overflow: visible; }
+  .tabs { position: sticky; top: 0; z-index: 3; background: var(--panel); }
+  .panel { overflow: visible; }
+}
+@media (max-width: 560px) {
+  body { padding: 10px 16px; }
+  h1 span { display: none; }
+  .row { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .rl { flex-direction: row; gap: 8px; align-items: baseline; padding-top: 0; }
+  .lock { opacity: 1; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Morphologischer Kasten <span>– Visuelle Erscheinung, Verhalten &amp; Klang</span></h1>
+  <div class="right">
+    <a class="btn" href="index.html" title="Zurück zur Visualisierung">
+      <svg class="i" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg><span class="hide-m">Zur Visualisierung</span>
+    </a>
+    <button id="theme" class="icon" title="Dark / Light" aria-label="Dark / Light">
+      <svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/></svg>
+    </button>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="left">
+    <div class="stagebox" id="stagebox">
+      <canvas id="stage" aria-label="Visualisierung der gewählten Kombination"></canvas>
+      <div class="badge" id="badge"></div>
+      <div class="preview-tag" id="ptag">Vorschau</div>
+    </div>
+
+    <div class="bar">
+      <button id="play" class="icon" title="Animation anhalten / fortsetzen (Leertaste)" aria-label="Animation anhalten / fortsetzen"></button>
+      <label class="tempo" title="Tempo für Rhythmus, Lebenszyklen und Klang">Tempo
+        <input type="range" id="bpm" min="50" max="180" step="1" value="100"><b id="bpmv">100 BPM</b>
+      </label>
+      <span class="tempo">Klang</span>
+      <div class="seg" role="group" aria-label="Klangquelle" title="Worauf reagiert die Visualisierung? Synth spielt den Klang aus Kasten 3, Song spielt den Track ab.">
+        <button data-src="off" class="on">Aus</button><button data-src="synth">Synth</button><button data-src="song">Song</button>
+      </div>
+      <div class="meters off" id="meters">
+        <div class="meter"><span>Pegel</span><div><i id="mAmp"></i></div></div>
+        <div class="meter"><span>Tonhöhe</span><div><i id="mPitch"></i></div></div>
+      </div>
+      <div class="grp">
+      <button id="rand" title="Zufällige Kombination für Kasten 1 &amp; 2 (R) – gesperrte Zeilen bleiben"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1.1" fill="currentColor"/><circle cx="15" cy="15" r="1.1" fill="currentColor"/><circle cx="15" cy="9" r="1.1" fill="currentColor"/><circle cx="9" cy="15" r="1.1" fill="currentColor"/></svg>Zufall</button>
+      <button id="reset" class="icon" title="Alles auf Standard zurücksetzen" aria-label="Zurücksetzen"><svg class="i" viewBox="0 0 24 24"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.5 4.5v4h4"/></svg></button>
+      <button id="png" class="icon" title="Aktuelles Bild als PNG speichern" aria-label="Bild speichern"><svg class="i" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l5-4.5 4 3.5 3-2.5 4 3.5"/></svg></button>
+      <button id="link" class="icon" title="Link zu dieser Kombination kopieren" aria-label="Link kopieren"><svg class="i" viewBox="0 0 24 24"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></svg></button>
+      </div>
+    </div>
+
+    <div class="notes" id="notes" aria-live="polite"></div>
+
+    <div class="inst">
+      <div class="ih">
+        <h3>Instrumente <span>– gespeicherte Kombinationen zum Vergleichen</span></h3>
+        <span class="sel"><select id="instName" aria-label="Instrument wählen"></select></span>
+        <button id="save" title="Aktuelle Kombination für dieses Instrument speichern"><svg class="i" viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/></svg>Speichern</button>
+        <button id="exp" class="icon" title="Alle Instrumente als JSON exportieren" aria-label="Exportieren"><svg class="i" viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19h14"/></svg></button>
+        <button id="imp" class="icon" title="Instrumente aus JSON importieren" aria-label="Importieren"><svg class="i" viewBox="0 0 24 24"><path d="M12 15V4M7.5 8.5L12 4l4.5 4.5M5 19h14"/></svg></button>
+        <input type="file" id="impFile" accept=".json,application/json" hidden>
+      </div>
+      <div class="cards" id="cards"></div>
+    </div>
+  </section>
+
+  <aside class="panel">
+    <div class="tabs" role="tablist">
+      <button class="t on" data-go="look"><b>1</b>&nbsp;Erscheinung</button>
+      <button class="t" data-go="move"><b>2</b>&nbsp;Verhalten</button>
+      <button class="t" data-go="sound"><b>3</b>&nbsp;Klang</button>
+      <button class="icon eye on" id="hover" title="Vorschau beim Überfahren der Ausprägungen" aria-label="Hover-Vorschau an/aus"><svg class="i" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></svg></button>
+    </div>
+    <div class="scroll" id="scroll"></div>
+  </aside>
+</main>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+/* ═══════════════════════════ Daten: die drei Kästen ═══════════════════════════ */
+const BOXES = [
+  { id: 'look', title: 'Morphologischer Kasten 1', sub: 'Visuelle Erscheinung', q: 'Wie sieht das Soundelement aus?', rows: [
+    { k: 'element', n: 'Grundelement', o: ['Kreis', 'Rechteck', 'Quadrat', 'Polygon', 'Linie', 'Punkt', 'Fläche'], d: 0 },
+    { k: 'char', n: 'Formcharakter', o: ['Organisch', 'Geometrisch', 'Kantig', 'Abgerundet', 'Spitz', 'Unregelmäßig'], d: 1 },
+    { k: 'size', n: 'Größe', o: ['Winzig', 'Klein', 'Mittel', 'Groß', 'Riesig'], d: 2 },
+    { k: 'temp', n: 'Farbtemperatur', o: ['Warm', 'Neutral', 'Kalt'], d: 1 },
+    { k: 'light', n: 'Helligkeit', o: ['Hell', 'Mittel', 'Dunkel'], d: 1 },
+    { k: 'hue', n: 'Farbton', o: ['Rot', 'Orange', 'Gelb', 'Grün', 'Blau', 'Violett', 'Magenta'], d: 1 },
+    { k: 'sat', n: 'Sättigung', o: ['Entsättigt', 'Mittel', 'Gesättigt'], d: 2 },
+    { k: 'alpha', n: 'Transparenz', o: ['Undurchsichtig', 'Halbtransparent', 'Transparent'], d: 0 },
+    { k: 'count', n: 'Anzahl', o: ['Einzeln', 'Wenige', 'Mehrere', 'Viele'], d: 0 },
+    { k: 'layout', n: 'Anordnung', o: ['Verteilt', 'Gruppiert', 'Linear', 'Radial', 'Rasterförmig', 'Zufällig'], d: 0 },
+    { k: 'dim', n: 'Dimensionalität', o: ['2D', '2.5D', '3D'], d: 0 },
+    { k: 'stroke', n: 'Kontur', o: ['Keine', 'Dünn', 'Dick', 'Gestrichelt', 'Gepunktet'], d: 0 },
+    { k: 'surface', n: 'Oberflächenbeschaffenheit', o: ['Glatt', 'Körnig', 'Rau', 'Strukturiert', 'Texturiert'], d: 0 },
+  ] },
+  { id: 'move', title: 'Morphologischer Kasten 2', sub: 'Visuelles Verhalten', q: 'Wie verändert es sich und wie interagiert es mit anderen Elementen?', rows: [
+    { k: 'shapeFx', n: 'Formveränderung', o: ['Vergrößern', 'Verkleinern', 'Verzerren', 'Dehnen', 'Drehen', 'Abrunden', 'Verpixeln'], d: -1, opt: 1 },
+    { k: 'dir', n: 'Bewegungsrichtung', o: ['Hoch', 'Runter', 'Rechts', 'Links', 'Schräg', 'Nach vorne', 'Nach hinten'], d: -1, opt: 1 },
+    { k: 'path', n: 'Bewegungsbahn', o: ['Gerade', 'Kreisförmig', 'Wellig', 'Zickzack', 'Spiralförmig', 'Zufällig'], d: -1, opt: 1 },
+    { k: 'speed', n: 'Geschwindigkeit', o: ['Stillstand', 'Sehr langsam', 'Langsam', 'Moderat', 'Schnell', 'Sehr schnell'], d: 2 },
+    { k: 'accel', n: 'Beschleunigung', o: ['Gleichmäßig', 'Zunehmend', 'Abnehmend', 'Plötzlich', 'Stufenweise'], d: 0 },
+    { k: 'rhythm', n: 'Rhythmus', o: ['Regelmäßig', 'Unregelmäßig', 'Pulsierend', 'Repetitiv', 'Alternierend', 'Zufällig'], d: 0 },
+    { k: 'appear', n: 'Erscheinungsverhalten', o: ['Fade-in', 'Jump-in', 'Aufpoppen', 'Zusammenfügen', 'Zoom-in', 'Wachsen', 'Einblenden'], d: -1, opt: 1 },
+    { k: 'vanish', n: 'Verschwindeverhalten', o: ['Fade-out', 'Zerfallen', 'Zoom-out', 'Jump-out', 'Schrumpfen', 'Auflösen', 'Ausblenden'], d: -1, opt: 1 },
+    { k: 'trail', n: 'Spur', o: ['Keine', 'Punkte', 'Linie', 'Nachleuchten', 'Nachzeichnen', 'Nachbild'], d: 0 },
+    { k: 'place', n: 'Position im Raum', o: ['Vordergrund', 'Hintergrund', 'Oben', 'Unten', 'Rechts', 'Links', 'Versteckt'], d: -1, opt: 1 },
+    { k: 'colorFx', n: 'Farbveränderung', o: ['Konstant', 'Dunkler', 'Heller', 'Farbwechsel', 'Sättigungswechsel', 'Farbverlauf'], d: 0 },
+    { k: 'transform', n: 'Formtransformation', o: ['Teilung', 'Vermehrung', 'Reduktion', 'Verzweigung', 'Gruppierung', 'Keine'], d: 5 },
+    { k: 'interact', n: 'Interaktion zwischen Elementen', o: ['Anziehung', 'Abstoßung', 'Kollision', 'Verfolgung', 'Verdeckung'], d: -1, opt: 1 },
+  ] },
+  { id: 'sound', title: 'Akustische Parameter', sub: 'Klang', q: 'Auf welche Klangeigenschaften reagiert die Visualisierung? Wähle aus, wie das Instrument klingt – mit „Synth“ hörst du es, die Visualisierung reagiert darauf.', rows: [
+    { k: 'loud', n: 'Lautstärke', o: ['Sehr leise', 'Leise', 'Mittel', 'Laut', 'Sehr laut'], d: 2, map: 'Größe, Kontrast, Farbintensität' },
+    { k: 'pitch', n: 'Tonhöhe', o: ['Sehr tief', 'Tief', 'Mittel', 'Hoch', 'Sehr hoch'], d: 2, map: 'Vertikale Position, Größe, Helligkeit' },
+    { k: 'tempo', n: 'Tempo', o: ['Sehr langsam', 'Langsam', 'Moderat', 'Schnell', 'Sehr schnell'], d: 2, map: 'Bewegungsgeschwindigkeit, Wiederholung' },
+    { k: 'srhythm', n: 'Rhythmus', o: ['Regelmäßig', 'Unregelmäßig', 'Pulsierend', 'Repetitiv', 'Alternierend'], d: 0, map: 'Pulsieren, Anordnung, Wiederholung' },
+    { k: 'timbre', n: 'Klangfarbe', o: ['Hell', 'Dunkel', 'Warm', 'Kühl', 'Metallisch', 'Weich'], d: 2, map: 'Farbtemperatur, Formcharakter, Oberfläche' },
+    { k: 'texture', n: 'Klangtextur', o: ['Glatt', 'Rau', 'Körnig', 'Verrauscht', 'Klar'], d: 0, map: 'Körnung, Kontur, Fragmentierung' },
+    { k: 'artic', n: 'Artikulation', o: ['Staccato', 'Legato'], d: -1, opt: 1, map: 'Getrennte oder verbundene Elemente' },
+    { k: 'attack', n: 'Anschlag', o: ['Hart', 'Weich', 'Abrupt', 'Allmählich'], d: -1, opt: 1, map: 'Abruptes Erscheinen, Einblenden' },
+    { k: 'release', n: 'Ausklang', o: ['Kurz', 'Lang', 'Abrupt', 'Allmählich'], d: -1, opt: 1, map: 'Fade-out, Schrumpfen, Nachleuchten' },
+    { k: 'density', n: 'Klangdichte', o: ['Dünn', 'Dicht', 'Vereinzelt', 'Vielschichtig'], d: 0, map: 'Anzahl, Abstand, Füllgrad' },
+    { k: 'dyn', n: 'Dynamik', o: ['Crescendo', 'Decrescendo', 'Konstant', 'Wechselhaft'], d: 2, map: 'Größenveränderung, Farbintensität' },
+    { k: 'harm', n: 'Harmonie', o: ['Konsonant', 'Dissonant'], d: 0, map: 'Symmetrie, Ordnung, Überlagerung' },
+    { k: 'space', n: 'Räumlichkeit', o: ['Nah', 'Fern', 'Trocken', 'Hallend'], d: -1, opt: 1, map: 'Größe, Transparenz, Schärfe' },
+  ] },
+];
+const ROWS = []; BOXES.forEach(b => b.rows.forEach(r => { r.box = b.id; ROWS.push(r); }));
+const ROW = Object.fromEntries(ROWS.map(r => [r.k, r]));
+const VISUAL_KEYS = ROWS.filter(r => r.box !== 'sound').map(r => r.k);
+const SONG_INSTRUMENTS = ['Flute', 'Mosquito', 'Frog', 'Building', 'Riser', 'Hunting Horn', 'Drums', 'Ringtone'];
+
+const defaults = () => Object.fromEntries(ROWS.map(r => [r.k, r.d]));
+const vals = s => Object.fromEntries(ROWS.map(r => [r.k, s[r.k] >= 0 ? r.o[s[r.k]] : null]));
+const encode = s => ROWS.map(r => s[r.k] >= 0 ? s[r.k].toString(36) : '-').join('');
+function decode(str) {
+  const s = defaults();
+  if (!str || str.length !== ROWS.length) return null;
+  ROWS.forEach((r, i) => { const c = str[i]; if (c === '-') s[r.k] = -1; else { const n = parseInt(c, 36); if (n >= 0 && n < r.o.length) s[r.k] = n; } });
+  return s;
+}
+
+/* ═══════════════════════════ Helfer ═══════════════════════════ */
+const $ = id => document.getElementById(id);
+const TAU = Math.PI * 2;
+const clamp = (v, a = 0, b = 1) => v < a ? a : v > b ? b : v;
+const lerp = (a, b, t) => a + (b - a) * t;
+const fract = x => x - Math.floor(x);
+const smooth = t => t * t * (3 - 2 * t);
+const easeOut = t => 1 - (1 - t) * (1 - t) * (1 - t);
+const easeIn = t => t * t * t;
+const backOut = t => { const c1 = 1.9, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); };
+const expoOut = t => t >= 1 ? 1 : 1 - Math.pow(2, -10 * t);
+const wrap = (v, a, b) => { const w = b - a; return a + (((v - a) % w) + w) % w; };
+const hash = n => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+const noise1 = x => { const i = Math.floor(x), f = x - i; return lerp(hash(i), hash(i + 1), smooth(f)) * 2 - 1; };
+const tri = x => 1 - Math.abs(fract(x) * 2 - 1);            // Dreieckswelle 0..1
+const hsl = (c, dl = 0, a = 1) => `hsla(${c.h.toFixed(1)},${c.s.toFixed(1)}%,${clamp(c.l + dl, 2, 98).toFixed(1)}%,${a})`;
+function rng(seed) { let a = seed >>> 0; return () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function gauss(r) { const u = Math.max(1e-6, r()), v = r(); const m = Math.sqrt(-2 * Math.log(u)); return [m * Math.cos(TAU * v), m * Math.sin(TAU * v)]; }
+function onsetEnv(q, ons, len, decay) {
+  q = ((q % len) + len) % len; let last = ons[ons.length - 1] - len;
+  for (const o of ons) { if (o <= q) last = o; else break; }
+  return Math.exp(-(q - last) * decay);
+}
+
+/* ═══════════════════════════ Formgeometrie ═══════════════════════════ */
+function regular(n, r, a0 = 0) { const p = []; for (let k = 0; k < n; k++) { const a = a0 + k * TAU / n; p.push([Math.cos(a) * r, Math.sin(a) * r]); } return p; }
+function star(n, ro, ri, a0 = -Math.PI / 2) { const p = []; for (let k = 0; k < 2 * n; k++) { const a = a0 + k * Math.PI / n, r = k % 2 ? ri : ro; p.push([Math.cos(a) * r, Math.sin(a) * r]); } return p; }
+function resample(pts, n, closed = true) {
+  const m = pts.length, segs = closed ? m : m - 1, L = []; let tot = 0;
+  for (let i = 0; i < segs; i++) { const a = pts[i], b = pts[(i + 1) % m]; const d = Math.hypot(b[0] - a[0], b[1] - a[1]); L.push(d); tot += d; }
+  if (tot === 0) return pts.slice();
+  const out = []; let seg = 0, acc = 0; const N = closed ? n : n - 1;
+  for (let k = 0; k <= N; k++) {
+    if (closed && k === N) break;
+    const target = k * tot / N;
+    while (seg < segs - 1 && acc + L[seg] < target) { acc += L[seg]; seg++; }
+    const f = L[seg] ? clamp((target - acc) / L[seg]) : 0, a = pts[seg], b = pts[(seg + 1) % m];
+    out.push([lerp(a[0], b[0], f), lerp(a[1], b[1], f)]);
+  }
+  return out;
+}
+function partialOpen(pts, g) {   // offene Linie nur bis zum Anteil g zeichnen
+  if (g >= 1) return pts;
+  let tot = 0; for (let i = 1; i < pts.length; i++) tot += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+  const lim = tot * g, out = [pts[0]]; let acc = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const d = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+    if (acc + d >= lim) { const f = d ? (lim - acc) / d : 0; out.push([lerp(pts[i - 1][0], pts[i][0], f), lerp(pts[i - 1][1], pts[i][1], f)]); break; }
+    acc += d; out.push(pts[i]);
+  }
+  return out;
+}
+function chamfer(pts, c) {
+  const out = [], m = pts.length;
+  for (let i = 0; i < m; i++) {
+    const p = pts[(i - 1 + m) % m], v = pts[i], q = pts[(i + 1) % m];
+    const d1 = Math.hypot(p[0] - v[0], p[1] - v[1]), d2 = Math.hypot(q[0] - v[0], q[1] - v[1]);
+    const c1 = Math.min(c, d1 * .45), c2 = Math.min(c, d2 * .45);
+    out.push([v[0] + (p[0] - v[0]) / d1 * c1, v[1] + (p[1] - v[1]) / d1 * c1]);
+    out.push([v[0] + (q[0] - v[0]) / d2 * c2, v[1] + (q[1] - v[1]) / d2 * c2]);
+  }
+  return out;
+}
+function roundPoly(pts, rad, seg = 7) {
+  const out = [], m = pts.length;
+  for (let i = 0; i < m; i++) {
+    const p = pts[(i - 1 + m) % m], v = pts[i], q = pts[(i + 1) % m];
+    const d1 = Math.hypot(p[0] - v[0], p[1] - v[1]), d2 = Math.hypot(q[0] - v[0], q[1] - v[1]);
+    if (!d1 || !d2) { out.push(v); continue; }
+    const r = Math.min(rad, d1 * .5, d2 * .5);
+    const a = [v[0] + (p[0] - v[0]) / d1 * r, v[1] + (p[1] - v[1]) / d1 * r];
+    const b = [v[0] + (q[0] - v[0]) / d2 * r, v[1] + (q[1] - v[1]) / d2 * r];
+    for (let k = 0; k <= seg; k++) {
+      const t = k / seg, u = 1 - t;
+      out.push([u * u * a[0] + 2 * u * t * v[0] + t * t * b[0], u * u * a[1] + 2 * u * t * v[1] + t * t * b[1]]);
+    }
+  }
+  return out;
+}
+function spikyEdges(pts, h, step) {   // Kanten mit nach außen gerichteten Zacken
+  const out = [], m = pts.length;
+  let cx = 0, cy = 0; pts.forEach(p => { cx += p[0]; cy += p[1]; }); cx /= m; cy /= m;
+  for (let i = 0; i < m; i++) {
+    const a = pts[i], b = pts[(i + 1) % m]; const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    let nx = (b[1] - a[1]) / len, ny = -(b[0] - a[0]) / len;
+    const mx = (a[0] + b[0]) / 2 - cx, my = (a[1] + b[1]) / 2 - cy; if (nx * mx + ny * my < 0) { nx = -nx; ny = -ny; }
+    const k = Math.max(2, Math.round(len / step));
+    for (let j = 0; j < k; j++) {
+      const t0 = j / k, tm = (j + .5) / k;
+      out.push([lerp(a[0], b[0], t0), lerp(a[1], b[1], t0)]);
+      out.push([lerp(a[0], b[0], tm) + nx * h, lerp(a[1], b[1], tm) + ny * h]);
+    }
+  }
+  return out;
+}
+function irregular(pts, r, j) {
+  const out = [], m = pts.length;
+  for (let i = 0; i < m; i++) {
+    const p = pts[i], q = pts[(i + 1) % m];
+    const s = 1 + (r() - .5) * 2 * j;
+    out.push([p[0] * s + (r() - .5) * j * .6, p[1] * s + (r() - .5) * j * .6]);
+    if (r() < .55) { const t = .3 + r() * .4, s2 = 1 + (r() - .5) * 2 * j; out.push([lerp(p[0], q[0], t) * s2, lerp(p[1], q[1], t) * s2]); }
+  }
+  return out;
+}
+function organic(pts, t, r, amp) {
+  const p1 = r() * TAU, p2 = r() * TAU, p3 = r() * TAU, w1 = .7 + r() * .5, w2 = .5 + r() * .5, w3 = 1 + r() * .6;
+  return pts.map(([x, y]) => {
+    const a = Math.atan2(y, x);
+    const f = 1 + amp * (Math.sin(2 * a + p1 + t * w1) * .55 + Math.sin(3 * a + p2 - t * w2) * .35 + Math.sin(5 * a + p3 + t * w3) * .18);
+    return [x * f, y * f];
+  });
+}
+function roughen(pts, seed, amp, closed = true) {
+  const P = resample(pts, closed ? 150 : 70, closed);
+  return P.map(([x, y], k) => { const d = Math.hypot(x, y) || 1, n = (hash(seed * .013 + k * 1.37) - .5) * amp; return closed ? [x + x / d * n, y + y / d * n] : [x, y + n]; });
+}
+function warpPts(pts, w, t) {
+  return pts.map(([x, y]) => [x + Math.sin(y * 2.6 + t * 3.1) * .22 * w, y + Math.sin(x * 2.2 - t * 2.4) * .14 * w]);
+}
+
+/* Geschlossene Form aus Grundelement × Formcharakter */
+function closedShape(element, ch, t, seed, o) {
+  const r = rng(seed);
+  const circ = element === 'Kreis' || element === 'Punkt';
+  let hw = 1, hh = 1;
+  if (element === 'Rechteck') { hw = 1.28; hh = .72; } else if (element === 'Quadrat') { hw = hh = .86; } else if (element === 'Fläche') { hw = 1.62; hh = .82; }
+  const rect = () => [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]];
+  let pts, round = 0, soft = false, maxRound = 1;
+  const cn = Math.round(clamp((o.px || 60) * .9, 14, 96));   // Punktdichte passend zur Bildschirmgröße
+  ch = ch || 'Geometrisch';
+  if (circ) {
+    const dot = element === 'Punkt';
+    switch (ch) {
+      case 'Kantig': pts = dot ? regular(4, 1, Math.PI / 4) : regular(8, 1, Math.PI / 8); maxRound = .5; break;
+      case 'Spitz': pts = dot ? star(4, 1.25, .38) : star(12, 1.12, .64); maxRound = .2; break;
+      case 'Unregelmäßig': pts = irregular(regular(9, 1, r() * 3), r, .3); maxRound = .4; break;
+      case 'Organisch': pts = organic(regular(cn, 1), t, r, .17); break;
+      case 'Abgerundet': pts = regular(cn, 1); soft = true; break;
+      default: pts = regular(cn, 1);
+    }
+  } else if (element === 'Polygon') {
+    switch (ch) {
+      case 'Kantig': pts = regular(3, 1.12, -Math.PI / 2); maxRound = .55; break;
+      case 'Abgerundet': pts = regular(6, 1, -Math.PI / 2); round = .4; maxRound = .5; break;
+      case 'Spitz': pts = star(6, 1.14, .52); maxRound = .2; break;
+      case 'Unregelmäßig': pts = irregular(regular(7, 1, -Math.PI / 2), r, .3); maxRound = .4; break;
+      case 'Organisch': pts = organic(resample(roundPoly(regular(6, 1, -Math.PI / 2), .25), cn), t, r, .12); break;
+      default: pts = regular(6, 1, -Math.PI / 2); maxRound = .5;
+    }
+  } else {
+    const mn = Math.min(hw, hh); maxRound = mn * .9;
+    switch (ch) {
+      case 'Kantig': pts = chamfer(rect(), mn * .42); break;
+      case 'Abgerundet': pts = rect(); round = mn * .6; break;
+      case 'Spitz': pts = element === 'Quadrat' ? star(4, 1.3, .42, -Math.PI / 4) : spikyEdges(rect(), .26, .42); maxRound = .15; break;
+      case 'Unregelmäßig': pts = irregular(rect(), r, .26); break;
+      case 'Organisch': pts = organic(resample(roundPoly(rect(), mn * .4), Math.round(cn * 1.15)), t, r, .1); break;
+      default: pts = rect();
+    }
+  }
+  if (o.reduce > 0) pts = resample(pts.length < 40 ? resample(pts, 96) : pts, Math.max(3, Math.round(lerp(26, 3, o.reduce))));
+  round += (o.round || 0) * maxRound;
+  if (round > .005 && pts.length <= 40) pts = roundPoly(pts, round, o.px < 12 ? 2 : 7);
+  if (o.rough && o.px > 6) pts = roughen(pts, seed, .1);
+  if (o.warp > .01) { const wn = Math.round(clamp((o.px || 60) * 1.2, 16, 80)); pts = warpPts(pts.length < wn ? resample(pts, wn) : pts, o.warp, t); }
+  return { pts, closed: true, soft };
+}
+/* Offene Linie × Formcharakter */
+function lineShape(ch, t, seed, o) {
+  const r = rng(seed); let pts = [], cap = 'butt', join = 'miter', wide = 1;
+  const amp = (1 - (o.reduce || 0)) * (1 - .8 * (o.round || 0));
+  switch (ch) {
+    case 'Organisch': { const p1 = r() * TAU, p2 = r() * TAU; for (let k = 0; k <= 48; k++) { const x = -1.6 + 3.2 * k / 48; pts.push([x, amp * (.24 * Math.sin(x * 1.9 + t * 1.3 + p1) + .1 * Math.sin(x * 4.1 - t * .8 + p2))]); } cap = 'round'; join = 'round'; break; }
+    case 'Kantig': { const n = 8, w = 3.2 / n; let y = -.24 * amp; pts.push([-1.6, y]); for (let k = 0; k < n; k++) { const x = -1.6 + (k + 1) * w; pts.push([x, y]); if (k < n - 1) { y = -y; pts.push([x, y]); } } cap = 'square'; break; }
+    case 'Abgerundet': for (let k = 0; k <= 36; k++) { const x = -1.6 + 3.2 * k / 36; pts.push([x, amp * (-.4 * (1 - (x / 1.6) ** 2) + .2)]); } cap = 'round'; join = 'round'; wide = 1.6; break;
+    case 'Spitz': for (let k = 0; k <= 10; k++) pts.push([-1.6 + 3.2 * k / 10, (k % 2 ? -1 : 1) * .32 * amp]); break;
+    case 'Unregelmäßig': for (let k = 0; k <= 12; k++) pts.push([-1.6 + 3.2 * k / 12 + (k && k < 12 ? (r() - .5) * .2 : 0), (r() - .5) * .62 * amp]); break;
+    default: pts = [[-1.6, 0], [1.6, 0]];
+  }
+  if ((o.round || 0) > .05) { join = 'round'; cap = 'round'; }
+  if (o.rough) pts = roughen(pts, seed, .07, false);
+  if (o.warp > .01) pts = warpPts(resample(pts, 50, false), o.warp, t);
+  if (o.grow < 1) pts = partialOpen(pts, o.grow);
+  return { pts, closed: false, cap, join, wide };
+}
+
+/* ═══════════════════════════ Oberflächen-Muster ═══════════════════════════ */
+function makePatterns(ctx) {
+  const mk = (draw, s = 128) => { const c = document.createElement('canvas'); c.width = c.height = s; draw(c.getContext('2d'), s); return ctx.createPattern(c, 'repeat'); };
+  const R = rng(4242);
+  return {
+    'Körnig': mk((g, s) => { const d = g.createImageData(s, s); for (let i = 0; i < d.data.length; i += 4) { const r = R(); const w = r > .5 ? 255 : 0; d.data[i] = d.data[i + 1] = d.data[i + 2] = w; d.data[i + 3] = R() < .55 ? R() * 150 : 0; } g.putImageData(d, 0, 0); }),
+    'Rau': mk((g, s) => {
+      for (let k = 0; k < 340; k++) { const x = R() * s, y = R() * s, rr = 1 + R() * 6; g.fillStyle = R() > .5 ? `rgba(255,255,255,${.12 + R() * .3})` : `rgba(0,0,0,${.15 + R() * .35})`; for (const ox of [-s, 0, s]) for (const oy of [-s, 0, s]) { g.beginPath(); g.moveTo(x + ox + rr, y + oy); for (let a = 1; a <= 6; a++) { const ang = a / 6 * TAU, q = rr * (.5 + R() * .7); g.lineTo(x + ox + Math.cos(ang) * q, y + oy + Math.sin(ang) * q); } g.fill(); } }
+      const d = g.getImageData(0, 0, s, s); for (let i = 0; i < d.data.length; i += 4) if (R() < .25) { d.data[i] = d.data[i + 1] = d.data[i + 2] = 0; d.data[i + 3] = Math.max(d.data[i + 3], R() * 90); } g.putImageData(d, 0, 0);
+    }),
+    'Strukturiert': mk((g, s) => { g.lineWidth = 4; for (let k = -s; k < 2 * s; k += 16) { g.strokeStyle = 'rgba(0,0,0,.42)'; g.beginPath(); g.moveTo(k, 0); g.lineTo(k + s, s); g.stroke(); g.strokeStyle = 'rgba(255,255,255,.22)'; g.lineWidth = 2; g.beginPath(); g.moveTo(k + 7, 0); g.lineTo(k + 7 + s, s); g.stroke(); g.lineWidth = 4; } }),
+    'Texturiert': mk((g, s) => {
+      for (let k = 0; k < 46; k++) { const x = R() * s, y = R() * s, rr = 4 + R() * 13; for (const ox of [-s, 0, s]) for (const oy of [-s, 0, s]) { g.beginPath(); g.arc(x + ox, y + oy, rr, 0, TAU); g.fillStyle = `rgba(0,0,0,${.06 + R() * .14})`; g.fill(); g.lineWidth = 1.4; g.strokeStyle = `rgba(255,255,255,${.12 + R() * .2})`; g.stroke(); } }
+    }),
+  };
+}
+const SURF_A = { 'Körnig': .65, 'Rau': .75, 'Strukturiert': .75, 'Texturiert': .85 };
+
+/* ═══════════════════════════ Zuordnung Ausprägung → Wert ═══════════════════════════ */
+const SIZE = { Winzig: .045, Klein: .1, Mittel: .19, Groß: .32, Riesig: .55 };
+const COUNT = { Einzeln: 1, Wenige: 4, Mehrere: 10, Viele: 44 };
+const CSCALE = { Einzeln: 1, Wenige: .82, Mehrere: .6, Viele: .38 };
+const SPEED = { Stillstand: 0, 'Sehr langsam': .1, Langsam: .26, Moderat: .55, Schnell: 1.05, 'Sehr schnell': 2 };
+const HUE = { Rot: 2, Orange: 28, Gelb: 50, Grün: 135, Blau: 218, Violett: 272, Magenta: 318 };
+const SAT = { Entsättigt: 9, Mittel: 50, Gesättigt: 92 };
+const LIGHT = { Hell: 76, Mittel: 55, Dunkel: 30 };
+const ALPHA = { Undurchsichtig: 1, Halbtransparent: .55, Transparent: .2 };
+const APP = { 'Fade-in': .9, 'Jump-in': .001, 'Aufpoppen': .45, 'Zusammenfügen': 1.05, 'Zoom-in': .6, 'Wachsen': 1.4, 'Einblenden': .8 };
+const VAN = { 'Fade-out': .9, 'Zerfallen': 1.25, 'Zoom-out': .6, 'Jump-out': .001, 'Schrumpfen': .6, 'Auflösen': 1.3, 'Ausblenden': .8 };
+const HIDE = [.27, .22, .73, .78];   // verdeckende Ebene bei „Versteckt“
+function tempHue(h, temp) {
+  if (temp !== 'Warm' && temp !== 'Kalt') return h;
+  const target = temp === 'Warm' ? 32 : 212, diff = ((target - h + 540) % 360) - 180;
+  return h + Math.sign(diff) * Math.min(Math.abs(diff), 34);
+}
+
+/* ═══════════════════════════ Szene ═══════════════════════════ */
+class Scene {
+  constructor(cv, mini = false) {
+    this.cv = cv; this.ctx = cv.getContext('2d'); this.mini = mini;
+    this.L = document.createElement('canvas'); this.lx = this.L.getContext('2d');
+    this.T = document.createElement('canvas'); this.tx = this.T.getContext('2d');
+    this.P = document.createElement('canvas'); this.px = this.P.getContext('2d');
+    this.W = this.H = 0; this.dpr = 1; this.v = null; this.bpm = 100; this.seed = 1234;
+    this.pat = makePatterns(this.lx); this.readTheme();
+  }
+  readTheme() {
+    const cs = getComputedStyle(document.documentElement), g = n => cs.getPropertyValue(n).trim();
+    this.dark = document.documentElement.dataset.theme === 'dark';
+    this.col = { stage: g('--stage'), grid: g('--grid'), ctxp: g('--ctxp'), ctxs: g('--ctxs'), hide: g('--hide'), muted: g('--muted') };
+  }
+  resize() {
+    const r = this.cv.getBoundingClientRect();
+    const W = Math.max(20, Math.round(r.width)), H = Math.max(20, Math.round(r.height));
+    const dpr = this.mini ? 1 : Math.min(2, window.devicePixelRatio || 1);
+    if (W === this.W && H === this.H && dpr === this.dpr) return;
+    this.W = W; this.H = H; this.dpr = dpr;
+    for (const c of [this.cv, this.L, this.T]) { c.width = W * dpr; c.height = H * dpr; }
+    this.build();
+  }
+  set(v) { this.v = v; this.build(); }
+  region() {
+    switch (this.v.place) {
+      case 'Oben': return [.06, .08, .94, .38];
+      case 'Unten': return [.06, .62, .94, .92];
+      case 'Links': return [.06, .1, .38, .9];
+      case 'Rechts': return [.62, .1, .94, .9];
+      case 'Versteckt': return [0, 0, 1, 1];
+      default: return [.1, .14, .9, .86];
+    }
+  }
+  build() {
+    if (!this.v || !this.W) return;
+    const v = this.v, R = rng(this.seed);
+    let n = COUNT[v.count] || 1;
+    if (v.element === 'Punkt') n = { 1: 1, 4: 6, 10: 24, 44: 140 }[n];
+    if (v.element === 'Fläche') n = Math.min(n, 12);
+    if (this.mini) n = Math.min(n, 60);
+    const els = [];
+    for (let i = 0; i < n; i++) els.push({ i, seed: (R() * 2147483647) | 0, phase: R(), sv: 1, rot: 0, ox: 0, oy: 0, ax: .5, ay: .5, hj: 0, rank: R() });
+    this.layout(els, R);
+    if (v.interact && n === 1) {
+      els[0].ax = v.interact === 'Verdeckung' ? .5 : .34;
+      els.push({ i: 1, partner: true, seed: 99991, phase: .37, sv: .85, rot: 0, ox: 0, oy: 0, ax: .66, ay: .5, hj: 0, rank: .5 });
+    }
+    this.els = els; this.sim = null; this.hist = new Map();
+    this.tx.setTransform(1, 0, 0, 1, 0, 0); this.tx.clearRect(0, 0, this.T.width, this.T.height);
+    this.lx.setTransform(1, 0, 0, 1, 0, 0); this.lx.clearRect(0, 0, this.L.width, this.L.height);
+  }
+  layout(els, R) {
+    const v = this.v, n = els.length, type = v.layout || 'Verteilt';
+    const rg = this.region(), asp = (this.W * (rg[2] - rg[0])) / (this.H * (rg[3] - rg[1]));
+    const g = 1.32471795724474602596, a1 = 1 / g, a2 = 1 / (g * g);
+    if (v.place === 'Versteckt') {   // Elemente sitzen am Rand der verdeckenden Ebene und lugen hervor
+      const perim = u => { const [x0, y0, x1, y1] = HIDE, w = x1 - x0, h = y1 - y0; let d = fract(u) * 2 * (w + h); if (d < w) return [x0 + d, y0]; d -= w; if (d < h) return [x1, y0 + d]; d -= h; if (d < w) return [x1 - d, y1]; d -= w; return [x0, y1 - d]; };
+      els.forEach((e, k) => { const [x, y] = perim(n === 1 ? .36 : (k + R() * .7) / n); e.ax = x; e.ay = y; });
+      return;
+    }
+    switch (type) {
+      case 'Gruppiert': {
+        const k = n <= 4 ? 1 : n <= 12 ? 2 : n <= 40 ? 3 : 4;
+        const cs = []; for (let j = 0; j < k; j++) cs.push(k === 1 ? [.5, .5] : [.18 + .64 * fract(.5 + a1 * (j + 1)), .2 + .6 * fract(.5 + a2 * (j + 1))]);
+        els.forEach((e, i) => { const c = cs[i % k]; e.ax = c[0]; e.ay = c[1]; if (n > 1) { const [gx, gy] = gauss(R); e.ox = gx * .055; e.oy = gy * .055; } });
+        break;
+      }
+      case 'Linear': els.forEach((e, i) => { e.ax = n === 1 ? .5 : (i + .5) / n; e.ay = .5; if (v.element === 'Linie') e.rot = Math.PI / 2; }); break;
+      case 'Radial': {
+        if (n === 1) break;
+        let rings = 1, cap = 0; if (n > 12) { while (cap < n) { cap += 6 * rings; rings++; } rings--; }
+        let i = 0;
+        for (let j = 1; j <= rings && i < n; j++) {
+          const cnt = rings === 1 ? n : Math.min(6 * j, n - i), rad = rings === 1 ? .3 : .44 * j / rings;
+          for (let k = 0; k < cnt; k++, i++) { const a = k / cnt * TAU - Math.PI / 2 + j * .3; const e = els[i]; e.ox = Math.cos(a) * rad; e.oy = Math.sin(a) * rad; e.rot = a + (v.element === 'Linie' ? 0 : Math.PI / 2); }
+        }
+        break;
+      }
+      case 'Rasterförmig': {
+        const cols = Math.max(1, Math.round(Math.sqrt(n * asp))), rows = Math.ceil(n / cols);
+        els.forEach((e, i) => { const c = i % cols, r = Math.floor(i / cols); const inRow = r === rows - 1 ? n - r * cols : cols; e.ax = (c + .5 + (cols - inRow) / 2) / cols; e.ay = (r + .5) / rows; });
+        break;
+      }
+      case 'Zufällig': els.forEach(e => { e.ax = R(); e.ay = R(); e.sv = .5 + R() * 1.1; e.rot = R() * TAU; e.hj = (R() - .5) * 34; }); break;
+      default: if (n > 1) els.forEach((e, i) => { e.ax = fract(.5 + a1 * (i + 1)); e.ay = fract(.5 + a2 * (i + 1)); });
+    }
+  }
+  lifeParams() {
+    const v = this.v, b = this.beat;
+    const app = v.appear ? APP[v.appear] : 0, van = v.vanish ? VAN[v.vanish] : 0;
+    const L = Math.max(8 * b, app + van + 1.4);
+    return { app, van, L, P: L + Math.max(.45, 1.5 * b) };
+  }
+  shapeTime(tm) {   // Beschleunigung: verformt die Zeit, aus der der Weg berechnet wird
+    const b = this.beat;
+    switch (this.v.accel) {
+      case 'Zunehmend': { const c = 4 * b, k = Math.floor(tm / c), f = tm / c - k; return c * (k + f * f); }
+      case 'Abnehmend': { const c = 4 * b, k = Math.floor(tm / c), f = tm / c - k; return c * (k + 1 - (1 - f) * (1 - f)); }
+      case 'Plötzlich': { const c = 2 * b, k = Math.floor(tm / c), f = tm / c - k; return c * (k + (f < .55 ? 0 : expoOut((f - .55) / .45 * 1.4))); }
+      case 'Stufenweise': { const C = 16 * b, k = Math.floor(tm / C), f = (tm / C - k) * 4, j = Math.floor(f), fac = [.4, .8, 1.2, 1.6]; let s = 0; for (let q = 0; q < j; q++) s += fac[q]; s += (f - j) * fac[j]; return C * k + s * C / 4; }
+      default: return tm;
+    }
+  }
+  motion(e, tm) {
+    const v = this.v, M = this.M, W = this.W, H = this.H;
+    const vpx = (SPEED[v.speed] ?? .26) * M * .18;
+    const m = this.shapeTime(tm), D = vpx * m;
+    let ux = 0, uy = 0, depth = 0;
+    switch (v.dir) { case 'Hoch': uy = -1; break; case 'Runter': uy = 1; break; case 'Rechts': ux = 1; break; case 'Links': ux = -1; break; case 'Schräg': ux = .7071; uy = -.7071; break; case 'Nach vorne': depth = 1; break; case 'Nach hinten': depth = -1; break; }
+    const planar = !!(ux || uy);
+    const path = v.path || (v.dir ? 'Gerade' : null);
+    let nx = -uy, ny = ux; if (!planar) { nx = 0; ny = 1; }
+    let fwd = planar ? D : 0, dx = 0, dy = 0;
+    const A = M * .07, lam = M * .34, ro = M * .13, ph = e.phase * TAU;
+    switch (path) {
+      case 'Wellig': { const o = A * Math.sin(D / lam * TAU + ph); dx += nx * o; dy += ny * o; break; }
+      case 'Zickzack': { const o = A * (tri(D / lam + e.phase) * 2 - 1); dx += nx * o; dy += ny * o; break; }
+      case 'Kreisförmig': { const a = D / ro + ph; dx += Math.cos(a) * ro; dy += Math.sin(a) * ro; fwd *= .35; break; }
+      case 'Spiralförmig': { const rr = ro * 1.7 * (.12 + .88 * tri(D / (ro * 22) + e.phase)), a = D / (ro * .55) + ph; dx += Math.cos(a) * rr; dy += Math.sin(a) * rr; fwd *= .35; break; }
+      case 'Zufällig': { const sc = m * .5 + e.seed % 97; dx += noise1(sc) * M * .16; dy += noise1(sc + 50.3) * M * .16; fwd *= .6; break; }
+    }
+    if (v.interact === 'Verfolgung' && !e.partner && (vpx === 0 || (!v.dir && !v.path))) {   // Leitelement muss sich bewegen, sonst gibt es nichts zu verfolgen
+      dx += Math.sin(tm * .55) * W * .3; dy += Math.sin(tm * .83 + 1) * H * .24;
+    }
+    dx += ux * fwd; dy += uy * fwd;
+    let persp = 1, fade = 1;
+    if (depth) {
+      const zf = fract(D / (M * 1.4) + e.phase);
+      const z = depth > 0 ? lerp(3.2, .38, zf) : lerp(.38, 3.2, zf);
+      persp = 1 / z; fade = clamp(Math.min(zf, 1 - zf) / .12);
+    }
+    return { dx, dy, planar, persp, fade };
+  }
+  env(t, i, feat) {   // 0..1-Hüllkurve, die Formveränderung, Pixel, Sättigung usw. treibt
+    if (feat) return feat.amp;
+    const b = t / this.beat, f = fract(b);
+    switch (this.v.rhythm) {
+      case 'Unregelmäßig': return onsetEnv(b, [0, .75, 1.5, 2.75, 3.25, 4.5, 5.25], 6, 3.2);
+      case 'Pulsierend': return Math.max(Math.exp(-f * 7), f > .28 ? .65 * Math.exp(-(f - .28) * 7) : 0);
+      case 'Repetitiv': return onsetEnv(b, [0, .5, .75, 1.25, 2, 2.5, 2.75, 3.25], 4, 5);
+      case 'Alternierend': return Math.exp(-f * 4) * (((Math.floor(b) + i) % 2) ? .15 : 1);
+      case 'Zufällig': { const k = Math.floor(b * 2), h = hash(k * 1.731 + .5); return h > .45 ? (.4 + .6 * hash(k * 3.3)) * Math.exp(-(b * 2 - k) * 2.5) : 0; }
+      default: return .5 - .5 * Math.cos(TAU * b);
+    }
+  }
+  color(s) {
+    const v = this.v;
+    if (s.e.partner) return { h: 230, s: 6, l: 58 };
+    let h = tempHue(HUE[v.hue] ?? 28, v.temp) + (s.e.hj || 0), sat = SAT[v.sat] ?? 50, l = LIGHT[v.light] ?? 55;
+    const prog = s.u != null ? s.u : this.pp;
+    switch (v.colorFx) {
+      case 'Dunkler': l -= 32 * prog; break;
+      case 'Heller': l += 32 * prog; break;
+      case 'Farbwechsel': h += 72 * Math.floor(this.t / this.beat); break;
+      case 'Sättigungswechsel': sat = lerp(4, 98, s.env); break;
+      case 'Farbverlauf': h += this.t * 22; break;
+    }
+    l += s.lAdd || 0; sat += s.sAdd || 0; if (s.hit) l += 22 * s.hit;
+    return { h: ((h % 360) + 360) % 360, s: clamp(sat, 0, 100), l: clamp(l, 4, 96) };
+  }
+
+  /* ── Zustände aller Elemente für den Zeitpunkt t ── */
+  computeStates(t, dt, feat) {
+    const v = this.v, W = this.W, H = this.H, M = this.M;
+    const rg = this.region(), rw = rg[2] - rg[0], rh = rg[3] - rg[1];
+    const sizeF = (SIZE[v.size] ?? .19) * (CSCALE[v.count] ?? 1);
+    const life = (v.appear || v.vanish) ? this.lifeParams() : null;
+    const els = this.els, n = els.length;
+    const tfPh = fract(t / (this.beat * 8)); this.pp = .5 - .5 * Math.cos(TAU * tfPh);
+    const quant = v.rhythm === 'Regelmäßig' || !v.rhythm;
+
+    const base = (e, tt) => {
+      const st = { e, alpha: 1, A: 1, D: 0, cyc: 0, u: null, S: 1, z: e.rank * .001, sx: 1, sy: 1, rot: e.rot };
+      let tm = tt + e.phase * 11.7;
+      if (life) {
+        let off = e.phase * life.P; if (quant) off = Math.round(off / this.beat) * this.beat;
+        const q = tt + off, cyc = Math.floor(q / life.P), tau = q - cyc * life.P;
+        if (tau > life.L) return null;
+        st.cyc = cyc; st.A = life.app ? clamp(tau / life.app) : 1;
+        st.D = life.van ? clamp((tau - (life.L - life.van)) / life.van) : 0; st.u = tau / life.L; tm = tau;
+      }
+      let ax = e.ax, ay = e.ay;
+      if (life && v.layout === 'Zufällig' && !e.partner && v.place !== 'Versteckt') { const r2 = rng(e.seed + st.cyc * 7919); ax = r2(); ay = r2(); }
+      let x = W * (rg[0] + ax * rw) + e.ox * M, y = H * (rg[1] + ay * rh) + e.oy * M;
+      let R = M * .5 * sizeF * e.sv;
+      if (v.element === 'Punkt') R = Math.max(2.2, R * .22);
+      if (v.element === 'Fläche') R *= 1.35;
+      if (e.partner) R = Math.max(R, M * .06);
+      const mo = this.motion(e, tm);
+      x += mo.dx; y += mo.dy;
+      if (mo.planar) { const mg = R * 1.9; x = wrap(x, -mg, W + mg); y = wrap(y, -mg, H + mg); }
+      if (mo.persp !== 1) { const cx = W / 2, cy = H * .45; x = cx + (x - cx) * mo.persp; y = cy + (y - cy) * mo.persp; R *= mo.persp; st.alpha *= mo.fade; st.z += mo.persp; }
+      st.x = x; st.y = y; st.R = R; st.env = this.env(tt, e.i, feat);
+      return st;
+    };
+
+    let out = [];
+    if (v.interact === 'Verfolgung') {
+      const lead = els[0], vpx = Math.max(M * .05, (SPEED[v.speed] ?? .26) * M * .18);
+      const R0 = M * .5 * sizeF, lag = clamp(R0 * 1.5 / vpx, .07, .6);
+      els.forEach((e, k) => { const st = base(lead, t - k * lag); if (!st) return; st.e = e; st.R *= Math.pow(.975, k); st.env = this.env(t, e.i, feat); st.z = -k * .001; out.push(st); });
+    } else for (const e of els) { const st = base(e, t); if (st) out.push(st); }
+
+    // Formveränderung
+    for (const s of out) {
+      const k = s.env;
+      switch (v.shapeFx) {
+        case 'Vergrößern': s.S *= 1 + .65 * k; break;
+        case 'Verkleinern': s.S *= 1 - .55 * k; break;
+        case 'Verzerren': s.skew = .5 * k * Math.sin(t * 2.2 + s.e.phase * 6); s.warp = .25 + k * .75; break;
+        case 'Dehnen': s.sx = 1 + .8 * k; s.sy = 1 - .35 * k; break;
+        case 'Drehen': s.rot += t * .9 * (s.e.i % 2 ? -1 : 1) + k * .8; break;
+        case 'Abrunden': s.round = k; break;
+      }
+    }
+    // Klang → Visualisierung (Lautstärke → Größe/Intensität, Tonhöhe → Höhe/Helligkeit)
+    if (feat) for (const s of out) { s.R *= .62 + .76 * feat.amp; s.y -= (feat.pitch - .5) * M * .3; s.lAdd = (feat.pitch - .5) * 26; s.sAdd = (feat.amp - .5) * 34; }
+    // Position im Raum
+    if (v.place === 'Vordergrund') for (const s of out) { s.S *= 1.3; s.front = true; }
+    if (v.place === 'Hintergrund') for (const s of out) s.S *= .68;
+
+    // Interaktion
+    const centroid = () => { let x = 0, y = 0; out.forEach(s => { x += s.x; y += s.y; }); return [x / out.length, y / out.length]; };
+    if (out.length) switch (v.interact) {
+      case 'Anziehung': { const [cx, cy] = centroid(); for (const s of out) { const f = .3 + .5 * s.env; s.x = cx + (s.x - cx) * (1 - f); s.y = cy + (s.y - cy) * (1 - f); s.link = [cx, cy]; } break; }
+      case 'Abstoßung': {
+        const [cx, cy] = centroid();
+        for (const s of out) { const f = .35 * s.env; s.x = cx + (s.x - cx) * (1 + f); s.y = cy + (s.y - cy) * (1 + f); }
+        if (out.length <= 160) for (let i = 0; i < out.length; i++) for (let j = i + 1; j < out.length; j++) {
+          const a = out[i], b = out[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || .01, min = (a.R + b.R) * 1.7;
+          if (d < min) { const p = (min - d) / 2 / d; a.x -= dx * p; a.y -= dy * p; b.x += dx * p; b.y += dy * p; }
+        }
+        break;
+      }
+      case 'Kollision': this.simStep(out, dt); break;
+      case 'Verdeckung': {
+        for (let k = 0; k + 1 < out.length; k += 2) {
+          const a = out[k], b = out[k + 1], ang = t * 1.1 + k, s = Math.sin(ang);
+          b.x = a.x + Math.cos(ang) * a.R * 1.15; b.y = a.y + s * a.R * .32;
+          b.z = a.z + s * .5; b.S *= 1 + .14 * s; a.S *= 1 - .06 * s;
+          (s > 0 ? b : a).front = true;
+        }
+        break;
+      }
+    }
+
+    // Formtransformation
+    switch (v.transform) {
+      case 'Teilung': for (const s of out) s.split = this.pp; break;
+      case 'Reduktion': {
+        if (n === 1 || out.length === 1) { for (const s of out) s.reduce = Math.floor(tfPh * 6) / 6; }
+        else { const th = 1 - clamp(tfPh * 1.15) * .85; out = out.filter(s => s.e.partner || s.e.rank < th + .05); for (const s of out) if (!s.e.partner) s.S *= clamp((th + .05 - s.e.rank) * 20); }
+        break;
+      }
+      case 'Verzweigung': for (const s of out) s.branch = this.pp; break;
+      case 'Vermehrung': {
+        const cnt = n <= 1 ? 5 : n <= 4 ? 3 : n <= 12 ? 2 : 1, extra = [];
+        for (const s of out) { if (s.e.partner) continue;
+          for (let c = 1; c <= cnt; c++) {
+            const g = clamp((tfPh * (cnt + 1.4) - c) * 2.2); if (g <= 0) continue;
+            const fadeEnd = tfPh > .9 ? 1 - (tfPh - .9) * 10 : 1;
+            const a = c * TAU / cnt + s.e.phase * TAU, d = s.R * s.S * 2.3;
+            extra.push({ ...s, x: s.x + Math.cos(a) * d, y: s.y + Math.sin(a) * d, cScale: backOut(g) * .72 * fadeEnd, clone: true, z: s.z - .0005 });
+          }
+        }
+        out = out.concat(extra.slice(0, 220));
+        break;
+      }
+      case 'Gruppierung': {
+        if (out.length <= 2) {
+          const extra = [];
+          for (const s of out) { if (s.e.partner) continue; for (let c = 0; c < 4; c++) { const a = c * TAU / 4 + t * .35, d = s.R * lerp(3.4, 1.25, this.pp); extra.push({ ...s, x: s.x + Math.cos(a) * d, y: s.y + Math.sin(a) * d, cScale: .45, clone: true }); } }
+          out = out.concat(extra);
+        } else {
+          const k = Math.max(1, Math.round(out.length / 5)), g = 1.32471795724474602596;
+          const cs = []; for (let j = 0; j < k; j++) cs.push(k === 1 ? [W / 2, H / 2] : [W * (.2 + .6 * fract(.5 + (j + 1) / g)), H * (.22 + .56 * fract(.5 + (j + 1) / (g * g)))]);
+          const cnt = new Array(k).fill(0);
+          out.forEach((s, i) => { const j = i % k, c = cs[j], q = cnt[j]++; const a = q * 2.4, d = s.R * 1.1 * Math.sqrt(q); s.x = lerp(s.x, c[0] + Math.cos(a) * d, this.pp); s.y = lerp(s.y, c[1] + Math.sin(a) * d, this.pp); });
+        }
+        break;
+      }
+    }
+    return out;
+  }
+  simStep(out, dt) {   // einfache Physik für „Kollision“
+    const M = this.M, W = this.W, H = this.H;
+    if (!this.sim) this.sim = new Map();
+    const vpx = Math.max(M * .1, (SPEED[this.v.speed] ?? .26) * M * .18);
+    let ux = 0, uy = 0; switch (this.v.dir) { case 'Hoch': uy = -1; break; case 'Runter': uy = 1; break; case 'Rechts': ux = 1; break; case 'Links': ux = -1; break; case 'Schräg': ux = .7; uy = -.7; break; }
+    const S = out.map(s => {
+      let o = this.sim.get(s.e.i);
+      if (!o) { const r = rng(s.e.seed + 5), a = r() * TAU; o = { x: s.x, y: s.y, vx: (Math.cos(a) * .8 + ux) * vpx, vy: (Math.sin(a) * .8 + uy) * vpx, hit: 0 }; this.sim.set(s.e.i, o); }
+      return [s, o];
+    });
+    const sub = 2, h = dt / sub;
+    for (let it = 0; it < sub; it++) {
+      for (const [s, o] of S) {
+        const r = s.R * s.S; o.x += o.vx * h; o.y += o.vy * h;
+        if (o.x < r) { o.x = r; o.vx = Math.abs(o.vx); o.hit = Math.max(o.hit, .5); } if (o.x > W - r) { o.x = W - r; o.vx = -Math.abs(o.vx); o.hit = Math.max(o.hit, .5); }
+        if (o.y < r) { o.y = r; o.vy = Math.abs(o.vy); o.hit = Math.max(o.hit, .5); } if (o.y > H - r) { o.y = H - r; o.vy = -Math.abs(o.vy); o.hit = Math.max(o.hit, .5); }
+      }
+      if (S.length <= 160) for (let i = 0; i < S.length; i++) for (let j = i + 1; j < S.length; j++) {
+        const [sa, a] = S[i], [sb, b] = S[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || .01, min = sa.R * sa.S + sb.R * sb.S;
+        if (d < min) {
+          const nx = dx / d, ny = dy / d, p = (min - d) / 2; a.x -= nx * p; a.y -= ny * p; b.x += nx * p; b.y += ny * p;
+          const rel = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+          if (rel < 0) { a.vx += rel * nx; a.vy += rel * ny; b.vx -= rel * nx; b.vy -= rel * ny; a.hit = b.hit = 1; }
+        }
+      }
+    }
+    for (const [s, o] of S) {
+      const sp = Math.hypot(o.vx, o.vy) || 1, f = lerp(1, vpx / sp, .02); o.vx *= f; o.vy *= f;   // Tempo pendelt sich wieder ein
+      o.hit = Math.max(0, o.hit - dt * 3.5); s.x = o.x; s.y = o.y; s.hit = o.hit;
+      if (o.hit > 0) { s.sx = 1 + .18 * o.hit; s.sy = 1 - .18 * o.hit; }
+    }
+  }
+
+  /* ── ein Bild ── */
+  frame(t, dt, feat) {
+    const v = this.v; if (!v || !this.W) return;
+    const { W, H, dpr } = this, ctx = this.ctx, lx = this.lx;
+    this.M = Math.min(W, H); this.t = t; this.beat = 60 / this.bpm;
+    lx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (v.trail === 'Nachleuchten') { lx.globalCompositeOperation = 'destination-out'; lx.fillStyle = `rgba(0,0,0,${dt > 0 ? .13 : 0})`; lx.fillRect(0, 0, W, H); lx.globalCompositeOperation = 'source-over'; }
+    else lx.clearRect(0, 0, W, H);
+
+    const states = this.computeStates(t, dt, feat);
+    this.pixEnv = states.length ? states[0].env : 0;
+    states.forEach(s => { s.col = this.color(s); });
+    this.updateHistory(states, dt);
+    states.sort((a, b) => a.z - b.z);
+    for (const s of states) this.drawUnder(lx, s);
+    for (const s of states) this.drawElement(lx, s);
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.globalAlpha = 1; ctx.filter = 'none'; ctx.imageSmoothingEnabled = true;
+    ctx.fillStyle = this.col.stage; ctx.fillRect(0, 0, W, H);
+    if (v.dim === '3D' || v.dir === 'Nach vorne' || v.dir === 'Nach hinten') this.drawFloor(ctx);
+    if (v.trail === 'Nachzeichnen') ctx.drawImage(this.T, 0, 0, W, H);
+    const needCtx = v.place === 'Vordergrund' || v.place === 'Hintergrund' || v.place === 'Versteckt';
+    const behind = v.place === 'Hintergrund' || v.place === 'Versteckt';
+    if (needCtx && !behind) this.drawContext(ctx);
+    this.composeLayer(ctx);
+    if (needCtx && behind) this.drawContext(ctx);
+  }
+  composeLayer(ctx) {
+    const v = this.v, { W, H } = this; let src = this.L;
+    if (v.shapeFx === 'Verpixeln') {
+      const pix = 1.5 + this.pixEnv * (this.mini ? 7 : 20);
+      const w = Math.max(2, Math.round(W / pix)), h = Math.max(2, Math.round(H / pix));
+      if (this.P.width !== w || this.P.height !== h) { this.P.width = w; this.P.height = h; }
+      this.px.clearRect(0, 0, w, h); this.px.imageSmoothingEnabled = true; this.px.drawImage(this.L, 0, 0, w, h);
+      src = this.P; ctx.imageSmoothingEnabled = false;
+    }
+    if (v.place === 'Hintergrund') { ctx.filter = 'blur(1.8px) saturate(.7)'; ctx.globalAlpha = .82; }
+    else if (v.place === 'Versteckt') { ctx.filter = 'blur(.8px)'; ctx.globalAlpha = .85; }
+    ctx.drawImage(src, 0, 0, W, H);
+    ctx.filter = 'none'; ctx.globalAlpha = 1; ctx.imageSmoothingEnabled = true;
+  }
+  drawFloor(ctx) {
+    const { W, H } = this, hy = H * .45, cx = W / 2;
+    ctx.save(); ctx.strokeStyle = this.col.grid; ctx.lineWidth = 1;
+    for (let k = -12; k <= 12; k++) { ctx.beginPath(); ctx.moveTo(cx, hy); ctx.lineTo(cx + k * W * .13, H); ctx.stroke(); }
+    for (let j = 1; j <= 9; j++) { const y = hy + (H - hy) * (j / 9) ** 2; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+    ctx.beginPath(); ctx.moveTo(0, hy); ctx.lineTo(W, hy); ctx.stroke();
+    ctx.restore();
+  }
+  drawContext(ctx) {   // neutrale Bezugsebene, damit Vorder-/Hintergrund lesbar werden
+    const { W, H } = this, v = this.v;
+    const rr = (x, y, w, h, r) => { ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, w, h, r) : ctx.rect(x, y, w, h); };
+    ctx.save();
+    if (v.place === 'Versteckt') {
+      const [x0, y0, x1, y1] = HIDE; rr(W * x0, H * y0, W * (x1 - x0), H * (y1 - y0), 14);
+      ctx.fillStyle = this.col.hide; ctx.fill(); ctx.strokeStyle = this.col.ctxs; ctx.lineWidth = 1; ctx.stroke();
+      if (!this.mini) { ctx.fillStyle = this.col.muted; ctx.font = '11px Inter, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('verdeckende Ebene', W * .5, H * .5 + 4); }
+    } else {
+      for (const [x, y, w, h] of [[.16, .32, .2, .4], [.41, .2, .18, .58], [.64, .36, .2, .32]]) { rr(W * x, H * y, W * w, H * h, 10); ctx.fillStyle = this.col.ctxp; ctx.fill(); ctx.strokeStyle = this.col.ctxs; ctx.lineWidth = 1; ctx.stroke(); }
+      if (!this.mini) { ctx.fillStyle = this.col.muted; ctx.font = '11px Inter, system-ui, sans-serif'; ctx.fillText('Bezugsebene (Mitte)', 12, H - 12); }
+    }
+    ctx.restore();
+  }
+  updateHistory(states, dt) {
+    const v = this.v, need = v.trail && v.trail !== 'Keine' && v.trail !== 'Nachleuchten';
+    if (!need) return;
+    const M = this.M, tx = this.tx, dpr = this.dpr;
+    if (v.trail === 'Nachzeichnen') { tx.setTransform(dpr, 0, 0, dpr, 0, 0); if (dt > 0) { tx.globalCompositeOperation = 'destination-out'; tx.fillStyle = 'rgba(0,0,0,.006)'; tx.fillRect(0, 0, this.W, this.H); tx.globalCompositeOperation = 'source-over'; } }
+    for (const s of states) {
+      if (s.clone) continue;
+      const key = s.e.i; let h = this.hist.get(key); if (!h) { h = []; this.hist.set(key, h); }
+      const last = h[h.length - 1];
+      if (last && (Math.hypot(s.x - last.x, s.y - last.y) > M * .25 || last.cyc !== s.cyc)) h.length = 0;
+      if (dt > 0 || !last) h.push({ x: s.x, y: s.y, rot: s.rot, R: s.R * s.S, cyc: s.cyc });
+      if (h.length > 42) h.shift();
+      if (v.trail === 'Nachzeichnen' && last && h.length > 1 && dt > 0) {
+        tx.strokeStyle = hsl(s.col, 0, .85); tx.lineWidth = Math.max(1.4, s.R * .07); tx.lineCap = 'round';
+        tx.beginPath(); tx.moveTo(last.x, last.y); tx.lineTo(s.x, s.y); tx.stroke();
+      }
+    }
+  }
+
+  /* Spuren, Verzweigungen, Anziehungslinien – unter den Körpern */
+  drawUnder(c, s) {
+    const v = this.v, col = s.col, alpha = (ALPHA[v.alpha] ?? 1) * s.alpha;
+    if (s.link) { c.save(); c.strokeStyle = hsl(col, 0, .22 * alpha); c.setLineDash([3, 4]); c.lineWidth = 1; c.beginPath(); c.moveTo(s.x, s.y); c.lineTo(s.link[0], s.link[1]); c.stroke(); c.restore(); }
+    if (s.branch > .02 && !s.clone) this.drawBranches(c, s, alpha);
+    const h = this.hist && this.hist.get(s.e.i);
+    if (!h || h.length < 2 || s.clone) return;
+    c.save();
+    const N = h.length;
+    switch (v.trail) {
+      case 'Punkte':
+        for (let j = 0; j < N - 1; j += 3) { const p = h[j], f = j / N; c.globalAlpha = f * .85 * alpha; c.fillStyle = hsl(col); c.beginPath(); c.arc(p.x, p.y, Math.max(1.2, s.R * .09) * (.4 + .6 * f), 0, TAU); c.fill(); }
+        break;
+      case 'Linie':
+        c.strokeStyle = hsl(col); c.lineCap = 'round'; c.lineWidth = Math.max(1.3, s.R * .1);
+        for (let j = 1; j < N; j++) { c.globalAlpha = (j / N) * .7 * alpha; c.beginPath(); c.moveTo(h[j - 1].x, h[j - 1].y); c.lineTo(h[j].x, h[j].y); c.stroke(); }
+        break;
+      case 'Nachbild': {
+        const isLine = v.element === 'Linie';
+        for (let j = 0; j < N - 1; j += 7) {
+          const p = h[j], f = j / N;
+          const sh = isLine ? lineShape(v.char, this.t, s.e.seed, {}) : closedShape(v.element, v.char, this.t, s.e.seed, {});
+          c.save(); c.translate(p.x, p.y); c.rotate(p.rot || 0); c.globalAlpha = (.08 + .3 * f) * alpha;
+          this.path(c, sh.pts.map(q => [q[0] * p.R, q[1] * p.R]), !isLine);
+          if (isLine) { c.strokeStyle = hsl(col); c.lineWidth = Math.max(1.2, p.R * .085); c.stroke(); } else { c.fillStyle = hsl(col); c.fill(); }
+          c.restore();
+        }
+        break;
+      }
+    }
+    c.restore();
+  }
+  drawBranches(c, s, alpha) {
+    const g = s.branch, seed = s.e.seed, roots = 3 + (seed % 3);
+    c.save(); c.translate(s.x, s.y); c.strokeStyle = c.fillStyle = hsl(s.col); c.lineCap = 'round'; c.globalAlpha = .85 * alpha;
+    const rec = (x, y, a, len, d, w, id) => {
+      const gg = clamp(g * 3.2 - d); if (gg <= 0) return;
+      const ex = x + Math.cos(a) * len * gg, ey = y + Math.sin(a) * len * gg;
+      c.lineWidth = w; c.beginPath(); c.moveTo(x, y); c.lineTo(ex, ey); c.stroke();
+      if (gg >= 1 && d < 2) { rec(ex, ey, a - .45 - hash(id * 3.1 + seed * .001) * .35, len * .62, d + 1, w * .65, id * 2 + 1); rec(ex, ey, a + .4 + hash(id * 5.7 + seed * .001) * .35, len * .62, d + 1, w * .65, id * 2 + 2); }
+      else if (gg >= 1) { c.beginPath(); c.arc(ex, ey, Math.max(1.5, w * 1.8), 0, TAU); c.fill(); }
+    };
+    for (let k = 0; k < roots; k++) rec(0, 0, k * TAU / roots + hash(seed * .01 + k) * .5, s.R * s.S * 1.5, 0, Math.max(1, s.R * .07), k + 1);
+    c.restore();
+  }
+  path(c, P, closed) { c.beginPath(); c.moveTo(P[0][0], P[0][1]); for (let i = 1; i < P.length; i++) c.lineTo(P[i][0], P[i][1]); if (closed) c.closePath(); }
+
+  /* ── ein Element inkl. Erscheinen / Verschwinden ── */
+  drawElement(c, s) {
+    const v = this.v, isLine = v.element === 'Linie';
+    let a = s.alpha, S = s.S * (s.cScale ?? 1), frag = 0, fragMode = null, wipe = null, grow = 1, dust = 0;
+    if (s.A < 1) {
+      const A = s.A;
+      switch (v.appear) {
+        case 'Fade-in': a *= smooth(A); break;
+        case 'Aufpoppen': S *= Math.max(0, backOut(A)); break;
+        case 'Zusammenfügen': frag = 1 - easeOut(A); fragMode = 'in'; a *= clamp(A * 2.5); break;
+        case 'Zoom-in': S *= lerp(3.4, 1, easeOut(A)); a *= clamp(A * 1.6); break;
+        case 'Wachsen': if (isLine) grow = easeOut(A); else S *= easeOut(A); break;
+        case 'Einblenden': wipe = [1, smooth(A)]; break;
+      }
+    }
+    if (s.D > 0) {
+      const D = s.D;
+      switch (v.vanish) {
+        case 'Fade-out': a *= 1 - smooth(D); break;
+        case 'Zerfallen': frag = D; fragMode = 'fall'; a *= 1 - D * D; break;
+        case 'Zoom-out': S *= lerp(1, 3.4, D * D); a *= 1 - D; break;
+        case 'Schrumpfen': S *= 1 - easeIn(D); break;
+        case 'Auflösen': dust = D; a *= 1 - smooth(clamp(D * 1.6)); break;
+        case 'Ausblenden': wipe = [-1, smooth(D)]; break;
+      }
+    }
+    if (S <= .002 || (a <= .003 && !dust)) return;
+    const R = s.R * S;
+    const opt = { round: s.round || 0, reduce: s.reduce || 0, rough: v.surface === 'Rau', warp: s.warp || 0, grow, px: R };
+    const sh = isLine ? lineShape(v.char, this.t, s.e.seed, opt) : closedShape(v.element, v.char, this.t, s.e.seed, opt);
+    const P = sh.pts.map(p => [p[0] * R * s.sx, p[1] * R * s.sy]);
+    const ext = 1.9 * R * Math.max(s.sx, s.sy) + 6;
+    const fillA = a * (ALPHA[v.alpha] ?? 1);
+    const body = () => this.body(c, P, sh, R, s, a, fillA);
+
+    c.save(); c.translate(s.x, s.y); c.rotate(s.rot || 0); if (s.skew) c.transform(1, 0, s.skew, 1, 0, 0);
+    if (s.split > .01) {
+      for (const side of [-1, 1]) { c.save(); c.translate(side * s.split * R * .75, 0); c.beginPath(); c.rect(side < 0 ? -ext * 2 : 0, -ext * 2, ext * 2, ext * 4); c.clip(); body(); c.restore(); }
+    } else if (frag > .001) {
+      const K = 7, rot0 = s.e.phase * TAU;
+      for (let k = 0; k < K; k++) {
+        const h1 = hash(k + s.e.seed * .001), h2 = hash(k * 3 + s.e.seed * .002);
+        c.save();
+        if (isLine) {
+          const x0 = -ext + k * 2 * ext / K, xm = x0 + ext / K;
+          const dx = fragMode === 'in' ? (xm / ext) * frag * R * 1.6 : (xm / ext) * frag * R * .6, dy = fragMode === 'in' ? (h1 - .5) * frag * R * 3 : frag * frag * R * 3.4 * (.6 + h1);
+          c.translate(dx, dy); c.rotate((h2 - .5) * frag * 2.4); c.beginPath(); c.rect(x0, -ext, 2 * ext / K + .5, 2 * ext); c.clip();
+        } else {
+          const a0 = rot0 + k * TAU / K, a1 = a0 + TAU / K + .002, am = (a0 + a1) / 2;
+          const dist = fragMode === 'in' ? frag * R * 2.3 * (.7 + h1 * .6) : frag * R * .8;
+          c.translate(Math.cos(am) * dist, Math.sin(am) * dist + (fragMode === 'fall' ? frag * frag * R * 3.4 * (.6 + h1) : 0));
+          c.rotate((h2 - .5) * frag * (fragMode === 'in' ? 3 : 2.4));
+          c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, ext * 2, a0, a1); c.closePath(); c.clip();
+        }
+        body(); c.restore();
+      }
+    } else if (wipe) {
+      const edge = lerp(-ext, ext, wipe[1]);
+      c.beginPath(); if (wipe[0] > 0) c.rect(-ext * 2, -ext * 2, edge + ext * 2, ext * 4); else c.rect(edge, -ext * 2, ext * 3, ext * 4);
+      c.clip(); body();
+    } else body();
+    c.restore();
+
+    if (dust > 0) {   // Auflösen: Partikel driften weg
+      c.save(); c.fillStyle = hsl(s.col);
+      const N = this.mini ? 18 : 40, sz = Math.max(1.2, R * .07);
+      for (let k = 0; k < N; k++) {
+        const h1 = hash(k * 1.3 + s.e.seed * .001), h2 = hash(k * 2.7 + s.e.seed * .003), ang = h1 * TAU, r0 = R * Math.sqrt(h2);
+        const x = s.x + Math.cos(ang) * r0 * (1 + dust * 1.8), y = s.y + Math.sin(ang) * r0 * (1 + dust * 1.8) - dust * R * (1 + h2);
+        c.globalAlpha = (1 - dust) * .9 * (ALPHA[v.alpha] ?? 1); c.fillRect(x - sz / 2, y - sz / 2, sz * (1 - dust * .5), sz * (1 - dust * .5));
+      }
+      c.restore();
+    }
+  }
+
+  /* Körper: Dimensionalität, Füllung, Oberfläche, Kontur */
+  body(c, P, sh, R, s, a, fillA) {
+    const v = this.v, col = s.col, dim = v.dim || '2D';
+    const glow = v.trail === 'Nachleuchten' || sh.soft;
+    if (!sh.closed) return this.bodyLine(c, P, sh, R, s, a, fillA, glow);
+    const fillA0 = c.globalAlpha;
+    if (dim === '2.5D') {   // ausgeschnittene, leicht angehobene Ebene: weicher Schatten + sichtbare Kante
+      c.save(); c.globalAlpha = fillA * (this.dark ? .55 : .3); c.translate(R * .16, R * .26); this.path(c, P, true); c.fillStyle = this.dark ? hsl(col, -40) : '#000';
+      if (!this.mini && this.els.length <= 12) c.filter = `blur(${Math.min(12, R * .12).toFixed(1)}px)`; c.fill(); c.restore();
+      for (let k = 3; k >= 1; k--) { c.save(); c.globalAlpha = fillA; c.translate(R * .045 * k, R * .055 * k); this.path(c, P, true); c.fillStyle = hsl(col, -10 - 6 * k); c.fill(); c.restore(); }
+    }
+    if (dim === '3D') this.extrude(c, P, R, col, fillA);
+    c.save();
+    c.globalAlpha = fillA;
+    if (glow) { c.shadowColor = hsl(col, 8, .9); c.shadowBlur = Math.min(this.mini ? 14 : 60, R * (sh.soft && v.trail !== 'Nachleuchten' ? .4 : .75)); }
+    else if (s.front) { c.shadowColor = 'rgba(0,0,0,.35)'; c.shadowBlur = Math.min(40, R * .35); c.shadowOffsetY = R * .12; }
+    this.path(c, P, true);
+    if (v.colorFx === 'Farbverlauf') { const g = c.createLinearGradient(-R, -R, R, R); g.addColorStop(0, hsl(col)); g.addColorStop(1, hsl({ ...col, h: col.h + 75 })); c.fillStyle = g; }
+    else if (dim === '3D') { const g = c.createRadialGradient(-R * .35, -R * .4, 0, -R * .1, -R * .1, R * 1.5); g.addColorStop(0, hsl(col, 20)); g.addColorStop(.55, hsl(col)); g.addColorStop(1, hsl(col, -16)); c.fillStyle = g; }
+    else c.fillStyle = hsl(col);
+    c.fill();
+    c.restore();
+    if (v.surface && v.surface !== 'Glatt') {
+      const pat = this.pat[v.surface];
+      if (pat) {
+        c.save(); this.path(c, P, true); c.clip();
+        const k = v.surface === 'Körnig' ? 1 / this.dpr * Math.max(1, R / 90) : Math.max(.3, R / 75);
+        try { pat.setTransform(new DOMMatrix().scaleSelf(k, k)); } catch (e) {}
+        c.globalAlpha = fillA * SURF_A[v.surface] + (1 - (ALPHA[v.alpha] ?? 1)) * .25 * a; c.fillStyle = pat; c.fillRect(-R * 2.2, -R * 2.2, R * 4.4, R * 4.4);
+        c.restore();
+      }
+    }
+    this.contour(c, P, true, R, col, a);
+    c.globalAlpha = fillA0;
+  }
+  extrude(c, P, R, col, fillA) {
+    const dx = R * .22, dy = -R * .17, m = P.length;
+    let cx = 0, cy = 0; P.forEach(p => { cx += p[0]; cy += p[1]; }); cx /= m; cy /= m;
+    c.save(); c.globalAlpha = fillA;
+    if (m > 28) {   // runde / feine Umrisse: geschichtete Extrusion statt vieler Seitenflächen (deutlich schneller)
+      const N = this.mini ? 5 : 10;
+      for (let k = N; k >= 1; k--) { c.save(); c.translate(dx * k / N, dy * k / N); this.path(c, P, true); c.fillStyle = hsl(col, -27 + 10 * (1 - k / N)); c.fill(); c.restore(); }
+      c.restore(); return;
+    }
+    c.save(); c.translate(dx, dy); this.path(c, P, true); c.fillStyle = hsl(col, -26); c.fill(); c.restore();
+    const sides = [];
+    for (let i = 0; i < m; i++) {
+      const p = P[i], q = P[(i + 1) % m]; let nx = q[1] - p[1], ny = -(q[0] - p[0]); const len = Math.hypot(nx, ny) || 1; nx /= len; ny /= len;
+      const mx = (p[0] + q[0]) / 2, my = (p[1] + q[1]) / 2; if (nx * (mx - cx) + ny * (my - cy) < 0) { nx = -nx; ny = -ny; }
+      if (nx * dx + ny * dy <= 0) continue;
+      sides.push({ p, q, d: mx * dx + my * dy, lam: nx * -.55 + ny * -.83 });
+    }
+    sides.sort((A, B) => B.d - A.d);
+    c.lineWidth = .8;
+    for (const sd of sides) {
+      c.beginPath(); c.moveTo(sd.p[0], sd.p[1]); c.lineTo(sd.q[0], sd.q[1]); c.lineTo(sd.q[0] + dx, sd.q[1] + dy); c.lineTo(sd.p[0] + dx, sd.p[1] + dy); c.closePath();
+      c.fillStyle = c.strokeStyle = hsl(col, -20 + 16 * sd.lam); c.fill(); c.stroke();
+    }
+    c.restore();
+  }
+  bodyLine(c, P, sh, R, s, a, fillA, glow) {
+    if (P.length < 2) return;
+    const v = this.v, col = s.col, dim = v.dim || '2D';
+    let lw = Math.max(1.2, R * .085) * ({ 'Dünn': .45, 'Dick': 2.1 }[v.stroke] || 1) * sh.wide;
+    c.save(); c.lineCap = sh.cap; c.lineJoin = sh.join; c.miterLimit = 8;
+    if (v.stroke === 'Gestrichelt') c.setLineDash([lw * 3.5, lw * 2.4]);
+    else if (v.stroke === 'Gepunktet') { c.setLineDash([.01, lw * 2]); c.lineCap = 'round'; }
+    c.lineWidth = lw;
+    if (dim === '2.5D') {
+      c.save(); c.globalAlpha = fillA * (this.dark ? .55 : .3); c.translate(R * .12, R * .2); this.path(c, P, false); c.strokeStyle = this.dark ? hsl(col, -40) : '#000'; c.stroke(); c.restore();
+      for (let k = 3; k >= 1; k--) { c.save(); c.globalAlpha = fillA; c.translate(R * .035 * k, R * .045 * k); this.path(c, P, false); c.strokeStyle = hsl(col, -10 - 6 * k); c.stroke(); c.restore(); }
+    }
+    if (dim === '3D') { for (let k = 8; k >= 1; k--) { c.save(); c.globalAlpha = fillA; c.translate(R * .22 * k / 8, -R * .17 * k / 8); this.path(c, P, false); c.strokeStyle = hsl(col, -26 + k); c.stroke(); c.restore(); } }
+    c.globalAlpha = fillA;
+    if (glow) { c.shadowColor = hsl(col, 8, .9); c.shadowBlur = Math.min(this.mini ? 12 : 40, R * .6); }
+    else if (s.front) { c.shadowColor = 'rgba(0,0,0,.35)'; c.shadowBlur = Math.min(30, R * .3); c.shadowOffsetY = R * .1; }
+    if (v.colorFx === 'Farbverlauf') { const g = c.createLinearGradient(-R * 1.6, 0, R * 1.6, 0); g.addColorStop(0, hsl(col)); g.addColorStop(1, hsl({ ...col, h: col.h + 75 })); c.strokeStyle = g; } else c.strokeStyle = hsl(col);
+    this.path(c, P, false); c.stroke();
+    c.shadowColor = 'transparent';
+    if (dim === '3D') { c.save(); c.lineWidth = lw * .3; c.strokeStyle = hsl(col, 24, .8); c.translate(-lw * .15, -lw * .18); this.path(c, P, false); c.stroke(); c.restore(); }
+    if (v.surface && v.surface !== 'Glatt' && this.pat[v.surface]) { c.globalAlpha = fillA * SURF_A[v.surface]; c.strokeStyle = this.pat[v.surface]; this.path(c, P, false); c.stroke(); }
+    c.restore();
+  }
+  contour(c, P, closed, R, col, a) {
+    const st = this.v.stroke; if (!st || st === 'Keine') return;
+    const lw = { 'Dünn': 1.3, 'Dick': Math.max(3, R * .1), 'Gestrichelt': Math.max(1.6, R * .045), 'Gepunktet': Math.max(2.2, R * .06) }[st];
+    c.save(); c.globalAlpha = a; c.lineWidth = lw; c.lineJoin = 'round';
+    c.strokeStyle = this.dark ? hsl({ ...col, l: Math.max(col.l + 30, 80) }) : hsl({ ...col, l: Math.min(col.l - 30, 24) });
+    if (st === 'Gestrichelt') c.setLineDash([lw * 3.4, lw * 2.4]);
+    if (st === 'Gepunktet') { c.setLineDash([.01, lw * 2.1]); c.lineCap = 'round'; }
+    this.path(c, P, closed); c.stroke(); c.restore();
+  }
+}
+
+/* ═══════════════════════════ Klang: Synthesizer & Song-Analyse ═══════════════════════════ */
+class Sound {
+  constructor() { this.ac = null; this.mode = 'off'; this.notes = []; this.v = {}; this.bpm = 100; this.sm = 0; this.pitchSm = .5; this.peak = .05; }
+  ensure() {
+    if (this.ac) return;
+    const ac = this.ac = new (window.AudioContext || window.webkitAudioContext)();
+    this.out = ac.createGain(); this.out.gain.value = 0; this.out.connect(ac.destination);
+    this.master = ac.createGain(); this.lp = ac.createBiquadFilter(); this.lp.type = 'lowpass'; this.lp.frequency.value = 18000;
+    this.bus = ac.createGain(); this.dry = ac.createGain(); this.wet = ac.createGain(); this.conv = ac.createConvolver();
+    const len = ac.sampleRate * 3.2, ir = ac.createBuffer(2, len, ac.sampleRate);
+    for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2); }
+    this.conv.buffer = ir;
+    this.bus.connect(this.lp); this.lp.connect(this.dry); this.lp.connect(this.conv); this.conv.connect(this.wet);
+    this.dry.connect(this.master); this.wet.connect(this.master); this.master.connect(this.out);
+    const nb = ac.createBuffer(1, ac.sampleRate, ac.sampleRate), nd = nb.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1; this.noise = nb;
+    const curve = new Float32Array(1024); for (let i = 0; i < 1024; i++) { const x = i / 512 - 1; curve[i] = Math.tanh(x * 6) * .8; } this.curve = curve;
+    this.an = ac.createAnalyser(); this.an.fftSize = 2048; this.an.smoothingTimeConstant = .5;
+    this.tbuf = new Float32Array(this.an.fftSize); this.fbuf = new Uint8Array(this.an.frequencyBinCount);
+  }
+  setMode(m) {
+    if (m !== 'off') { this.ensure(); this.ac.resume(); }
+    this.mode = m;
+    clearInterval(this.timer);
+    if (this.audio) this.audio.pause();
+    if (!this.ac) return;
+    const now = this.ac.currentTime;
+    this.out.gain.cancelScheduledValues(now); this.out.gain.setTargetAtTime(m === 'off' ? 0 : 1, now, .05);
+    if (m === 'synth') { this.next = now + .06; this.step = 0; this.timer = setInterval(() => this.tick(), 25); this.apply(); }
+    if (m === 'song') {
+      if (!this.audio) { this.audio = new Audio('song.m4a'); this.audio.loop = true; this.audio.crossOrigin = 'anonymous'; const src = this.ac.createMediaElementSource(this.audio); src.connect(this.an); this.an.connect(this.out); }
+      this.audio.play().catch(() => toast('Song konnte nicht abgespielt werden.'));
+    }
+  }
+  params() {
+    const v = this.v;
+    return {
+      base: { 'Sehr tief': 36, 'Tief': 48, 'Mittel': 60, 'Hoch': 72, 'Sehr hoch': 84 }[v.pitch] ?? 60,
+      gain: { 'Sehr leise': .05, 'Leise': .11, 'Mittel': .2, 'Laut': .32, 'Sehr laut': .46 }[v.loud] ?? .2,
+      vis: { 'Sehr leise': .25, 'Leise': .45, 'Mittel': .65, 'Laut': .85, 'Sehr laut': 1 }[v.loud] ?? .65,
+      cut: ({ 'Hell': 7000, 'Dunkel': 650, 'Warm': 1500, 'Kühl': 4200, 'Metallisch': 9000, 'Weich': 1700 }[v.timbre] ?? 3000) * (v.texture === 'Klar' ? 1.4 : 1),
+      att: { 'Hart': .004, 'Weich': .12, 'Abrupt': .001, 'Allmählich': .55 }[v.attack] ?? .015,
+      rel: { 'Kurz': .1, 'Lang': 1.6, 'Abrupt': .015, 'Allmählich': .9 }[v.release] ?? .3,
+    };
+  }
+  apply() {
+    if (!this.ac) return;
+    const v = this.v, P = this.params(), now = this.ac.currentTime;
+    const wet = { 'Nah': .04, 'Fern': .45, 'Trocken': 0, 'Hallend': .8 }[v.space] ?? .15;
+    this.master.gain.setTargetAtTime(P.gain * (v.space === 'Fern' ? .6 : v.space === 'Nah' ? 1.2 : 1), now, .05);
+    this.lp.frequency.setTargetAtTime(v.space === 'Fern' ? 1400 : 18000, now, .05);
+    this.wet.gain.setTargetAtTime(wet, now, .05); this.dry.gain.setTargetAtTime(1 - wet * .6, now, .05);
+  }
+  tick() {
+    const step = 60 / this.bpm / 4;
+    while (this.next < this.ac.currentTime + .12) { this.schedule(this.step, this.next, step); this.next += step; this.step++; }
+  }
+  schedule(s, time, step) {
+    const v = this.v, P = this.params(), pos = s % 16, bar = Math.floor(s / 16);
+    const cons = v.harm !== 'Dissonant';
+    const scale = cons ? [0, 2, 4, 7, 9, 12, 14] : [0, 1, 6, 7, 11, 13, 18];
+    const chord = cons ? [0, 4, 7] : [0, 1, 6];
+    let hits, acc = 1;
+    switch (v.srhythm) {
+      case 'Unregelmäßig': { const r = rng(bar * 131 + 7), set = new Set([0]); while (set.size < 5) set.add(Math.floor(r() * 16)); hits = [...set]; break; }
+      case 'Pulsierend': hits = [0, 3, 8, 11]; acc = pos % 8 === 0 ? 1 : .55; break;
+      case 'Repetitiv': hits = [0, 2, 3, 6, 8, 10, 11, 14]; break;
+      case 'Alternierend': hits = [0, 4, 8, 12]; acc = (pos / 4) % 2 ? .5 : 1; break;
+      default: hits = [0, 4, 8, 12];
+    }
+    let on = hits.includes(pos), vel = acc;
+    if (v.density === 'Dicht' && !on && pos % 2 === 0) { on = true; vel = .5; }
+    if (v.density === 'Vereinzelt' && on && hash(s * 1.17) < .55) on = false;
+    if (v.density === 'Vielschichtig' && pos === 0) this.voice(time, P.base - 12, step * 15, .45, P, { att: Math.max(P.att, .3), rel: 1.2 });
+    if (v.density === 'Vielschichtig' && pos % 8 === 6 && hash(s * .7) > .4) this.voice(time, P.base + 24 + scale[Math.floor(hash(s) * 5)], step * 1.5, .3, P);
+    if (!on) return;
+    const c = s % 32 / 32;
+    const dyn = { 'Crescendo': .2 + .8 * c, 'Decrescendo': 1 - .8 * c, 'Wechselhaft': .3 + .7 * hash(Math.floor(s / 4) * 2.3) }[v.dyn] ?? 1;
+    let deg;
+    if (v.srhythm === 'Repetitiv') deg = [0, 2, 4, 2, 5, 4, 2, 1][hits.indexOf(pos)];
+    else if (v.srhythm === 'Alternierend') deg = (pos / 4) % 2 ? 3 : 0;
+    else deg = Math.floor(rng(s * 17 + 3)() * 6);
+    const midi = P.base + scale[deg];
+    const dur = v.artic === 'Staccato' ? Math.min(.09, step * .6) : v.artic === 'Legato' ? step * 4.2 : step * 1.6;
+    const notes = v.density === 'Dicht' && vel > .6 ? chord.map(x => P.base + x + (deg > 3 ? 12 : 0)) : [midi];
+    notes.forEach(m => this.voice(time, m, dur, vel * dyn / Math.sqrt(notes.length), P));
+  }
+  voice(time, midi, dur, vel, P, o = {}) {
+    const ac = this.ac, v = this.v, f = 440 * Math.pow(2, (midi - 69) / 12);
+    const att = o.att ?? P.att, rel = o.rel ?? P.rel;
+    const g = ac.createGain(); g.gain.value = 0;
+    const flt = ac.createBiquadFilter(); flt.type = 'lowpass'; flt.frequency.value = P.cut; flt.Q.value = v.timbre === 'Metallisch' ? 4 : .8;
+    const srcs = [];
+    const osc = (type, fr, det = 0) => { const n = ac.createOscillator(); n.type = type; n.frequency.value = fr; n.detune.value = det; srcs.push(n); return n; };
+    switch (v.timbre) {
+      case 'Metallisch': { const car = osc('sine', f), mod = osc('sine', f * 3.53), mg = ac.createGain(); mg.gain.value = f * 2.4; mod.connect(mg); mg.connect(car.frequency); car.connect(flt); break; }
+      case 'Warm': osc('sawtooth', f, -9).connect(flt); osc('sawtooth', f, 9).connect(flt); break;
+      case 'Kühl': osc('square', f, -5).connect(flt); { const t2 = osc('triangle', f * 2, 6), tg = ac.createGain(); tg.gain.value = .4; t2.connect(tg); tg.connect(flt); } break;
+      case 'Hell': osc('sawtooth', f).connect(flt); break;
+      case 'Dunkel': osc('triangle', f).connect(flt); break;
+      default: osc('sine', f).connect(flt);
+    }
+    let tail = flt;
+    if (v.texture === 'Rau') { const ws = ac.createWaveShaper(); ws.curve = this.curve; tail.connect(ws); tail = ws; }
+    if (v.texture === 'Körnig') { const tg = ac.createGain(); tg.gain.value = .5; const l = osc('square', 31), lg = ac.createGain(); lg.gain.value = .5; l.connect(lg); lg.connect(tg.gain); tail.connect(tg); tail = tg; }
+    tail.connect(g);
+    if (v.texture === 'Verrauscht') { const b = ac.createBufferSource(); b.buffer = this.noise; b.loop = true; const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = Math.min(9000, f * 3); bp.Q.value = .7; const ng = ac.createGain(); ng.gain.value = .9; b.connect(bp); bp.connect(ng); ng.connect(g); srcs.push(b); }
+    const peak = vel * .5, hold = time + Math.max(att, dur), end = hold + rel * 1.6 + .05;
+    g.gain.setValueAtTime(0, time);
+    if (att < .003) g.gain.setValueAtTime(peak, time); else g.gain.linearRampToValueAtTime(peak, time + att);
+    g.gain.setValueAtTime(peak, hold); g.gain.setTargetAtTime(0, hold, rel / 4);
+    g.connect(this.bus);
+    srcs.forEach(n => { n.start(time); n.stop(end); });
+    srcs[0].onended = () => g.disconnect();
+    this.notes.push({ t0: time, att, hold, rel, vel, midi, end });
+    if (this.notes.length > 80) this.notes.splice(0, this.notes.length - 80);
+  }
+  features() {
+    if (this.mode === 'off' || !this.ac) return null;
+    let amp = 0, pitch = this.pitchSm;
+    if (this.mode === 'synth') {
+      const now = this.ac.currentTime, P = this.params(); let best = null;
+      for (const n of this.notes) {
+        if (now < n.t0 || now > n.end) continue;
+        const e = now < n.t0 + n.att ? (now - n.t0) / n.att : now < n.hold ? 1 : Math.exp(-(now - n.hold) / (n.rel / 4));
+        const val = e * n.vel; if (val > amp) { amp = val; best = n; }
+      }
+      amp = clamp(amp * P.vis * 1.15);
+      if (best) pitch = clamp((best.midi - 30) / 66);
+    } else {
+      this.an.getFloatTimeDomainData(this.tbuf); let s = 0; for (let i = 0; i < this.tbuf.length; i++) s += this.tbuf[i] * this.tbuf[i];
+      const rms = Math.sqrt(s / this.tbuf.length); this.peak = Math.max(this.peak * .997, rms, .02); amp = clamp(rms / this.peak);
+      this.an.getByteFrequencyData(this.fbuf); let num = 0, den = 0; const hz = this.ac.sampleRate / 2 / this.fbuf.length;
+      for (let i = 0; i < this.fbuf.length; i++) { num += this.fbuf[i] * i * hz; den += this.fbuf[i]; }
+      pitch = den ? clamp((num / den) / 4500) : .5;
+    }
+    this.sm = amp > this.sm ? lerp(this.sm, amp, .6) : lerp(this.sm, amp, .14);
+    this.pitchSm = lerp(this.pitchSm, pitch, .2);
+    return { amp: this.sm, pitch: this.pitchSm };
+  }
+}
+
+/* ═══════════════════════════ Klang → visuelle Vorschläge ═══════════════════════════ */
+function deriveFromSound(s) {
+  const v = vals(s), set = {};
+  const put = (k, o) => { const i = ROW[k].o.indexOf(o); if (i >= 0) set[k] = i; };
+  ({ 'Konsonant': () => { put('layout', 'Radial'); put('char', 'Geometrisch'); }, 'Dissonant': () => { put('layout', 'Zufällig'); put('char', 'Unregelmäßig'); put('interact', 'Verdeckung'); } }[v.harm] || (() => {}))();
+  ({ 'Dünn': () => put('count', 'Einzeln'), 'Dicht': () => { put('count', 'Viele'); put('layout', 'Gruppiert'); }, 'Vereinzelt': () => { put('count', 'Wenige'); put('layout', 'Verteilt'); }, 'Vielschichtig': () => { put('count', 'Mehrere'); put('dim', '2.5D'); } }[v.density] || (() => {}))();
+  ({ 'Sehr leise': () => { put('size', 'Winzig'); put('sat', 'Entsättigt'); }, 'Leise': () => put('size', 'Klein'), 'Mittel': () => put('size', 'Mittel'), 'Laut': () => { put('size', 'Groß'); put('sat', 'Gesättigt'); }, 'Sehr laut': () => { put('size', 'Riesig'); put('sat', 'Gesättigt'); } }[v.loud] || (() => {}))();
+  ({ 'Sehr tief': () => { put('light', 'Dunkel'); put('place', 'Unten'); }, 'Tief': () => { put('light', 'Dunkel'); put('place', 'Unten'); }, 'Mittel': () => put('light', 'Mittel'), 'Hoch': () => { put('light', 'Hell'); put('place', 'Oben'); }, 'Sehr hoch': () => { put('light', 'Hell'); put('place', 'Oben'); } }[v.pitch] || (() => {}))();
+  if (v.tempo) put('speed', ['Sehr langsam', 'Langsam', 'Moderat', 'Schnell', 'Sehr schnell'][ROW.tempo.o.indexOf(v.tempo)]);
+  if (v.srhythm) { put('rhythm', v.srhythm); if (v.srhythm === 'Pulsierend') put('shapeFx', 'Vergrößern'); }
+  ({ 'Crescendo': () => { put('shapeFx', 'Vergrößern'); put('colorFx', 'Heller'); }, 'Decrescendo': () => { put('shapeFx', 'Verkleinern'); put('colorFx', 'Dunkler'); }, 'Konstant': () => put('colorFx', 'Konstant'), 'Wechselhaft': () => put('colorFx', 'Farbwechsel') }[v.dyn] || (() => {}))();
+  ({ 'Staccato': () => { put('appear', 'Jump-in'); put('vanish', 'Jump-out'); put('trail', 'Keine'); }, 'Legato': () => { put('appear', 'Fade-in'); put('vanish', 'Fade-out'); put('trail', 'Linie'); } }[v.artic] || (() => {}))();
+  ({ 'Hart': () => put('appear', 'Aufpoppen'), 'Weich': () => put('appear', 'Einblenden'), 'Abrupt': () => put('appear', 'Jump-in'), 'Allmählich': () => put('appear', 'Fade-in') }[v.attack] || (() => {}))();
+  ({ 'Kurz': () => put('vanish', 'Schrumpfen'), 'Lang': () => { put('vanish', 'Fade-out'); put('trail', 'Nachleuchten'); }, 'Abrupt': () => put('vanish', 'Jump-out'), 'Allmählich': () => put('vanish', 'Auflösen') }[v.release] || (() => {}))();
+  ({ 'Glatt': () => { put('surface', 'Glatt'); put('stroke', 'Keine'); }, 'Rau': () => { put('surface', 'Rau'); put('stroke', 'Dick'); }, 'Körnig': () => put('surface', 'Körnig'), 'Verrauscht': () => { put('surface', 'Körnig'); put('stroke', 'Gepunktet'); }, 'Klar': () => { put('surface', 'Glatt'); put('stroke', 'Dünn'); } }[v.texture] || (() => {}))();
+  ({ 'Hell': () => { put('light', 'Hell'); put('char', 'Spitz'); put('temp', 'Kalt'); }, 'Dunkel': () => { put('light', 'Dunkel'); put('char', 'Abgerundet'); }, 'Warm': () => { put('temp', 'Warm'); put('char', 'Organisch'); put('hue', 'Orange'); }, 'Kühl': () => { put('temp', 'Kalt'); put('char', 'Geometrisch'); put('hue', 'Blau'); }, 'Metallisch': () => { put('char', 'Kantig'); put('surface', 'Strukturiert'); put('sat', 'Entsättigt'); put('temp', 'Kalt'); }, 'Weich': () => { put('char', 'Abgerundet'); put('surface', 'Glatt'); put('stroke', 'Keine'); } }[v.timbre] || (() => {}))();
+  ({ 'Nah': () => { put('place', 'Vordergrund'); put('alpha', 'Undurchsichtig'); }, 'Fern': () => { put('place', 'Hintergrund'); put('alpha', 'Halbtransparent'); }, 'Trocken': () => put('trail', 'Keine'), 'Hallend': () => { put('trail', 'Nachbild'); put('alpha', 'Halbtransparent'); } }[v.space] || (() => {}))();
+  return set;
+}
+
+/* ═══════════════════════════ Hinweise zur Darstellung ═══════════════════════════ */
+function notesFor(v) {
+  const N = [], el = v.element, ch = v.char;
+  const add = (a, b) => N.push(`<b>${a}</b> → ${b}`);
+  if (el === 'Kreis' && ch === 'Kantig') add('Kreis + Kantig', 'als Achteck dargestellt');
+  if (el === 'Kreis' && ch === 'Abgerundet') add('Kreis + Abgerundet', 'ist schon rund – dargestellt mit weicher, leuchtender Kante');
+  if (el === 'Kreis' && ch === 'Spitz') add('Kreis + Spitz', 'Stern mit 12 Zacken');
+  if (el === 'Kreis' && ch === 'Unregelmäßig') add('Kreis + Unregelmäßig', 'verzogenes Vieleck');
+  if (el === 'Punkt' && ch === 'Kantig') add('Punkt + Kantig', 'kleines Quadrat');
+  if (el === 'Punkt' && ch === 'Spitz') add('Punkt + Spitz', 'vierzackiger Funke');
+  if (el === 'Punkt') add('Punkt', 'bleibt auch bei großer Größe klein');
+  if (el === 'Polygon') add('Polygon', { Kantig: 'Dreieck', Spitz: 'sechszackiger Stern', Abgerundet: 'Sechseck mit runden Ecken', Organisch: 'weiches, atmendes Sechseck', Unregelmäßig: 'unregelmäßiges Siebeneck' }[ch] || 'regelmäßiges Sechseck');
+  if ((el === 'Rechteck' || el === 'Quadrat' || el === 'Fläche') && ch === 'Kantig') add(el + ' + Kantig', 'abgeschrägte Ecken');
+  if (el === 'Quadrat' && ch === 'Spitz') add('Quadrat + Spitz', 'vierzackiger Stern über den Ecken');
+  if ((el === 'Rechteck' || el === 'Fläche') && ch === 'Spitz') add(el + ' + Spitz', 'gezackte Kanten');
+  if (el === 'Linie') add('Linie', { Kantig: 'Treppenlinie', Spitz: 'Zickzacklinie', Organisch: 'fließende Welle', Abgerundet: 'weicher Bogen mit runden Enden', Unregelmäßig: 'zittrige Linie' }[ch] || 'gerade Linie');
+  if (el === 'Linie' && v.stroke && v.stroke !== 'Keine') add('Kontur bei Linie', 'steuert Strichstärke bzw. Strichelung');
+  if (el === 'Fläche') add('Fläche', 'großflächige Form, Anzahl auf max. 12 begrenzt');
+  if (v.interact && v.count === 'Einzeln') add('Interaktion bei „Einzeln“', 'graues Partnerelement zeigt das Verhalten');
+  if (v.interact === 'Kollision') add('Kollision', 'Elemente prallen voneinander und vom Rand ab (ersetzt die Bewegungsbahn)');
+  if (v.interact === 'Verfolgung' && (v.speed === 'Stillstand' || (!v.dir && !v.path))) add('Verfolgung', 'Leitelement wandert automatisch, damit die anderen folgen können');
+  const moving = v.speed !== 'Stillstand' && (v.dir || v.path);
+  if (v.trail && v.trail !== 'Keine' && !moving && v.interact !== 'Kollision' && v.interact !== 'Verfolgung') add('Spur', 'wird erst mit Bewegung sichtbar – Richtung oder Bahn und Geschwindigkeit wählen');
+  if ((v.dir || v.path) && v.speed === 'Stillstand') add('Stillstand', 'Bewegungsrichtung/-bahn wirkt erst ab „Sehr langsam“');
+  if (v.transform === 'Reduktion' && v.count === 'Einzeln') add('Reduktion bei „Einzeln“', 'die Eckenanzahl nimmt schrittweise ab');
+  if (v.transform === 'Gruppierung' && v.count === 'Einzeln') add('Gruppierung bei „Einzeln“', 'Teilstücke sammeln sich um das Element');
+  if (v.appear || v.vanish) add('Erscheinen/Verschwinden', 'Elemente durchlaufen Lebenszyklen von ca. 8 Schlägen');
+  if (v.alpha === 'Transparent' && (!v.stroke || v.stroke === 'Keine')) add('Transparent ohne Kontur', 'kaum sichtbar – eine Kontur hilft');
+  if (v.place === 'Vordergrund' || v.place === 'Hintergrund') add(v.place, 'graue Bezugsebene zeigt die Tiefe');
+  if (v.place === 'Versteckt') add('Versteckt', 'Elemente lugen hinter einer verdeckenden Ebene hervor');
+  if (v.shapeFx === 'Verpixeln') add('Verpixeln', 'Pixelgröße folgt dem Rhythmus');
+  return N;
+}
+
+/* ═══════════════════════════ UI ═══════════════════════════ */
+const ICON = {
+  element: ['<circle cx="8" cy="8" r="5.6"/>', '<rect x="1.8" y="4.4" width="12.4" height="7.2" rx=".6"/>', '<rect x="2.8" y="2.8" width="10.4" height="10.4" rx=".6"/>', '<path d="M8 1.9l5.3 3.05v6.1L8 14.1l-5.3-3.05v-6.1z"/>', '<path d="M2 12.5L14 3.5"/>', '<circle cx="8" cy="8" r="2.2" fill="currentColor"/>', '<rect x="1.2" y="3" width="13.6" height="10" rx="1" fill="currentColor" opacity=".35" stroke="none"/>'],
+  char: ['<path d="M8 2.2c3 0 5.8 1.9 5.6 5.1-.2 3.4-3 6.4-6.1 6.3C4.4 13.5 2.2 11 2.4 7.9 2.6 4.6 5 2.2 8 2.2z"/>', '<rect x="3" y="3" width="10" height="10"/>', '<path d="M5.5 2.5h5l3 3v5l-3 3h-5l-3-3v-5z"/>', '<rect x="2.6" y="2.6" width="10.8" height="10.8" rx="4"/>', '<path d="M8 1.5l1.8 4.6 4.7.5-3.6 3 1.1 4.8L8 11.9l-4 2.5 1.1-4.8-3.6-3 4.7-.5z"/>', '<path d="M3 4.2l5.8-1.8 4.6 3.8-1.6 6.6-5.6 1.2-3.8-3.4z"/>'],
+  size: [1.6, 2.8, 4, 5.2, 6.4].map(r => `<circle cx="8" cy="8" r="${r}"/>`),
+};
+function chipDeco(k, i) {
+  if (ICON[k]) return `<svg viewBox="0 0 16 16" aria-hidden="true">${ICON[k][i]}</svg>`;
+  if (k === 'hue') return `<i class="sw" style="background:hsl(${HUE[ROW.hue.o[i]]},80%,55%)"></i>`;
+  if (k === 'temp') return `<i class="sw" style="background:${['#f08a3c', '#9b9a9e', '#4a8ef0'][i]}"></i>`;
+  if (k === 'light') return `<i class="sw" style="background:hsl(28,10%,${[82, 55, 26][i]}%)"></i>`;
+  if (k === 'sat') return `<i class="sw" style="background:hsl(20,${[8, 50, 95][i]}%,55%)"></i>`;
+  if (k === 'alpha') return `<i class="sw" style="background:rgba(255,106,20,${[1, .5, .16][i]});box-shadow:inset 0 0 0 1px rgba(255,106,20,.6)"></i>`;
+  return '';
+}
+const LOCK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="7" width="10" height="7" rx="1.5"/><path d="M5.2 7V5a2.8 2.8 0 0 1 5.6 0v2"/></svg>';
+
+const STORE = 'av-kasten-v1';
+let state = { sel: defaults(), locks: {}, instruments: [], bpm: 100, current: null };
+try { const s = JSON.parse(localStorage.getItem(STORE) || 'null'); if (s && s.sel) state = { ...state, ...s, sel: { ...defaults(), ...s.sel } }; } catch (e) {}
+{ const m = location.hash.match(/k=([0-9a-z-]+)/i); const d = m && decode(m[1]); if (d && m[1] !== encode(state.sel)) { state.sel = d; state.current = null; } }
+let sel = state.sel;
+
+function save() {
+  state.sel = sel;
+  try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) {}
+  history.replaceState(null, '', '#k=' + encode(sel));
+}
+
+/* Panel aufbauen */
+const scrollEl = $('scroll');
+scrollEl.innerHTML = BOXES.map(b => `
+  <section class="box" id="box-${b.id}" data-box="${b.id}">
+    <div class="bh"><h2>${b.title} <span>· ${b.sub}</span></h2>
+      <div class="acts"><button data-rand="${b.id}" title="Diesen Kasten zufällig belegen (gesperrte Zeilen bleiben)">Zufall</button><button data-reset="${b.id}" title="Diesen Kasten zurücksetzen">Standard</button></div></div>
+    <p class="bq">${b.q}</p>
+    <div class="rows"><svg class="path"></svg>
+      ${b.rows.map(r => `
+        <div class="row" data-k="${r.k}">
+          <div class="rl"><span class="nm"><button class="lock" data-lock="${r.k}" title="Zeile für „Zufall“ sperren" aria-label="${r.n} sperren">${LOCK}</button>${r.n}${r.opt ? ' <span class="opt">(optional)</span>' : ''}</span>${r.map ? `<small>→ ${r.map}</small>` : ''}</div>
+          <div class="opts">${r.o.map((o, i) => `<button class="chip" data-k="${r.k}" data-i="${i}" aria-pressed="false">${chipDeco(r.k, i)}${o}</button>`).join('')}</div>
+        </div>`).join('')}
+    </div>
+    ${b.id === 'sound' ? `<div class="derive"><p>Passende visuelle Ausprägungen aus dem Klang ableiten – nach der Zuordnung „Wie die Parameter die Visualisierung steuern können“. Gesperrte Zeilen bleiben unverändert.</p><button id="derive">Klang → Visuell</button></div>` : ''}
+  </section>`).join('');
+
+function syncChips() {
+  scrollEl.querySelectorAll('.chip').forEach(ch => { const on = sel[ch.dataset.k] === +ch.dataset.i; ch.classList.toggle('on', on); ch.setAttribute('aria-pressed', on); });
+  scrollEl.querySelectorAll('.lock').forEach(l => l.classList.toggle('on', !!state.locks[l.dataset.lock]));
+  drawPaths();
+}
+
+/* Lösungspfad durch den Kasten (klassische Darstellung) */
+let cmpSel = null, cmpColor = null;
+function drawPaths() {
+  scrollEl.querySelectorAll('.box').forEach(box => {
+    const rows = box.querySelector('.rows'), svg = rows.querySelector('svg.path'), rr = rows.getBoundingClientRect();
+    svg.setAttribute('width', rows.scrollWidth); svg.setAttribute('height', rows.scrollHeight);
+    const pts = (s) => [...rows.querySelectorAll('.row')].map(row => { const k = row.dataset.k; if (!(s[k] >= 0)) return null; const ch = row.querySelector(`.chip[data-i="${s[k]}"]`); if (!ch) return null; const r = ch.getBoundingClientRect(); return [r.left - rr.left + r.width / 2, r.top - rr.top + r.height / 2]; }).filter(Boolean);
+    const line = (p, color, dash, w) => p.length ? `<polyline points="${p.map(q => q.map(n => n.toFixed(1)).join(',')).join(' ')}" fill="none" stroke="${color}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round" ${dash ? 'stroke-dasharray="5 5"' : ''} opacity=".7"/>` : '';
+    let html = line(pts(sel), 'var(--accent)', false, 2);
+    if (cmpSel) html += line(pts(cmpSel), cmpColor, true, 2);
+    svg.innerHTML = html;
+  });
+  scrollEl.querySelectorAll('.chip').forEach(ch => { const c = cmpSel && cmpSel[ch.dataset.k] === +ch.dataset.i; ch.classList.toggle('cmp', !!c); if (c) ch.style.setProperty('--cc', cmpColor); });
+}
+
+/* Szene & Klang */
+const stageCv = $('stage');
+const main = new Scene(stageCv);
+const sound = new Sound();
+function apply(rebuild = true) {
+  const v = vals(sel);
+  if (rebuild) main.set(v);
+  sound.v = v; sound.apply();
+  $('notes').innerHTML = notesFor(v).map(n => `<span class="note">${n}</span>`).join('');
+  updateBadge(); syncChips(); save();
+}
+function setSel(k, i, opts = {}) {
+  const r = ROW[k];
+  if (sel[k] === i && r.opt) i = -1;          // optionale Zeilen lassen sich abwählen
+  else if (sel[k] === i) return;
+  sel = { ...sel, [k]: i };
+  if (k === 'tempo' && i >= 0) setBpm([62, 80, 100, 128, 160][i]);
+  apply();
+}
+function setBpm(b) { state.bpm = b; main.bpm = b; sound.bpm = b; minis.forEach(m => m.scene.bpm = b); $('bpm').value = b; $('bpmv').textContent = b + ' BPM'; save(); }
+
+scrollEl.addEventListener('click', e => {
+  const ch = e.target.closest('.chip'); if (ch) { hoverOff(true); setSel(ch.dataset.k, +ch.dataset.i); return; }
+  const lk = e.target.closest('.lock'); if (lk) { const k = lk.dataset.lock; state.locks[k] = !state.locks[k]; syncChips(); save(); return; }
+  const rb = e.target.closest('[data-rand]'); if (rb) { randomize([rb.dataset.rand]); return; }
+  const rs = e.target.closest('[data-reset]'); if (rs) { const d = defaults(); const s = { ...sel }; BOXES.find(b => b.id === rs.dataset.reset).rows.forEach(r => { if (!state.locks[r.k]) s[r.k] = d[r.k]; }); sel = s; apply(); return; }
+  if (e.target.closest('#derive')) {
+    const set = deriveFromSound(sel), changed = [];
+    const s = { ...sel }; for (const k in set) if (!state.locks[k] && s[k] !== set[k]) { s[k] = set[k]; changed.push(k); }
+    if (!changed.length) { toast('Keine Änderungen – passt schon zum Klang.'); return; }
+    const before = sel; sel = s; apply();
+    changed.forEach(k => { const row = scrollEl.querySelector(`.row[data-k="${k}"]`); row.classList.remove('flash'); void row.offsetWidth; row.classList.add('flash'); });
+    toast(`${changed.length} visuelle Ausprägungen aus dem Klang abgeleitet`, 'Rückgängig', () => { sel = before; apply(); });
+  }
+});
+
+/* Hover-Vorschau */
+let hoverOn = true, hoverT = 0, previewing = false;
+try { hoverOn = localStorage.getItem('av-kasten-hover') !== '0'; } catch (e) {}
+$('hover').classList.toggle('on', hoverOn);
+$('hover').onclick = () => { hoverOn = !hoverOn; $('hover').classList.toggle('on', hoverOn); try { localStorage.setItem('av-kasten-hover', hoverOn ? '1' : '0'); } catch (e) {} if (!hoverOn) hoverOff(); };
+function hoverOff(skipRebuild) { clearTimeout(hoverT); if (previewing) { previewing = false; $('ptag').classList.remove('on'); if (!skipRebuild) main.set(vals(sel)); } }
+scrollEl.addEventListener('pointerover', e => {
+  const ch = e.target.closest('.chip'); if (!ch || !hoverOn || e.pointerType === 'touch') return;
+  clearTimeout(hoverT);
+  hoverT = setTimeout(() => {
+    const k = ch.dataset.k, i = +ch.dataset.i; if (sel[k] === i) { hoverOff(); return; }
+    previewing = true; $('ptag').textContent = `Vorschau: ${ROW[k].n} = ${ROW[k].o[i]}`; $('ptag').classList.add('on');
+    main.set(vals({ ...sel, [k]: i }));
+  }, 140);
+});
+scrollEl.addEventListener('pointerout', e => { const ch = e.target.closest('.chip'); if (ch && !ch.contains(e.relatedTarget)) hoverOff(); });
+
+/* Zufall */
+function randomize(boxIds) {
+  const s = { ...sel };
+  BOXES.filter(b => boxIds.includes(b.id)).forEach(b => b.rows.forEach(r => {
+    if (state.locks[r.k]) return;
+    s[r.k] = r.opt && Math.random() < .3 ? -1 : Math.floor(Math.random() * r.o.length);
+  }));
+  if (boxIds.includes('look') && !state.locks.alpha && Math.random() < .6) s.alpha = 0;   // nicht zu oft unsichtbar
+  sel = s; apply();
+}
+$('rand').onclick = () => randomize(['look', 'move']);
+$('reset').onclick = () => { const before = sel; sel = defaults(); state.current = null; apply(); toast('Auf Standard zurückgesetzt', 'Rückgängig', () => { sel = before; apply(); }); };
+
+/* Tabs */
+const tabs = [...document.querySelectorAll('.tabs .t')];
+tabs.forEach(t => t.onclick = () => { const box = $('box-' + t.dataset.go); scrollEl.scrollTo({ top: box.offsetTop - 4, behavior: 'smooth' }); if (getComputedStyle(scrollEl).overflowY === 'visible') box.scrollIntoView({ behavior: 'smooth' }); });
+scrollEl.addEventListener('scroll', () => {
+  let cur = 'look'; for (const b of BOXES) { if ($('box-' + b.id).offsetTop - scrollEl.scrollTop < 80) cur = b.id; }
+  if (scrollEl.scrollTop + scrollEl.clientHeight >= scrollEl.scrollHeight - 4) cur = 'sound';
+  tabs.forEach(t => t.classList.toggle('on', t.dataset.go === cur));
+});
+
+/* Wiedergabe, Tempo, Klangquelle */
+let playing = true;
+const PLAY_ICON = '<svg class="i" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg>', PAUSE_ICON = '<svg class="i" viewBox="0 0 24 24"><path d="M8 5.5v13M16 5.5v13" stroke-width="3"/></svg>';
+const setPlay = p => { playing = p; $('play').innerHTML = p ? PAUSE_ICON : PLAY_ICON; };
+setPlay(true);
+$('play').onclick = () => setPlay(!playing);
+$('bpm').oninput = e => setBpm(+e.target.value);
+document.querySelectorAll('[data-src]').forEach(b => b.onclick = () => {
+  document.querySelectorAll('[data-src]').forEach(x => x.classList.toggle('on', x === b));
+  sound.setMode(b.dataset.src); $('meters').classList.toggle('off', b.dataset.src === 'off');
+  if (b.dataset.src === 'synth') toast('Synth spielt den Klang aus Kasten 3 – die Visualisierung reagiert auf Pegel und Tonhöhe');
+  if (b.dataset.src === 'song') toast('Song läuft – Pegel steuert Größe, Klanghöhe die vertikale Position');
+});
+
+/* Bild & Link */
+$('png').onclick = () => { const a = document.createElement('a'); a.download = `kasten-${(state.current || 'kombination').toLowerCase().replace(/[^a-z0-9]+/g, '-')}.png`; a.href = stageCv.toDataURL('image/png'); a.click(); };
+$('link').onclick = async () => { save(); try { await navigator.clipboard.writeText(location.href); toast('Link zur Kombination kopiert'); } catch (e) { toast('Link: ' + location.href); } };
+
+/* Instrumente */
+const COLORS = ['--c0', '--c1', '--c2', '--c3', '--c4', '--c5', '--c6', '--c7'];
+const colorOf = name => { const i = SONG_INSTRUMENTS.indexOf(name); const k = i >= 0 ? i : (state.instruments.findIndex(x => x.name === name) + 3); return getComputedStyle(document.documentElement).getPropertyValue(COLORS[((k % 8) + 8) % 8]).trim(); };
+const summary = s => { const v = vals(s); return [v.element, v.char, v.size, v.hue, v.dir || v.path, v.appear].filter(Boolean).join(' · '); };
+let minis = [];
+function fillInstSelect() {
+  const names = [...new Set([...SONG_INSTRUMENTS, ...state.instruments.map(x => x.name)])];
+  $('instName').innerHTML = names.map(n => `<option${n === state.current ? ' selected' : ''}>${n}</option>`).join('') + '<option value="__new">+ Eigenes Instrument…</option>';
+}
+function renderCards() {
+  const wrapEl = $('cards');
+  minis = [];
+  if (!state.instruments.length) { wrapEl.innerHTML = '<div class="empty">Noch nichts gespeichert. Kombination einstellen, oben ein Instrument wählen und „Speichern“ drücken – so könnt ihr die Spuren nebeneinander vergleichen.</div>'; return; }
+  const order = x => { const i = SONG_INSTRUMENTS.indexOf(x.name); return i < 0 ? 99 : i; };
+  const list = [...state.instruments].sort((a, b) => order(a) - order(b));
+  wrapEl.innerHTML = list.map(x => `<div class="card${x.name === state.current ? ' cur' : ''}" data-n="${x.name.replace(/"/g, '&quot;')}" tabindex="0" title="Klicken zum Laden">
+    <canvas></canvas><div class="cm"><i style="background:${colorOf(x.name)}"></i>${x.name.replace(/</g, '&lt;')}</div><small>${summary(x.sel)}</small>
+    <button class="x" title="${x.name.replace(/"/g, '&quot;')} löschen" aria-label="Löschen">×</button></div>`).join('');
+  wrapEl.querySelectorAll('.card').forEach(card => {
+    const x = state.instruments.find(i => i.name === card.dataset.n);
+    const sc = new Scene(card.querySelector('canvas'), true); sc.bpm = state.bpm; sc.resize(); sc.set(vals(x.sel));
+    minis.push({ scene: sc, card });
+    const load = () => { const before = sel, prevCur = state.current; sel = { ...defaults(), ...x.sel }; state.current = x.name; apply(); fillInstSelect(); renderCards(); toast(`${x.name} geladen`, 'Rückgängig', () => { sel = before; state.current = prevCur; apply(); fillInstSelect(); renderCards(); }); };
+    card.onclick = e => { if (e.target.closest('.x')) return; load(); };
+    card.onkeydown = e => { if (e.key === 'Enter') load(); };
+    card.onmouseenter = () => { cmpSel = x.sel; cmpColor = colorOf(x.name); drawPaths(); };
+    card.onmouseleave = () => { cmpSel = null; drawPaths(); };
+    card.querySelector('.x').onclick = () => {
+      if (!confirm(`„${x.name}“ wirklich löschen?`)) return;
+      state.instruments = state.instruments.filter(i => i !== x); if (state.current === x.name) state.current = null;
+      cmpSel = null; save(); renderCards(); updateBadge(); drawPaths();
+    };
+  });
+}
+$('instName').onchange = e => {
+  if (e.target.value !== '__new') return;
+  const n = (prompt('Name des Instruments / der Spur:') || '').trim();
+  if (n) { if (!state.instruments.some(x => x.name === n)) state.instruments.push({ name: n, sel: { ...sel } }); state.current = n; save(); renderCards(); updateBadge(); toast(`„${n}“ angelegt und gespeichert`); }
+  fillInstSelect();
+};
+$('save').onclick = () => {
+  const n = $('instName').value; if (!n || n === '__new') return;
+  const ex = state.instruments.find(x => x.name === n);
+  if (ex) ex.sel = { ...sel }; else state.instruments.push({ name: n, sel: { ...sel } });
+  state.current = n; save(); renderCards(); updateBadge();
+  toast(ex ? `${n} aktualisiert` : `Kombination für ${n} gespeichert`);
+};
+$('exp').onclick = () => {
+  const blob = new Blob([JSON.stringify({ app: 'morphologischer-kasten', version: 1, instruments: state.instruments }, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'morphologischer-kasten.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+};
+$('imp').onclick = () => $('impFile').click();
+$('impFile').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const d = JSON.parse(await f.text()); const list = Array.isArray(d) ? d : d.instruments; if (!Array.isArray(list)) throw 0;
+    let k = 0; list.forEach(x => { if (!x || !x.name || !x.sel) return; const s = { ...defaults() }; ROWS.forEach(r => { const i = x.sel[r.k]; if (Number.isInteger(i) && i >= -1 && i < r.o.length) s[r.k] = i; }); const ex = state.instruments.find(i => i.name === x.name); if (ex) ex.sel = s; else state.instruments.push({ name: String(x.name).slice(0, 40), sel: s }); k++; });
+    save(); fillInstSelect(); renderCards(); toast(`${k} Instrumente importiert`);
+  } catch (err) { toast('Datei konnte nicht gelesen werden'); }
+  e.target.value = '';
+};
+function updateBadge() {
+  const cur = state.current && state.instruments.find(x => x.name === state.current);
+  const dirty = cur && encode(cur.sel) !== encode(sel);
+  $('badge').innerHTML = cur ? `<i style="background:${colorOf(cur.name)}"></i><b>${cur.name.replace(/</g, '&lt;')}</b>${dirty ? ' <em>· geändert</em>' : ''}` : `<i></i>Neue Kombination`;
+}
+
+/* Toast */
+let toastT = 0;
+function toast(msg, act, fn) {
+  const t = $('toast'); t.innerHTML = `<span>${msg}</span>` + (act ? `<button>${act}</button>` : '');
+  if (act) t.querySelector('button').onclick = () => { fn(); t.classList.remove('on'); };
+  t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), act ? 5000 : 2600);
+}
+
+/* Theme */
+function setTheme(t) { document.documentElement.dataset.theme = t; try { localStorage.setItem('av-theme', t); } catch (e) {} main.readTheme(); minis.forEach(m => m.scene.readTheme()); }
+{ let t; try { t = localStorage.getItem('av-theme'); } catch (e) {} document.documentElement.dataset.theme = t || 'dark'; main.readTheme(); }
+$('theme').onclick = () => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+
+/* Tastatur */
+addEventListener('keydown', e => {
+  if (e.target.closest('input, select, textarea') || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.code === 'Space' && !e.target.closest('button')) { e.preventDefault(); setPlay(!playing); }
+  if (e.key === 'r' || e.key === 'R') randomize(['look', 'move']);
+});
+
+/* Größe */
+const ro = new ResizeObserver(() => { main.resize(); minis.forEach(m => m.scene.resize()); drawPaths(); });
+ro.observe($('stagebox')); ro.observe(scrollEl);
+
+/* Hauptschleife */
+let last = performance.now(), T = 0, frameNo = 0;
+function loop(now) {
+  const dt = Math.min(.05, (now - last) / 1000); last = now; frameNo++;
+  if (playing) T += dt;
+  const feat = sound.features();
+  main.frame(T, playing ? dt : 0, feat);
+  if (frameNo % 2 === 0) for (const m of minis) m.scene.frame(T, playing ? dt * 2 : 0, null);
+  if (feat) { $('mAmp').style.width = (feat.amp * 100).toFixed(0) + '%'; $('mPitch').style.width = (feat.pitch * 100).toFixed(0) + '%'; }
+  requestAnimationFrame(loop);
+}
+
+/* Start */
+setBpm(state.bpm || 100);
+main.resize();
+fillInstSelect(); renderCards();
+apply();
+requestAnimationFrame(loop);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(drawPaths);
+</script>
+</body>
+</html>

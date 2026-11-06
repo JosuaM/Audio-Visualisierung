@@ -298,7 +298,7 @@ const BOXES = [
   ] },
   { id: 'move', title: 'Morphologischer Kasten 2', sub: 'Visuelles Verhalten', q: 'Wie verändert es sich und wie interagiert es mit anderen Elementen?', rows: [
     { k: 'shapeFx', n: 'Formveränderung', o: ['Vergrößern', 'Verkleinern', 'Verzerren', 'Dehnen', 'Drehen', 'Abrunden', 'Verpixeln', 'Keine'], d: -1, opt: 1 },
-    { k: 'dir', n: 'Bewegungsrichtung', o: ['Hoch', 'Runter', 'Rechts', 'Links', 'Schräg', 'Nach vorne', 'Nach hinten'], d: -1, opt: 1 },
+    { k: 'dir', n: 'Bewegungsrichtung', o: ['Hoch', 'Runter', 'Rechts', 'Links', 'Schräg', 'Nach vorne', 'Nach hinten', 'Zur Mitte', 'Nach außen'], d: -1, opt: 1 },
     { k: 'path', n: 'Bewegungsbahn', o: ['Gerade', 'Kreisförmig', 'Wellig', 'Zickzack', 'Spiralförmig', 'Zufällig'], d: -1, opt: 1 },
     { k: 'speed', n: 'Geschwindigkeit', o: ['Stillstand', 'Sehr langsam', 'Langsam', 'Moderat', 'Schnell', 'Sehr schnell'], d: 2 },
     { k: 'accel', n: 'Beschleunigung', o: ['Gleichmäßig', 'Zunehmend', 'Abnehmend', 'Plötzlich', 'Stufenweise'], d: 0 },
@@ -680,7 +680,7 @@ class Scene {
       default: return tm;
     }
   }
-  motion(e, tm) {
+  motion(e, tm, bx = this.W / 2, by = this.H / 2) {
     const v = this.v, M = this.M, W = this.W, H = this.H;
     const vpx = (SPEED[v.speed] ?? .26) * M * .18;
     const m = this.shapeTime(tm), D = vpx * m;
@@ -689,7 +689,20 @@ class Scene {
     const planar = !!(ux || uy);
     const path = v.path || (v.dir ? 'Gerade' : null);
     let nx = -uy, ny = ux; if (!planar) { nx = 0; ny = 1; }
-    let fwd = planar ? D : 0, dx = 0, dy = 0;
+    let fwd = planar ? D : 0, dx = 0, dy = 0, rfade = 1;
+    const radial = v.dir === 'Zur Mitte' || v.dir === 'Nach außen';
+    if (radial) {      // radial: zur Bildmitte hin oder von ihr weg, danach von vorn
+      const cx = W / 2, cy = H / 2, near = M * .25;
+      let rx = bx - cx, ry = by - cy, dist = Math.hypot(rx, ry);
+      if (dist < M * .04) { const a = (e.seed % 360) / 360 * TAU; rx = Math.cos(a); ry = Math.sin(a); } else { rx /= dist; ry /= dist; }
+      nx = -ry; ny = rx;
+      let sx = bx, sy = by, ex, ey;
+      if (v.dir === 'Zur Mitte') { if (dist < near) { sx = cx + rx * M * .32; sy = cy + ry * M * .32; } ex = cx; ey = cy; }
+      else { if (dist < near) { sx = cx; sy = cy; } ex = sx + rx * M * .45; ey = sy + ry * M * .45; }
+      const len = Math.hypot(ex - sx, ey - sy) || 1, f = fract(D / len + e.phase);
+      dx += sx + (ex - sx) * f - bx; dy += sy + (ey - sy) * f - by;
+      rfade = clamp(Math.min(f, 1 - f) / .12);
+    }
     const A = M * .07, lam = M * .34, ro = M * .13, ph = e.phase * TAU;
     switch (path) {
       case 'Wellig': { const o = A * Math.sin(D / lam * TAU + ph); dx += nx * o; dy += ny * o; break; }
@@ -708,7 +721,7 @@ class Scene {
       const z = depth > 0 ? lerp(3.2, .38, zf) : lerp(.38, 3.2, zf);
       persp = 1 / z; fade = clamp(Math.min(zf, 1 - zf) / .12);
     }
-    return { dx, dy, planar, persp, fade };
+    return { dx, dy, planar, persp, fade, rfade };
   }
   env(t, i, feat) {   // 0..1-Hüllkurve, die Formveränderung, Pixel, Sättigung usw. treibt
     if (feat) return feat.amp;
@@ -767,8 +780,8 @@ class Scene {
       if (v.element === 'Punkt') R = Math.max(2.2, R * .22);
       if (v.element === 'Fläche') R *= 1.35;
       if (e.partner) R = Math.max(R, M * .06);
-      const mo = this.motion(e, tm);
-      x += mo.dx; y += mo.dy;
+      const mo = this.motion(e, tm, x, y);
+      x += mo.dx; y += mo.dy; if (mo.rfade < 1) st.alpha *= mo.rfade;
       if (mo.planar) { const mg = R * 1.9; x = wrap(x, -mg, W + mg); y = wrap(y, -mg, H + mg); }
       if (mo.persp !== 1) { const cx = W / 2, cy = H * .45; x = cx + (x - cx) * mo.persp; y = cy + (y - cy) * mo.persp; R *= mo.persp; st.alpha *= mo.fade; st.z += mo.persp; }
       st.x = x; st.y = y; st.R = R; st.env = this.env(tt, e.i, feat);

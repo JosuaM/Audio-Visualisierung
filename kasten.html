@@ -287,7 +287,7 @@ const BOXES = [
     { k: 'size', n: 'Größe', o: ['Winzig', 'Klein', 'Mittel', 'Groß', 'Riesig'], d: 2 },
     { k: 'temp', n: 'Farbtemperatur', o: ['Warm', 'Neutral', 'Kalt'], d: 1 },
     { k: 'light', n: 'Helligkeit', o: ['Hell', 'Mittel', 'Dunkel'], d: 1 },
-    { k: 'hue', n: 'Farbton', o: ['Rot', 'Orange', 'Gelb', 'Grün', 'Blau', 'Violett', 'Magenta'], d: -1 },
+    { k: 'hue', n: 'Farbton', o: ['Rot', 'Orange', 'Gelb', 'Grün', 'Blau', 'Violett', 'Magenta', 'Unbunt'], d: -1 },
     { k: 'sat', n: 'Sättigung', o: ['Entsättigt', 'Mittel', 'Gesättigt'], d: 2 },
     { k: 'alpha', n: 'Transparenz', o: ['Undurchsichtig', 'Halbtransparent', 'Transparent'], d: 0 },
     { k: 'count', n: 'Anzahl', o: ['Einzeln', 'Wenige', 'Mehrere', 'Viele'], d: 0 },
@@ -297,7 +297,7 @@ const BOXES = [
     { k: 'surface', n: 'Oberflächenbeschaffenheit', o: ['Glatt', 'Körnig', 'Rau', 'Strukturiert', 'Texturiert'], d: 0 },
   ] },
   { id: 'move', title: 'Morphologischer Kasten 2', sub: 'Visuelles Verhalten', q: 'Wie verändert es sich und wie interagiert es mit anderen Elementen?', rows: [
-    { k: 'shapeFx', n: 'Formveränderung', o: ['Vergrößern', 'Verkleinern', 'Verzerren', 'Dehnen', 'Drehen', 'Abrunden', 'Verpixeln'], d: -1, opt: 1 },
+    { k: 'shapeFx', n: 'Formveränderung', o: ['Vergrößern', 'Verkleinern', 'Verzerren', 'Dehnen', 'Drehen', 'Abrunden', 'Verpixeln', 'Keine'], d: -1, opt: 1 },
     { k: 'dir', n: 'Bewegungsrichtung', o: ['Hoch', 'Runter', 'Rechts', 'Links', 'Schräg', 'Nach vorne', 'Nach hinten'], d: -1, opt: 1 },
     { k: 'path', n: 'Bewegungsbahn', o: ['Gerade', 'Kreisförmig', 'Wellig', 'Zickzack', 'Spiralförmig', 'Zufällig'], d: -1, opt: 1 },
     { k: 'speed', n: 'Geschwindigkeit', o: ['Stillstand', 'Sehr langsam', 'Langsam', 'Moderat', 'Schnell', 'Sehr schnell'], d: 2 },
@@ -307,9 +307,9 @@ const BOXES = [
     { k: 'vanish', n: 'Verschwindeverhalten', o: ['Fade-out', 'Zerfallen', 'Zoom-out', 'Jump-out', 'Schrumpfen', 'Auflösen', 'Ausblenden'], d: -1, opt: 1 },
     { k: 'trail', n: 'Spur', o: ['Keine', 'Punkte', 'Linie', 'Nachleuchten', 'Nachzeichnen', 'Nachbild'], d: 0 },
     { k: 'place', n: 'Position im Raum', o: ['Vordergrund', 'Hintergrund', 'Oben', 'Unten', 'Rechts', 'Links', 'Versteckt'], d: -1, opt: 1 },
-    { k: 'colorFx', n: 'Farbveränderung', o: ['Konstant', 'Dunkler', 'Heller', 'Farbwechsel', 'Sättigungswechsel', 'Farbverlauf'], d: 0 },
+    { k: 'colorFx', n: 'Farbveränderung', o: ['Konstant', 'Dunkler', 'Heller', 'Farbwechsel', 'Sättigungswechsel', 'Farbverlauf', 'Keine'], d: 0 },
     { k: 'transform', n: 'Formtransformation', o: ['Teilung', 'Vermehrung', 'Reduktion', 'Verzweigung', 'Gruppierung', 'Keine'], d: 5 },
-    { k: 'interact', n: 'Interaktion zwischen Elementen', o: ['Anziehung', 'Abstoßung', 'Kollision', 'Verfolgung', 'Verdeckung'], d: -1, opt: 1 },
+    { k: 'interact', n: 'Interaktion zwischen Elementen', o: ['Anziehung', 'Abstoßung', 'Kollision', 'Verfolgung', 'Verdeckung', 'Keine'], d: -1, opt: 1 },
   ] },
   { id: 'sound', title: 'Akustische Parameter', sub: 'Klang', q: 'Auf welche Klangeigenschaften reagiert die Visualisierung? Wähle aus, wie das Instrument klingt – mit „Synth“ hörst du es, die Visualisierung reagiert darauf.', rows: [
     { k: 'loud', n: 'Lautstärke', o: ['Sehr leise', 'Leise', 'Mittel', 'Laut', 'Sehr laut'], d: 2, map: 'Größe, Kontrast, Farbintensität' },
@@ -336,7 +336,8 @@ const SOUND_TIMES = {"Riser":[[47.8,50.92]],"Hunting Horn":[[49.69,51.02]],"Flut
 
 const defaults = () => Object.fromEntries(ROWS.map(r => [r.k, -1]));   // Start: nichts gewählt
 // Für die Darstellung dienen die bisherigen Standardwerte als stiller Ersatz, solange eine Zeile nichts gewählt hat
-const vals = s => Object.fromEntries(ROWS.map(r => [r.k, s[r.k] >= 0 ? r.o[s[r.k]] : (r.d >= 0 ? r.o[r.d] : null)]));
+// „Keine“ am Ende von Formveränderung, Farbveränderung und Interaktion (hinten angehängt, damit gespeicherte Auswahlen gültig bleiben) = Effekt aus
+const vals = s => Object.fromEntries(ROWS.map(r => { const v = s[r.k] >= 0 ? r.o[s[r.k]] : (r.d >= 0 ? r.o[r.d] : null); return [r.k, v === 'Keine' && (r.k === 'shapeFx' || r.k === 'colorFx' || r.k === 'interact') ? null : v]; }));
 const encode = s => ROWS.map(r => s[r.k] >= 0 ? s[r.k].toString(36) : '-').join('');
 function decode(str) {
   const s = defaults();
@@ -734,7 +735,8 @@ class Scene {
       case 'Farbverlauf': h += this.t * 22; break;
     }
     l += s.lAdd || 0; sat += s.sAdd || 0; if (s.hit) l += 22 * s.hit;
-    if (!v.hue && v.colorFx !== 'Farbwechsel' && v.colorFx !== 'Farbverlauf') sat = 0;   // Standard: schlichtes Grau, solange kein Farbton gewählt ist
+    if (v.hue === 'Unbunt') sat = 0;   // unbunt: Schwarz, Weiß, Grau – Helligkeit bestimmt den Ton
+    else if (!v.hue && v.colorFx !== 'Farbwechsel' && v.colorFx !== 'Farbverlauf') sat = 0;   // Standard: schlichtes Grau, solange kein Farbton gewählt ist
     return { h: ((h % 360) + 360) % 360, s: clamp(sat, 0, 100), l: clamp(l, 4, 96) };
   }
 
@@ -1430,7 +1432,7 @@ const ICON = {
 };
 function chipDeco(k, i) {
   if (ICON[k]) return `<svg viewBox="0 0 16 16" aria-hidden="true">${ICON[k][i]}</svg>`;
-  if (k === 'hue') return `<i class="sw" style="background:hsl(${HUE[ROW.hue.o[i]]},80%,55%)"></i>`;
+  if (k === 'hue') return ROW.hue.o[i] === 'Unbunt' ? '<i class="sw" style="background:linear-gradient(90deg,#111 50%,#fff 50%)"></i>' : `<i class="sw" style="background:hsl(${HUE[ROW.hue.o[i]]},80%,55%)"></i>`;
   if (k === 'temp') return `<i class="sw" style="background:${['#f08a3c', '#9b9a9e', '#4a8ef0'][i]}"></i>`;
   if (k === 'light') return `<i class="sw" style="background:hsl(28,10%,${[82, 55, 26][i]}%)"></i>`;
   if (k === 'sat') return `<i class="sw" style="background:hsl(20,${[8, 50, 95][i]}%,55%)"></i>`;
@@ -1713,13 +1715,13 @@ $('png').onclick = () => { const a = document.createElement('a'); a.download = `
 function buildBoxImage() {
   const S = 2, WD = 1100, M = 40, INNER = WD - 2 * M, FONT = 'Inter, system-ui, -apple-system, "Segoe UI", sans-serif';
   const INK = '#1b1b22', MUTED = '#7b7a82', LINE = '#cfcbc0', FILL = '#f3f1ec', ACC = '#74747c';
-  const LBL = 190, COLS = 7, CW0 = (INNER - LBL) / COLS, RH = 30, HH = 22;
+  const LBL = 190, COLS = Math.max(7, ...ROWS.filter(r => r.box !== 'sound').map(r => r.o.length)), CW0 = (INNER - LBL) / COLS, RH = 30, HH = 22;
   /* Wer hat was gewählt? Beide Namen → Vergleich, ein Name → dessen Farbe, kein Name → Akzent */
   const PCOL = { Jeremy: '#ff6a14', Josua: '#2563eb' }, cmpSel = compareSels();
   const layers = cmpSel ? state.who.map((n, i) => ({ name: n, col: PCOL[n], s: cmpSel[i] }))
                : [{ name: state.who[0] || '', col: state.who.length ? PCOL[state.who[0]] : '#ff6a14', s: sel }];
   const pickers = (k, i) => layers.filter(L => L.s[k] === i);
-  const dotOf = (k, i) => { const m = chipDeco(k, i).match(/background:([^;"]+)/); return m ? m[1] : null; };
+  const dotOf = (k, i) => { const m = chipDeco(k, i).match(/background:([^;"]+)/); return m ? (m[1].startsWith('linear-gradient') ? '#8a8a8a' : m[1]) : null; };
 
   /* Bewegung: Szene unabhängig vom Bildschirm auf Weiß rendern */
   const FW = 620, FH = 340, dpr = 2;

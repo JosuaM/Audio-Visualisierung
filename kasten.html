@@ -207,6 +207,7 @@ input[type=range]::-moz-range-thumb { width: 13px; height: 13px; border-radius: 
       <button id="rand" title="Zufällige Kombination für Kasten 1 &amp; 2 (R) – gesperrte Zeilen bleiben"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1.1" fill="currentColor"/><circle cx="15" cy="15" r="1.1" fill="currentColor"/><circle cx="15" cy="9" r="1.1" fill="currentColor"/><circle cx="9" cy="15" r="1.1" fill="currentColor"/></svg>Zufall</button>
       <button id="reset" class="icon" title="Alles auf Standard zurücksetzen" aria-label="Zurücksetzen"><svg class="i" viewBox="0 0 24 24"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.5 4.5v4h4"/></svg></button>
       <button id="png" class="icon" title="Aktuelles Bild als PNG speichern" aria-label="Bild speichern"><svg class="i" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l5-4.5 4 3.5 3-2.5 4 3.5"/></svg></button>
+      <button id="boxpng" title="Alle drei Kästen als Bild exportieren (weißer Hintergrund, klassische Tabellen, Bewegungsspur)"><svg class="i" viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="2"/><path d="M3.5 9.5h17M3.5 14.5h17M9.5 4v16"/></svg>Kasten als Bild</button>
       <button id="link" class="icon" title="Link zu dieser Kombination kopieren" aria-label="Link kopieren"><svg class="i" viewBox="0 0 24 24"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></svg></button>
       </div>
     </div>
@@ -250,7 +251,7 @@ const BOXES = [
     { k: 'size', n: 'Größe', o: ['Winzig', 'Klein', 'Mittel', 'Groß', 'Riesig'], d: 2 },
     { k: 'temp', n: 'Farbtemperatur', o: ['Warm', 'Neutral', 'Kalt'], d: 1 },
     { k: 'light', n: 'Helligkeit', o: ['Hell', 'Mittel', 'Dunkel'], d: 1 },
-    { k: 'hue', n: 'Farbton', o: ['Rot', 'Orange', 'Gelb', 'Grün', 'Blau', 'Violett', 'Magenta'], d: 1 },
+    { k: 'hue', n: 'Farbton', o: ['Rot', 'Orange', 'Gelb', 'Grün', 'Blau', 'Violett', 'Magenta'], d: -1 },
     { k: 'sat', n: 'Sättigung', o: ['Entsättigt', 'Mittel', 'Gesättigt'], d: 2 },
     { k: 'alpha', n: 'Transparenz', o: ['Undurchsichtig', 'Halbtransparent', 'Transparent'], d: 0 },
     { k: 'count', n: 'Anzahl', o: ['Einzeln', 'Wenige', 'Mehrere', 'Viele'], d: 0 },
@@ -695,6 +696,7 @@ class Scene {
       case 'Farbverlauf': h += this.t * 22; break;
     }
     l += s.lAdd || 0; sat += s.sAdd || 0; if (s.hit) l += 22 * s.hit;
+    if (!v.hue && v.colorFx !== 'Farbwechsel' && v.colorFx !== 'Farbverlauf') sat = 0;   // Standard: schlichtes Grau, solange kein Farbton gewählt ist
     return { h: ((h % 360) + 360) % 360, s: clamp(sat, 0, 100), l: clamp(l, 4, 96) };
   }
 
@@ -1531,6 +1533,141 @@ document.querySelectorAll('[data-src]').forEach(b => b.onclick = () => {
 
 /* Bild & Link */
 $('png').onclick = () => { const a = document.createElement('a'); a.download = `kasten-${(state.current || 'kombination').toLowerCase().replace(/[^a-z0-9]+/g, '-')}.png`; a.href = stageCv.toDataURL('image/png'); a.click(); };
+/* Export: alle Kästen als klassische Tabellen auf Weiß, dazu Bewegungsspur (Mehrfachbelichtung) und Einzelbilder */
+function buildBoxImage() {
+  const S = 2, WD = 1100, M = 40, INNER = WD - 2 * M, FONT = 'Inter, system-ui, -apple-system, "Segoe UI", sans-serif';
+  const INK = '#1b1b22', MUTED = '#7b7a82', LINE = '#cfcbc0', FILL = '#f3f1ec', ACC = '#74747c';
+  const LBL = 190, COLS = 7, CW0 = (INNER - LBL) / COLS, RH = 30, HH = 22;
+
+  /* Bewegung: Szene unabhängig vom Bildschirm auf Weiß rendern */
+  const FW = 620, FH = 340, dpr = 2;
+  const cv = document.createElement('canvas'); cv.width = FW * dpr; cv.height = FH * dpr;
+  const tmp = new Scene(cv);
+  tmp.W = FW; tmp.H = FH; tmp.dpr = dpr; tmp.bpm = state.bpm; tmp.dark = false;
+  for (const c of [tmp.L, tmp.T]) { c.width = FW * dpr; c.height = FH * dpr; }
+  tmp.col = { stage: '#ffffff', grid: 'rgba(40,40,60,.10)', ctxp: 'rgba(110,108,124,.16)', ctxs: 'rgba(110,108,124,.40)', hide: '#e4e1d8', muted: MUTED };
+  tmp.set(vals(sel));
+  const beat = 60 / state.bpm, span = 6 * beat, step = 1 / 30, N = Math.round(span / step);
+  const acc = document.createElement('canvas'); acc.width = FW * dpr; acc.height = FH * dpr;
+  const ax = acc.getContext('2d'); ax.fillStyle = '#fff'; ax.fillRect(0, 0, acc.width, acc.height);
+  const shots = [], shotAt = new Set([0, 1, 2, 3, 4, 5].map(k => Math.round(k * N / 5)));
+  for (let i = 0; i <= N; i++) {
+    tmp.frame(i * step, i ? step : 0, null);
+    if (i % 4 === 0 || i === N) { ax.globalCompositeOperation = 'darken'; ax.globalAlpha = i === N ? 1 : .3 + .7 * i / N; ax.drawImage(tmp.cv, 0, 0); }
+    if (shotAt.has(i)) { const c = document.createElement('canvas'); c.width = FW * dpr; c.height = FH * dpr; c.getContext('2d').drawImage(tmp.cv, 0, 0); shots.push({ c, t: i * step }); }
+  }
+
+  /* Höhen vorab berechnen */
+  const meas = document.createElement('canvas').getContext('2d');
+  const wrapLines = (c, text, maxW) => { const out = []; let cur = ''; for (const w of String(text).split(' ')) { const t = cur ? cur + ' ' + w : w; if (c.measureText(t).width > maxW && cur) { out.push(cur); cur = w; } else cur = t; } if (cur) out.push(cur); return out; };
+  meas.font = `italic 11.5px ${FONT}`;
+  const qLines = BOXES.map(b => wrapLines(meas, b.q, INNER));
+  const boxH = (b, i) => 24 + qLines[i].length * 15 + 8 + HH + b.rows.length * RH + 30;
+  const TOP = 92, STUDY = 22 + FH + 30;
+  const H = TOP + STUDY + BOXES.reduce((h, b, i) => h + boxH(b, i), 0) + 36;
+
+  const out = document.createElement('canvas'); out.width = WD * S; out.height = H * S;
+  const c = out.getContext('2d'); c.scale(S, S);
+  c.fillStyle = '#fff'; c.fillRect(0, 0, WD, H);
+  const rr = (x, y, w, h, r) => { c.beginPath(); c.roundRect ? c.roundRect(x, y, w, h, r) : c.rect(x, y, w, h); };
+  const fit = (text, maxW, size, weight) => { let s = size; for (;;) { c.font = `${weight} ${s}px ${FONT}`; if (c.measureText(text).width <= maxW || s <= 8) return; s -= .5; } };
+  c.textBaseline = 'middle';
+
+  /* Kopf */
+  c.fillStyle = INK; c.font = `700 24px ${FONT}`; c.textAlign = 'left'; c.fillText('Morphologischer Kasten', M, 40);
+  c.fillStyle = MUTED; c.font = `450 13px ${FONT}`;
+  const cur = state.current ? state.current : 'Neue Kombination';
+  c.fillText(`Audio-Visualisierung · ${cur} · ${state.bpm} BPM`, M, 66);
+  c.textAlign = 'right'; c.fillText(new Date().toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' }), WD - M, 66);
+  c.textAlign = 'left';
+  c.strokeStyle = LINE; c.lineWidth = 1; c.beginPath(); c.moveTo(M, 82); c.lineTo(WD - M, 82); c.stroke();
+
+  /* Bewegungsstudie */
+  let y = TOP;
+  c.fillStyle = INK; c.font = `650 12px ${FONT}`; c.fillText('Bewegungsspur', M, y + 8);
+  c.fillStyle = MUTED; c.font = `450 11px ${FONT}`; c.fillText('– Mehrfachbelichtung über 6 Schläge, frühe Bilder blass', M + 92, y + 8);
+  const gx = M + FW + 20, gw = INNER - FW - 20, fw = (gw - 10) / 2, fh = fw * FH / FW;
+  c.fillStyle = INK; c.font = `650 12px ${FONT}`; c.fillText('Einzelbilder', gx, y + 8);
+  y += 22;
+  c.drawImage(acc, M, y, FW, FH); c.strokeStyle = LINE; rr(M + .5, y + .5, FW - 1, FH - 1, 4); c.stroke();
+  shots.forEach((s, k) => {
+    const px = gx + (k % 2) * (fw + 10), py = y + Math.floor(k / 2) * (fh + 12);
+    c.drawImage(s.c, px, py, fw, fh); c.strokeStyle = LINE; c.strokeRect(px + .5, py + .5, fw - 1, fh - 1);
+    c.fillStyle = MUTED; c.font = `450 10px ${FONT}`; c.fillText(`${k + 1} · t = ${s.t.toFixed(1)} s`, px + 6, py + 10);
+  });
+  y += FH + 30;
+
+  /* Kästen als klassische Tabellen */
+  BOXES.forEach((b, bi) => {
+    c.textAlign = 'left'; c.fillStyle = INK; c.font = `700 15px ${FONT}`; c.fillText(b.title, M, y + 10);
+    const tw = c.measureText(b.title).width; c.fillStyle = MUTED; c.font = `450 15px ${FONT}`; c.fillText('· ' + b.sub, M + tw + 6, y + 10);
+    y += 24; c.fillStyle = MUTED; c.font = `italic 11.5px ${FONT}`;
+    qLines[bi].forEach((l, i) => c.fillText(l, M, y + 7 + i * 15)); y += qLines[bi].length * 15 + 8;
+    const hasMap = b.id === 'sound', nOpt = hasMap ? COLS - 1 : COLS, MAPW = 190, CW = hasMap ? (INNER - LBL - MAPW) / nOpt : CW0;
+    /* Kopfzeile */
+    c.fillStyle = FILL; c.fillRect(M, y, INNER, HH); c.strokeStyle = LINE; c.lineWidth = 1; c.strokeRect(M + .5, y + .5, INNER - 1, HH - 1);
+    c.fillStyle = INK; c.font = `650 11px ${FONT}`; c.fillText('Parameter', M + 10, y + HH / 2 + 1);
+    c.fillText('Ausprägungen', M + LBL + 10, y + HH / 2 + 1);
+    if (hasMap) c.fillText('→ Steuert', M + LBL + nOpt * CW + 10, y + HH / 2 + 1);
+    y += HH;
+    const y0 = y, pts = [];
+    b.rows.forEach((r, ri) => {
+      const ry = y0 + ri * RH;
+      c.fillStyle = FILL; c.fillRect(M, ry, LBL, RH); c.strokeStyle = LINE; c.strokeRect(M + .5, ry + .5, LBL - 1, RH - 1);
+      c.fillStyle = INK; fit(r.n, LBL - (r.opt ? 70 : 20), 12, 600); c.fillText(r.n, M + 10, ry + RH / 2 + 1);
+      if (r.opt) { const nw = c.measureText(r.n).width; c.fillStyle = '#a9a8ae'; c.font = `450 9.5px ${FONT}`; c.fillText('(optional)', M + 14 + nw, ry + RH / 2 + 1); }
+      r.o.forEach((o, oi) => {
+        const cx0 = M + LBL + oi * CW, on = sel[r.k] === oi;
+        c.fillStyle = on ? ACC : '#fff'; c.fillRect(cx0, ry, CW, RH); c.strokeStyle = LINE; c.strokeRect(cx0 + .5, ry + .5, CW - 1, RH - 1);
+        if (on) pts.push([cx0 + CW / 2, ry, ry + RH]);
+      });
+      if (hasMap && r.map) {
+        const cx0 = M + LBL + nOpt * CW;
+        c.fillStyle = '#fff'; c.fillRect(cx0, ry, MAPW, RH); c.strokeStyle = LINE; c.strokeRect(cx0 + .5, ry + .5, MAPW - 1, RH - 1);
+      }
+    });
+    /* Lösungspfad */
+    if (pts.length) {
+      c.strokeStyle = 'rgba(27,27,34,.8)'; c.lineWidth = 2; c.lineJoin = 'round'; c.beginPath();
+      pts.forEach((p, i) => { if (i) { c.moveTo(pts[i - 1][0], pts[i - 1][2]); c.lineTo(p[0], p[1]); } }); c.stroke();
+      c.fillStyle = INK; pts.forEach((p, i) => { if (i) { c.beginPath(); c.arc(p[0], p[1], 3, 0, TAU); c.fill(); c.beginPath(); c.arc(pts[i - 1][0], pts[i - 1][2], 3, 0, TAU); c.fill(); } });
+    }
+    /* Beschriftungen der Zellen */
+    c.textAlign = 'center';
+    b.rows.forEach((r, ri) => {
+      const ry = y0 + ri * RH;
+      r.o.forEach((o, oi) => {
+        const on = sel[r.k] === oi, cx0 = M + LBL + oi * CW;
+        c.fillStyle = on ? '#fff' : INK; fit(o, CW - 12, 11.5, on ? 700 : 450); c.fillText(o, cx0 + CW / 2, ry + RH / 2 + 1);
+      });
+      if (hasMap && r.map) {
+        const cx0 = M + LBL + nOpt * CW; c.fillStyle = MUTED; c.font = `italic 450 9.5px ${FONT}`;
+        const ls = wrapLines(c, r.map, MAPW - 12); ls.slice(0, 2).forEach((l, i, a) => c.fillText(l, cx0 + MAPW / 2, ry + RH / 2 + 1 + (i - (a.length - 1) / 2) * 11));
+      }
+    });
+    y = y0 + b.rows.length * RH + 30;
+  });
+
+  /* Legende */
+  c.textAlign = 'left'; c.fillStyle = ACC; c.fillRect(M, y - 8, 14, 10);
+  c.fillStyle = MUTED; c.font = `450 11px ${FONT}`; c.fillText('gewählte Ausprägung', M + 22, y - 2);
+  c.strokeStyle = 'rgba(27,27,34,.8)'; c.lineWidth = 2; c.beginPath(); c.moveTo(M + 160, y - 3); c.lineTo(M + 190, y - 3); c.stroke();
+  c.fillText('Lösungspfad durch den Kasten', M + 198, y - 2);
+  return out;
+}
+$('boxpng').onclick = () => {
+  toast('Bild wird erstellt …');
+  setTimeout(() => {
+    try {
+      const cvs = buildBoxImage();
+      cvs.toBlob(b => {
+        const a = document.createElement('a'); a.href = URL.createObjectURL(b);
+        a.download = `morphologischer-kasten-${(state.current || 'kombination').toLowerCase().replace(/[^a-z0-9]+/g, '-')}.png`; a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 2000); toast('Bild gespeichert');
+      }, 'image/png');
+    } catch (e) { console.error(e); toast('Export fehlgeschlagen: ' + e.message); }
+  }, 40);
+};
 $('link').onclick = async () => { save(); try { await navigator.clipboard.writeText(location.href); toast('Link zur Kombination kopiert'); } catch (e) { toast('Link: ' + location.href); } };
 
 /* Instrumente */

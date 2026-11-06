@@ -1524,8 +1524,8 @@ function profUI() {
     st.classList.remove('dirty');
   } else { st.textContent = ''; }
 }
-function loadProfile() {      // genau ein Name: dessen gespeicherte Auswahl für die Tonspur laden (falls vorhanden)
-  if (state.who.length === 1) { const s = savedFor(state.who[0], state.ptrack); if (s) sel = s; }
+function loadProfile() {      // genau ein Name: dessen gespeicherte Auswahl für die Tonspur laden (sonst leer)
+  if (state.who.length === 1) sel = savedFor(state.who[0], state.ptrack) || defaults();   // nur, was für Name + Tonspur gespeichert ist
   apply();
 }
 function fillPTrack(stems = []) {
@@ -1757,6 +1757,15 @@ function buildBoxImage() {
 
   /* Kopf */
   c.fillStyle = INK; c.font = `700 24px ${FONT}`; c.textAlign = 'left'; c.fillText('Morphologischer Kasten', M, 40);
+  { /* Tonspur gut sichtbar oben rechts */
+    const TC = ['#12985f', '#2558e8', '#d8304c', '#d98400', '#e5158f', '#7a4cff', '#0c95ad', '#7ea000'], ci = SONG_INSTRUMENTS.indexOf(state.ptrack), tc = ci >= 0 ? TC[ci] : INK;
+    c.font = `700 18px ${FONT}`; const tw = c.measureText(state.ptrack).width; c.font = `450 13px ${FONT}`; const lw = c.measureText('Tonspur').width;
+    const bw = 12 + lw + 10 + 14 + 8 + tw + 14, bx = WD - M - bw;
+    rr(bx, 22, bw, 34, 8); c.fillStyle = '#f3f1ec'; c.fill(); c.strokeStyle = LINE; c.lineWidth = 1; c.stroke();
+    c.fillStyle = MUTED; c.fillText('Tonspur', bx + 12, 40);
+    c.fillStyle = tc; rr(bx + 12 + lw + 10, 33, 14, 14, 3); c.fill();
+    c.fillStyle = INK; c.font = `700 18px ${FONT}`; c.fillText(state.ptrack, bx + 12 + lw + 10 + 14 + 8, 40);
+  }
   c.fillStyle = MUTED; c.font = `450 13px ${FONT}`;
   const who = cmpSel ? `${state.who[0]} & ${state.who[1]} im Vergleich` : state.who.length ? `Auswahl von ${state.who[0]}` : 'Aktuelle Auswahl';
   c.fillText(`Audio-Visualisierung · Tonspur: ${state.ptrack} · ${who} · ${state.bpm} BPM`, M, 66);

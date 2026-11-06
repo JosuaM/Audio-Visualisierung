@@ -51,7 +51,7 @@ select { font: inherit; color: inherit; background: var(--panel); border: 1px so
 
 /* Hauptlayout */
 .wrap { display: grid; grid-template-columns: minmax(0, 1fr) clamp(560px, 56vw, 960px); gap: 12px; min-height: 0; }
-.left { display: grid; grid-template-rows: minmax(0, 1fr) auto auto auto; gap: 10px; min-height: 0; min-width: 0; }
+.left { display: grid; grid-template-rows: minmax(0, 1fr) auto auto; gap: 10px; min-height: 0; min-width: 0; }
 .stagebox { position: relative; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--stage); min-height: 220px; }
 .stagebox canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .badge { position: absolute; left: 12px; top: 10px; display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--muted); background: color-mix(in srgb, var(--panel) 82%, transparent); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; backdrop-filter: blur(6px); pointer-events: none; }
@@ -81,23 +81,6 @@ input[type=range]::-moz-range-thumb { width: 13px; height: 13px; border-radius: 
 .note { font-size: 11.5px; color: var(--muted); border: 1px dashed var(--line-2); border-radius: 999px; padding: 2px 10px; }
 .note b { color: var(--ink); font-weight: 600; }
 
-/* Instrumente */
-.inst { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: 10px 12px; min-width: 0; }
-.ih { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
-.ih h3 { margin: 0; font-size: 12.5px; font-weight: 650; margin-right: auto; }
-.ih h3 span { color: var(--muted); font-weight: 450; }
-.ih button, .ih select { height: 28px; font-size: 12px; }
-.cards { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
-.card { flex: 0 0 172px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); cursor: pointer; overflow: hidden; position: relative; transition: border-color .15s, transform .15s; }
-.card:hover { border-color: var(--line-2); transform: translateY(-1px); }
-.card.cur { border-color: var(--accent); }
-.card canvas { display: block; width: 100%; height: 88px; background: var(--stage); }
-.card .cm { display: flex; align-items: center; gap: 6px; padding: 6px 8px 0; font-size: 12px; font-weight: 600; }
-.card .cm i { width: 9px; height: 9px; border-radius: 50%; flex: none; }
-.card small { display: block; padding: 2px 8px 7px; color: var(--muted); font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.card .x { position: absolute; top: 5px; right: 5px; width: 22px; height: 22px; padding: 0; justify-content: center; border-radius: 6px; opacity: 0; font-size: 14px; line-height: 1; }
-.card:hover .x, .card .x:focus-visible { opacity: 1; }
-.empty { color: var(--faint); font-size: 12px; padding: 14px 4px; }
 
 /* Kasten-Panel */
 .panel { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; overflow: hidden; }
@@ -118,11 +101,11 @@ input[type=range]::-moz-range-thumb { width: 13px; height: 13px; border-radius: 
 .acts button { height: 24px; font-size: 11.5px; padding: 0 8px; border-color: var(--line); color: var(--muted); }
 .acts button:hover { color: var(--ink); }
 .rows { position: relative; }
-.rows svg.path { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; z-index: 0; }
-.row { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 8px; padding: 5px 0; align-items: start; position: relative; border-radius: 8px; }
+.rows svg.path { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; z-index: 2; }
+.row { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 8px; padding: 2px 0; align-items: start; position: relative; border-radius: 8px; }
 .row.flash { animation: flash 1.4s ease-out; }
 @keyframes flash { 0% { background: color-mix(in srgb, var(--accent) 22%, transparent); } 100% { background: transparent; } }
-.rl { display: flex; flex-direction: column; padding-top: 5px; min-width: 0; }
+.rl { display: flex; flex-direction: column; justify-content: center; min-width: 0; }
 .rl .nm { display: flex; align-items: center; gap: 4px; font-weight: 560; font-size: 12px; }
 .rl .nm .opt { color: var(--faint); font-weight: 400; font-size: 10.5px; }
 .rl small { color: var(--faint); font-size: 10.5px; line-height: 1.25; margin-top: 2px; }
@@ -130,14 +113,12 @@ input[type=range]::-moz-range-thumb { width: 13px; height: 13px; border-radius: 
 .lock svg { width: 12px; height: 12px; }
 .row:hover .lock, .lock.on, .lock:focus-visible { opacity: 1; }
 .lock.on { color: var(--accent); }
-.opts { display: flex; flex-wrap: nowrap; gap: 5px; position: relative; z-index: 1; overflow-x: auto; scrollbar-width: none; padding: 3px; margin: -3px; }
-.opts::-webkit-scrollbar { display: none; }
-.chip { flex: none; }
-.chip { height: 28px; padding: 0 10px; border-radius: 999px; background: var(--chip); border: 1px solid var(--line); font-size: 12px; color: var(--ink); gap: 6px; }
-.chip:hover { background: var(--chip-h); border-color: var(--line-2); }
-.chip.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
-.chip.cmp { box-shadow: 0 0 0 2px var(--cc); }
-.chip svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; flex: none; }
+.opts { display: flex; position: relative; width: 100%; z-index: 1; border: 1px solid var(--line-2); border-radius: 6px; overflow: hidden; background: var(--bg); }
+.chip { flex: 0 0 calc(100% / 7 - .15px); min-width: 0; height: auto; min-height: 36px; padding: 4px 3px; border: 0; border-left: 1px solid var(--line-2); border-radius: 0; background: transparent; font-size: 11.5px; line-height: 1.2; color: var(--ink); gap: 4px; justify-content: center; text-align: center; white-space: normal; overflow-wrap: anywhere; hyphens: auto; }
+.chip:first-child { border-left: 0; }
+.chip:hover { background: var(--chip-h); }
+.chip.on { background: var(--accent); color: var(--accent-ink); font-weight: 650; }
+.chip svg { display: none; }
 .sw { width: 11px; height: 11px; border-radius: 50%; display: inline-block; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18); flex: none; }
 .derive { margin-top: 10px; display: flex; gap: 10px; align-items: center; padding: 10px 12px; border: 1px dashed var(--line-2); border-radius: 10px; }
 .derive p { margin: 0; color: var(--muted); font-size: 11.5px; flex: 1; }
@@ -152,7 +133,7 @@ input[type=range]::-moz-range-thumb { width: 13px; height: 13px; border-radius: 
   html, body { height: auto; overflow: auto; }
   body { grid-template-rows: auto auto; }
   .wrap { grid-template-columns: minmax(0, 1fr); }
-  .left { grid-template-rows: auto auto auto auto; }
+  .left { grid-template-rows: auto auto auto; }
   .stagebox { height: 56vh; }
   .scroll { overflow: visible; }
   .tabs { position: sticky; top: 0; z-index: 3; background: var(--panel); }
@@ -188,7 +169,6 @@ input[type=range]::-moz-range-thumb { width: 13px; height: 13px; border-radius: 
   <section class="left">
     <div class="stagebox" id="stagebox">
       <canvas id="stage" aria-label="Visualisierung der gewählten Kombination"></canvas>
-      <div class="badge" id="badge"></div>
       <div class="preview-tag" id="ptag">Vorschau</div>
     </div>
 
@@ -208,23 +188,11 @@ input[type=range]::-moz-range-thumb { width: 13px; height: 13px; border-radius: 
       <button id="reset" class="icon" title="Alles auf Standard zurücksetzen" aria-label="Zurücksetzen"><svg class="i" viewBox="0 0 24 24"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.5 4.5v4h4"/></svg></button>
       <button id="png" class="icon" title="Aktuelles Bild als PNG speichern" aria-label="Bild speichern"><svg class="i" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l5-4.5 4 3.5 3-2.5 4 3.5"/></svg></button>
       <button id="boxpng" title="Alle drei Kästen als Bild exportieren (weißer Hintergrund, klassische Tabellen, Bewegungsspur)"><svg class="i" viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="2"/><path d="M3.5 9.5h17M3.5 14.5h17M9.5 4v16"/></svg>Kasten als Bild</button>
-      <button id="link" class="icon" title="Link zu dieser Kombination kopieren" aria-label="Link kopieren"><svg class="i" viewBox="0 0 24 24"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></svg></button>
       </div>
     </div>
 
     <div class="notes" id="notes" aria-live="polite"></div>
 
-    <div class="inst">
-      <div class="ih">
-        <h3>Instrumente <span>– gespeicherte Kombinationen zum Vergleichen</span></h3>
-        <span class="sel"><select id="instName" aria-label="Instrument wählen"></select></span>
-        <button id="save" title="Aktuelle Kombination für dieses Instrument speichern"><svg class="i" viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/></svg>Speichern</button>
-        <button id="exp" class="icon" title="Alle Instrumente als JSON exportieren" aria-label="Exportieren"><svg class="i" viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19h14"/></svg></button>
-        <button id="imp" class="icon" title="Instrumente aus JSON importieren" aria-label="Importieren"><svg class="i" viewBox="0 0 24 24"><path d="M12 15V4M7.5 8.5L12 4l4.5 4.5M5 19h14"/></svg></button>
-        <input type="file" id="impFile" accept=".json,application/json" hidden>
-      </div>
-      <div class="cards" id="cards"></div>
-    </div>
   </section>
 
   <aside class="panel">
@@ -1399,7 +1367,7 @@ const LOCK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-
 const STORE = 'av-kasten-v1';
 let state = { sel: defaults(), locks: {}, instruments: [], bpm: 100, current: null };
 try { const s = JSON.parse(localStorage.getItem(STORE) || 'null'); if (s && s.sel) state = { ...state, ...s, sel: defaults() }; } catch (e) {}
-{ const m = location.hash.match(/k=([0-9a-z-]+)/i); const d = m && decode(m[1]); if (d && m[1] !== encode(state.sel)) { state.sel = d; state.current = null; } }
+{ const m = location.hash.match(/k=([0-9a-z-]+)/i); const d = m && decode(m[1]); if (d) state.sel = d; }
 let sel = state.sel;
 
 function save() {
@@ -1432,18 +1400,16 @@ function syncChips() {
 }
 
 /* Lösungspfad durch den Kasten (klassische Darstellung) */
-let cmpSel = null, cmpColor = null;
+
 function drawPaths() {
   scrollEl.querySelectorAll('.box').forEach(box => {
     const rows = box.querySelector('.rows'), svg = rows.querySelector('svg.path'), rr = rows.getBoundingClientRect();
     svg.setAttribute('width', rows.scrollWidth); svg.setAttribute('height', rows.scrollHeight);
     const pts = (s) => [...rows.querySelectorAll('.row')].map(row => { const k = row.dataset.k; if (!(s[k] >= 0)) return null; const ch = row.querySelector(`.chip[data-i="${s[k]}"]`); if (!ch) return null; const r = ch.getBoundingClientRect(); return [r.left - rr.left + r.width / 2, r.top - rr.top + r.height / 2]; }).filter(Boolean);
     const line = (p, color, dash, w) => p.length ? `<polyline points="${p.map(q => q.map(n => n.toFixed(1)).join(',')).join(' ')}" fill="none" stroke="${color}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round" ${dash ? 'stroke-dasharray="5 5"' : ''} opacity=".7"/>` : '';
-    let html = line(pts(sel), 'var(--accent)', false, 2);
-    if (cmpSel) html += line(pts(cmpSel), cmpColor, true, 2);
+    let html = line(pts(sel), 'var(--ink)', false, 2);
     svg.innerHTML = html;
   });
-  scrollEl.querySelectorAll('.chip').forEach(ch => { const c = cmpSel && cmpSel[ch.dataset.k] === +ch.dataset.i; ch.classList.toggle('cmp', !!c); if (c) ch.style.setProperty('--cc', cmpColor); });
 }
 
 /* Szene & Klang */
@@ -1455,7 +1421,7 @@ function apply(rebuild = true) {
   if (rebuild) main.set(v);
   sound.v = v; sound.apply();
   $('notes').innerHTML = notesFor(v).map(n => `<span class="note">${n}</span>`).join('');
-  updateBadge(); syncChips(); save();
+  syncChips(); save();
 }
 function setSel(k, i, opts = {}) {
   const r = ROW[k];
@@ -1463,7 +1429,7 @@ function setSel(k, i, opts = {}) {
   sel = { ...sel, [k]: i };
   apply();
 }
-function setBpm(b) { state.bpm = b; main.bpm = b; sound.bpm = b; minis.forEach(m => m.scene.bpm = b); $('bpmv').textContent = String(b).replace(/\.0$/, '') + ' BPM'; }
+function setBpm(b) { state.bpm = b; main.bpm = b; sound.bpm = b; $('bpmv').textContent = String(b).replace(/\.0$/, '') + ' BPM'; }
 
 scrollEl.addEventListener('click', e => {
   const ch = e.target.closest('.chip'); if (ch) { hoverOff(true); setSel(ch.dataset.k, +ch.dataset.i); return; }
@@ -1508,7 +1474,7 @@ function randomize(boxIds) {
   sel = s; apply();
 }
 $('rand').onclick = () => randomize(['look', 'move']);
-$('reset').onclick = () => { const before = sel; sel = defaults(); state.current = null; apply(); toast('Auf Standard zurückgesetzt', 'Rückgängig', () => { sel = before; apply(); }); };
+$('reset').onclick = () => { const before = sel; sel = defaults(); apply(); toast('Auf Standard zurückgesetzt', 'Rückgängig', () => { sel = before; apply(); }); };
 
 /* Tabs */
 const tabs = [...document.querySelectorAll('.tabs .t')];
@@ -1532,7 +1498,7 @@ document.querySelectorAll('[data-src]').forEach(b => b.onclick = () => {
 });
 
 /* Bild & Link */
-$('png').onclick = () => { const a = document.createElement('a'); a.download = `kasten-${(state.current || 'kombination').toLowerCase().replace(/[^a-z0-9]+/g, '-')}.png`; a.href = stageCv.toDataURL('image/png'); a.click(); };
+$('png').onclick = () => { const a = document.createElement('a'); a.download = `kasten-${'kombination'}.png`; a.href = stageCv.toDataURL('image/png'); a.click(); };
 /* Export: alle Kästen als klassische Tabellen auf Weiß, dazu Bewegungsspur (Mehrfachbelichtung) und Einzelbilder */
 function buildBoxImage() {
   const S = 2, WD = 1100, M = 40, INNER = WD - 2 * M, FONT = 'Inter, system-ui, -apple-system, "Segoe UI", sans-serif';
@@ -1576,7 +1542,7 @@ function buildBoxImage() {
   /* Kopf */
   c.fillStyle = INK; c.font = `700 24px ${FONT}`; c.textAlign = 'left'; c.fillText('Morphologischer Kasten', M, 40);
   c.fillStyle = MUTED; c.font = `450 13px ${FONT}`;
-  const cur = state.current ? state.current : 'Neue Kombination';
+  const cur = 'Kombination';
   c.fillText(`Audio-Visualisierung · ${cur} · ${state.bpm} BPM`, M, 66);
   c.textAlign = 'right'; c.fillText(new Date().toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' }), WD - M, 66);
   c.textAlign = 'left';
@@ -1662,80 +1628,12 @@ $('boxpng').onclick = () => {
       const cvs = buildBoxImage();
       cvs.toBlob(b => {
         const a = document.createElement('a'); a.href = URL.createObjectURL(b);
-        a.download = `morphologischer-kasten-${(state.current || 'kombination').toLowerCase().replace(/[^a-z0-9]+/g, '-')}.png`; a.click();
+        a.download = `morphologischer-kasten-${'kombination'}.png`; a.click();
         setTimeout(() => URL.revokeObjectURL(a.href), 2000); toast('Bild gespeichert');
       }, 'image/png');
     } catch (e) { console.error(e); toast('Export fehlgeschlagen: ' + e.message); }
   }, 40);
 };
-$('link').onclick = async () => { save(); try { await navigator.clipboard.writeText(location.href); toast('Link zur Kombination kopiert'); } catch (e) { toast('Link: ' + location.href); } };
-
-/* Instrumente */
-const COLORS = ['--c0', '--c1', '--c2', '--c3', '--c4', '--c5', '--c6', '--c7'];
-const colorOf = name => { const i = SONG_INSTRUMENTS.indexOf(name); const k = i >= 0 ? i : (state.instruments.findIndex(x => x.name === name) + 3); return getComputedStyle(document.documentElement).getPropertyValue(COLORS[((k % 8) + 8) % 8]).trim(); };
-const summary = s => { const v = vals(s); return [v.element, v.char, v.size, v.hue, v.dir || v.path, v.appear].filter(Boolean).join(' · '); };
-let minis = [];
-function fillInstSelect() {
-  const names = [...new Set([...SONG_INSTRUMENTS, ...state.instruments.map(x => x.name)])];
-  $('instName').innerHTML = names.map(n => `<option${n === state.current ? ' selected' : ''}>${n}</option>`).join('') + '<option value="__new">+ Eigenes Instrument…</option>';
-}
-function renderCards() {
-  const wrapEl = $('cards');
-  minis = [];
-  if (!state.instruments.length) { wrapEl.innerHTML = '<div class="empty">Noch nichts gespeichert. Kombination einstellen, oben ein Instrument wählen und „Speichern“ drücken – so könnt ihr die Spuren nebeneinander vergleichen.</div>'; return; }
-  const order = x => { const i = SONG_INSTRUMENTS.indexOf(x.name); return i < 0 ? 99 : i; };
-  const list = [...state.instruments].sort((a, b) => order(a) - order(b));
-  wrapEl.innerHTML = list.map(x => `<div class="card${x.name === state.current ? ' cur' : ''}" data-n="${x.name.replace(/"/g, '&quot;')}" tabindex="0" title="Klicken zum Laden">
-    <canvas></canvas><div class="cm"><i style="background:${colorOf(x.name)}"></i>${x.name.replace(/</g, '&lt;')}</div><small>${summary(x.sel)}</small>
-    <button class="x" title="${x.name.replace(/"/g, '&quot;')} löschen" aria-label="Löschen">×</button></div>`).join('');
-  wrapEl.querySelectorAll('.card').forEach(card => {
-    const x = state.instruments.find(i => i.name === card.dataset.n);
-    const sc = new Scene(card.querySelector('canvas'), true); sc.bpm = state.bpm; sc.resize(); sc.set(vals(x.sel));
-    minis.push({ scene: sc, card });
-    const load = () => { const before = sel, prevCur = state.current; sel = { ...defaults(), ...x.sel }; state.current = x.name; apply(); fillInstSelect(); renderCards(); toast(`${x.name} geladen`, 'Rückgängig', () => { sel = before; state.current = prevCur; apply(); fillInstSelect(); renderCards(); }); };
-    card.onclick = e => { if (e.target.closest('.x')) return; load(); };
-    card.onkeydown = e => { if (e.key === 'Enter') load(); };
-    card.onmouseenter = () => { cmpSel = x.sel; cmpColor = colorOf(x.name); drawPaths(); };
-    card.onmouseleave = () => { cmpSel = null; drawPaths(); };
-    card.querySelector('.x').onclick = () => {
-      if (!confirm(`„${x.name}“ wirklich löschen?`)) return;
-      state.instruments = state.instruments.filter(i => i !== x); if (state.current === x.name) state.current = null;
-      cmpSel = null; save(); renderCards(); updateBadge(); drawPaths();
-    };
-  });
-}
-$('instName').onchange = e => {
-  if (e.target.value !== '__new') return;
-  const n = (prompt('Name des Instruments / der Spur:') || '').trim();
-  if (n) { if (!state.instruments.some(x => x.name === n)) state.instruments.push({ name: n, sel: { ...sel } }); state.current = n; save(); renderCards(); updateBadge(); toast(`„${n}“ angelegt und gespeichert`); }
-  fillInstSelect();
-};
-$('save').onclick = () => {
-  const n = $('instName').value; if (!n || n === '__new') return;
-  const ex = state.instruments.find(x => x.name === n);
-  if (ex) ex.sel = { ...sel }; else state.instruments.push({ name: n, sel: { ...sel } });
-  state.current = n; save(); renderCards(); updateBadge();
-  toast(ex ? `${n} aktualisiert` : `Kombination für ${n} gespeichert`);
-};
-$('exp').onclick = () => {
-  const blob = new Blob([JSON.stringify({ app: 'morphologischer-kasten', version: 1, instruments: state.instruments }, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'morphologischer-kasten.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-};
-$('imp').onclick = () => $('impFile').click();
-$('impFile').onchange = async e => {
-  const f = e.target.files[0]; if (!f) return;
-  try {
-    const d = JSON.parse(await f.text()); const list = Array.isArray(d) ? d : d.instruments; if (!Array.isArray(list)) throw 0;
-    let k = 0; list.forEach(x => { if (!x || !x.name || !x.sel) return; const s = { ...defaults() }; ROWS.forEach(r => { const i = x.sel[r.k]; if (Number.isInteger(i) && i >= -1 && i < r.o.length) s[r.k] = i; }); const ex = state.instruments.find(i => i.name === x.name); if (ex) ex.sel = s; else state.instruments.push({ name: String(x.name).slice(0, 40), sel: s }); k++; });
-    save(); fillInstSelect(); renderCards(); toast(`${k} Instrumente importiert`);
-  } catch (err) { toast('Datei konnte nicht gelesen werden'); }
-  e.target.value = '';
-};
-function updateBadge() {
-  const cur = state.current && state.instruments.find(x => x.name === state.current);
-  const dirty = cur && encode(cur.sel) !== encode(sel);
-  $('badge').innerHTML = cur ? `<i style="background:${colorOf(cur.name)}"></i><b>${cur.name.replace(/</g, '&lt;')}</b>${dirty ? ' <em>· geändert</em>' : ''}` : `<i></i>Neue Kombination`;
-}
 
 /* Toast */
 let toastT = 0;
@@ -1746,7 +1644,7 @@ function toast(msg, act, fn) {
 }
 
 /* Theme */
-function setTheme(t) { document.documentElement.dataset.theme = t; try { localStorage.setItem('av-theme', t); } catch (e) {} main.readTheme(); minis.forEach(m => m.scene.readTheme()); }
+function setTheme(t) { document.documentElement.dataset.theme = t; try { localStorage.setItem('av-theme', t); } catch (e) {} main.readTheme(); }
 { let t; try { t = localStorage.getItem('av-theme'); } catch (e) {} document.documentElement.dataset.theme = t || 'dark'; main.readTheme(); }
 $('theme').onclick = () => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
 
@@ -1758,7 +1656,7 @@ addEventListener('keydown', e => {
 });
 
 /* Größe */
-const ro = new ResizeObserver(() => { main.resize(); minis.forEach(m => m.scene.resize()); drawPaths(); });
+const ro = new ResizeObserver(() => { main.resize(); drawPaths(); });
 ro.observe($('stagebox')); ro.observe(scrollEl);
 
 /* Hauptschleife */
@@ -1769,7 +1667,6 @@ function loop(now) {
   else if (playing && sound.mode !== 'song') T += dt;
   const feat = sound.features();
   main.frame(T, playing ? dt : 0, feat);
-  if (frameNo % 2 === 0) for (const m of minis) m.scene.frame(T, playing ? dt * 2 : 0, null);
   if (feat) { $('mAmp').style.width = (feat.amp * 100).toFixed(0) + '%'; $('mPitch').style.width = (feat.pitch * 100).toFixed(0) + '%'; }
   requestAnimationFrame(loop);
 }
@@ -1788,7 +1685,6 @@ fillTracks(); addEventListener('focus', fillTracks); document.addEventListener('
 setBpm(SONG.bpm);
 sound.mode = 'song';
 main.resize();
-fillInstSelect(); renderCards();
 apply();
 requestAnimationFrame(loop);
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(drawPaths);

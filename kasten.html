@@ -154,6 +154,7 @@ input[type=range]::-moz-range-thumb { width: 13px; height: 13px; border-radius: 
 .who button + button { border-left: 1px solid var(--line-2); }
 .who button i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); opacity: .45; }
 .who button.on { background: var(--c); color: #fff; }
+.who [data-who="both"] i { border-radius: 2px; }
 .who button.on i { background: #fff; opacity: 1; }
 .prof .st { font-size: 11.5px; color: var(--faint); }
 .prof .st.dirty { color: var(--muted); }
@@ -255,7 +256,10 @@ input[type=range]::-moz-range-thumb { width: 13px; height: 13px; border-radius: 
       <span class="lbl">Tonspur</span>
       <span class="sel"><select id="ptrack" aria-label="Tonspur für die Auswahl"></select></span>
       <div class="who" role="group" aria-label="Wessen Auswahl?">
-        <button data-who="Jeremy" style="--c: var(--pa)" title="Auswahl von Jeremy (mit beiden Namen: vergleichen)"><i></i>Jeremy</button><button data-who="Josua" style="--c: var(--pb)" title="Auswahl von Josua (mit beiden Namen: vergleichen)"><i></i>Josua</button>
+        <button data-who="Jeremy" style="--c: var(--pa)" title="Auswahl von Jeremy"><i></i>Jeremy</button><button data-who="Josua" style="--c: var(--pb)" title="Auswahl von Josua"><i></i>Josua</button>
+      </div>
+      <div class="who" role="group" aria-label="Vergleich">
+        <button data-who="both" style="--c: linear-gradient(135deg, var(--pa) 50%, var(--pb) 50%)" title="Auswahl von Jeremy &amp; Josua vergleichen"><i></i>Beide</button>
       </div>
       <span class="st" id="pstat"></span>
       <button id="psave" hidden><svg class="i" viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/></svg>Speichern</button>
@@ -1504,7 +1508,7 @@ function compareSels() {     // beide Namen gewählt → [Auswahl Jeremy, Auswah
 }
 function profUI() {
   const who = state.who, one = who.length === 1, panel = $('panel');
-  document.querySelectorAll('[data-who]').forEach(b => b.classList.toggle('on', who.includes(b.dataset.who)));
+  document.querySelectorAll('[data-who]').forEach(b => b.classList.toggle('on', b.dataset.who === 'both' ? who.length === 2 : one && who[0] === b.dataset.who));
   panel.classList.toggle('cmp', who.length === 2);
   const col = one ? (who[0] === PEOPLE[0] ? 'var(--pa)' : 'var(--pb)') : '';
   panel.style.setProperty('--selc', col || 'var(--accent)');
@@ -1538,7 +1542,10 @@ $('ptrack').onchange = () => {
 };
 document.querySelectorAll('[data-who]').forEach(b => b.onclick = () => {
   const n = b.dataset.who;
-  state.who = state.who.includes(n) ? state.who.filter(x => x !== n) : PEOPLE.filter(x => x === n || state.who.includes(x));
+  // Switch: immer nur ein Name – oder „Beide“ zum Vergleichen; erneuter Klick auf den aktiven Button wählt ab
+  const both = state.who.length === 2;
+  if (n === 'both') state.who = both ? [] : [...PEOPLE];
+  else state.who = !both && state.who[0] === n ? [] : [n];
   loadProfile();
 });
 $('psave').onclick = () => {

@@ -83,7 +83,13 @@ input[type=range]::-moz-range-thumb { width: 13px; height: 13px; border-radius: 
 .meters.off { display: none; }
 
 .seek { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
-.seek input[type=range] { flex: 1; width: auto; min-width: 0; }
+.seek .sw2 { flex: 1; min-width: 0; position: relative; display: flex; align-items: center; }
+.seek .sw2 input[type=range] { flex: 1; width: 100%; min-width: 0; position: relative; z-index: 1; }
+.seek .marks { position: absolute; left: 6.5px; right: 6.5px; top: 50%; height: 9px; margin-top: -4.5px; pointer-events: none; }
+.seek .marks i { position: absolute; top: 0; bottom: 0; min-width: 2px; border-radius: 2px; background: var(--mc); opacity: .55; }
+.seek .mlab { font-size: 11px; color: var(--mc, var(--muted)); white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
+.seek .mlab::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--mc); opacity: .7; }
+.seek .mlab:empty { display: none; }
 .seek input[type=range]::-webkit-slider-runnable-track { background: linear-gradient(to right, var(--accent) var(--p, 0%), var(--line-2) var(--p, 0%)); }
 .seek input[type=range]::-moz-range-progress { height: 3px; border-radius: 3px; background: var(--accent); }
 .seek b { color: var(--ink); font-weight: 600; }
@@ -216,7 +222,8 @@ input[type=range]::-moz-range-thumb { width: 13px; height: 13px; border-radius: 
     </div>
 
     <div class="seek" title="Position im Song – ziehen, um zu springen">
-      <input type="range" id="seek" min="0" max="66" step="0.01" value="0" aria-label="Position im Song">
+      <span class="mlab" id="seekLab"></span>
+      <div class="sw2"><div class="marks" id="seekMarks"></div><input type="range" id="seek" min="0" max="66" step="0.01" value="0" aria-label="Position im Song"></div>
       <span class="t1"><b id="seekCur">0:00</b> / <span id="seekDur">1:06</span></span>
     </div>
 
@@ -320,6 +327,8 @@ const ROWS = []; BOXES.forEach(b => b.rows.forEach(r => { r.box = b.id; ROWS.pus
 const ROW = Object.fromEntries(ROWS.map(r => [r.k, r]));
 const VISUAL_KEYS = ROWS.filter(r => r.box !== 'sound').map(r => r.k);
 const SONG_INSTRUMENTS = ['Flute', 'Mosquito', 'Frog', 'Building', 'Riser', 'Hunting Horn', 'Drums', 'Ringtone'];
+// Wann welcher Sound vorkommt (Sekunden von–bis), übernommen aus der Visualisierung (original.html: data.js + eingezeichnete Korrekturen)
+const SOUND_TIMES = {"Riser":[[47.8,50.92]],"Hunting Horn":[[49.69,51.02]],"Flute":[[0,66.15]],"Mosquito":[[16.59,18.13],[19.7,21.88],[22.79,24.33],[24.84,26.38],[27.96,30.14],[31.08,32.62],[33.11,34.65],[36.22,38.4],[39.36,40.9],[41.4,42.93],[44.51,46.69],[47.6,49.14]],"Frog":[[16.6,49.66]],"Building":[[38.13,50.45]],"Drums":[[49.65,49.75],[50.16,50.26],[50.69,50.79],[51.2,51.31],[51.72,51.82],[52.23,52.33],[52.76,52.86],[53.27,53.38],[53.79,53.89],[54.29,54.4],[54.82,54.93],[55.34,55.44],[55.85,55.95],[56.36,56.46],[56.89,56.99],[57.41,57.51],[57.92,58.03],[58.43,58.53],[58.96,59.06],[59.48,59.58],[59.98,60.09],[60.49,60.6],[61.02,61.13],[61.54,61.64],[62.05,62.15],[62.56,62.66],[63.09,63.19],[63.6,63.71],[64.12,64.23],[64.63,64.73],[65.16,65.27],[65.68,65.78]],"Ringtone":[[49.76,50.16],[50.26,50.67],[50.78,51.18],[51.33,51.71],[51.82,52.22],[52.32,52.74],[52.85,53.25],[53.4,53.78],[53.89,54.29],[54.39,54.81],[54.92,55.32],[55.46,55.84],[55.95,56.36],[56.46,56.87],[56.99,57.38],[57.53,57.91],[58.03,58.43],[58.53,58.94],[59.06,59.45],[59.6,59.98],[60.08,60.48],[60.58,61.0],[61.11,61.51],[61.65,62.03],[62.14,62.55],[62.65,63.06],[63.17,63.57],[63.72,64.1],[64.22,64.62],[64.72,65.14],[65.25,65.65],[65.8,66.15]]};
 
 const defaults = () => Object.fromEntries(ROWS.map(r => [r.k, -1]));   // Start: nichts gewählt
 // Für die Darstellung dienen die bisherigen Standardwerte als stiller Ersatz, solange eine Zeile nichts gewählt hat
@@ -1217,7 +1226,8 @@ class Sound {
   mkAudio() {
     if (this.audio) return;
     this.ensure();
-    this.audio = new Audio(this.url); this.audio.loop = true;
+    this.audio = new Audio(this.url); this.audio.loop = false;
+    this.audio.addEventListener('ended', () => { setPlay(false); this.audio.currentTime = 0; T = 0; });   // am Ende stoppen und zurück auf 0
     if (this.direct) { this.envFor(this.track); return; }   // file://: Browser sperrt die Analyse – Hüllkurve wird vorab berechnet
     const src = this.ac.createMediaElementSource(this.audio); src.connect(this.an); this.an.connect(this.out);
   }
@@ -1522,7 +1532,7 @@ function fillPTrack(stems = []) {
 }
 fillPTrack();
 $('ptrack').onchange = () => {
-  state.ptrack = $('ptrack').value; loadProfile();
+  state.ptrack = $('ptrack').value; loadProfile(); drawSeekMarks();
   // gibt es für das Instrument eine hochgeladene Einzelspur, reagiert die Visualisierung gleich darauf
   if ([...trackSel.options].some(o => o.value === state.ptrack) && trackSel.value !== state.ptrack) { trackSel.value = state.ptrack; trackSel.onchange(); }
 };
@@ -1678,6 +1688,15 @@ function seekTo(t) {
   else try { a.currentTime = t; } catch (e) {}
   T = t; showSeek(t);
 }
+function drawSeekMarks() {    // markiert, wo die gewählte Tonspur im Song vorkommt
+  const name = state.ptrack, iv = SOUND_TIMES[name] || [], d = SONG.dur || 66, ci = SONG_INSTRUMENTS.indexOf(name);
+  const box = $('seekMarks'), lab = $('seekLab'), col = ci >= 0 ? `var(--c${ci})` : 'var(--muted)';
+  box.parentElement.parentElement.style.setProperty('--mc', col);
+  box.innerHTML = iv.map(([a, b]) => `<i style="left:${(a / d * 100).toFixed(2)}%;width:${((b - a) / d * 100).toFixed(2)}%" title="${name}: ${fmtT(a)}–${fmtT(b)}"></i>`).join('');
+  lab.textContent = iv.length ? name : '';
+  lab.title = iv.length ? `${name} kommt vor: ` + iv.slice(0, 6).map(([a, b]) => fmtT(a) + '–' + fmtT(b)).join(', ') + (iv.length > 6 ? ' …' : '') : '';
+}
+drawSeekMarks();
 seekEl.addEventListener('input', () => { seeking = true; seekTo(+seekEl.value); });
 seekEl.addEventListener('change', () => { seeking = false; seekTo(+seekEl.value); });
 
@@ -1688,6 +1707,12 @@ function buildBoxImage() {
   const S = 2, WD = 1100, M = 40, INNER = WD - 2 * M, FONT = 'Inter, system-ui, -apple-system, "Segoe UI", sans-serif';
   const INK = '#1b1b22', MUTED = '#7b7a82', LINE = '#cfcbc0', FILL = '#f3f1ec', ACC = '#74747c';
   const LBL = 190, COLS = 7, CW0 = (INNER - LBL) / COLS, RH = 30, HH = 22;
+  /* Wer hat was gewählt? Beide Namen → Vergleich, ein Name → dessen Farbe, kein Name → Akzent */
+  const PCOL = { Jeremy: '#ff6a14', Josua: '#2563eb' }, cmpSel = compareSels();
+  const layers = cmpSel ? state.who.map((n, i) => ({ name: n, col: PCOL[n], s: cmpSel[i] }))
+               : [{ name: state.who[0] || '', col: state.who.length ? PCOL[state.who[0]] : '#ff6a14', s: sel }];
+  const pickers = (k, i) => layers.filter(L => L.s[k] === i);
+  const dotOf = (k, i) => { const m = chipDeco(k, i).match(/background:([^;"]+)/); return m ? m[1] : null; };
 
   /* Bewegung: Szene unabhängig vom Bildschirm auf Weiß rendern */
   const FW = 620, FH = 340, dpr = 2;
@@ -1726,8 +1751,8 @@ function buildBoxImage() {
   /* Kopf */
   c.fillStyle = INK; c.font = `700 24px ${FONT}`; c.textAlign = 'left'; c.fillText('Morphologischer Kasten', M, 40);
   c.fillStyle = MUTED; c.font = `450 13px ${FONT}`;
-  const cur = 'Kombination';
-  c.fillText(`Audio-Visualisierung · ${cur} · ${state.bpm} BPM`, M, 66);
+  const who = cmpSel ? `${state.who[0]} & ${state.who[1]} im Vergleich` : state.who.length ? `Auswahl von ${state.who[0]}` : 'Aktuelle Auswahl';
+  c.fillText(`Audio-Visualisierung · Tonspur: ${state.ptrack} · ${who} · ${state.bpm} BPM`, M, 66);
   c.textAlign = 'right'; c.fillText(new Date().toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' }), WD - M, 66);
   c.textAlign = 'left';
   c.strokeStyle = LINE; c.lineWidth = 1; c.beginPath(); c.moveTo(M, 82); c.lineTo(WD - M, 82); c.stroke();
@@ -1735,7 +1760,7 @@ function buildBoxImage() {
   /* Bewegungsstudie */
   let y = TOP;
   c.fillStyle = INK; c.font = `650 12px ${FONT}`; c.fillText('Bewegungsspur', M, y + 8);
-  c.fillStyle = MUTED; c.font = `450 11px ${FONT}`; c.fillText('– Mehrfachbelichtung über 6 Schläge, frühe Bilder blass', M + 92, y + 8);
+  c.fillStyle = MUTED; c.font = `450 11px ${FONT}`; c.fillText(cmpSel ? '– der aktuellen Auswahl im Editor, Mehrfachbelichtung über 6 Schläge' : '– Mehrfachbelichtung über 6 Schläge, frühe Bilder blass', M + 92, y + 8);
   const gx = M + FW + 20, gw = INNER - FW - 20, fw = (gw - 10) / 2, fh = fw * FH / FW;
   c.fillStyle = INK; c.font = `650 12px ${FONT}`; c.fillText('Einzelbilder', gx, y + 8);
   y += 22;
@@ -1760,35 +1785,37 @@ function buildBoxImage() {
     c.fillText('Ausprägungen', M + LBL + 10, y + HH / 2 + 1);
     if (hasMap) c.fillText('→ Steuert', M + LBL + nOpt * CW + 10, y + HH / 2 + 1);
     y += HH;
-    const y0 = y, pts = [];
+    const y0 = y;
     b.rows.forEach((r, ri) => {
       const ry = y0 + ri * RH;
       c.fillStyle = FILL; c.fillRect(M, ry, LBL, RH); c.strokeStyle = LINE; c.strokeRect(M + .5, ry + .5, LBL - 1, RH - 1);
       c.fillStyle = INK; fit(r.n, LBL - (r.opt ? 70 : 20), 12, 600); c.fillText(r.n, M + 10, ry + RH / 2 + 1);
       if (r.opt) { const nw = c.measureText(r.n).width; c.fillStyle = '#a9a8ae'; c.font = `450 9.5px ${FONT}`; c.fillText('(optional)', M + 14 + nw, ry + RH / 2 + 1); }
-      r.o.forEach((o, oi) => {
-        const cx0 = M + LBL + oi * CW, on = sel[r.k] === oi;
-        c.fillStyle = on ? ACC : '#fff'; c.fillRect(cx0, ry, CW, RH); c.strokeStyle = LINE; c.strokeRect(cx0 + .5, ry + .5, CW - 1, RH - 1);
-        if (on) pts.push([cx0 + CW / 2, ry, ry + RH]);
-      });
+      for (let oi = 0; oi < nOpt; oi++) {        // volle Tabelle: auch leere Zellen bekommen Linien
+        const cx0 = M + LBL + oi * CW, ps = oi < r.o.length ? pickers(r.k, oi) : [];
+        c.fillStyle = '#fff'; c.fillRect(cx0, ry, CW, RH);
+        if (ps.length === 1) { c.fillStyle = ps[0].col; c.fillRect(cx0, ry, CW, RH); }
+        if (ps.length === 2) {                   // beide gewählt: diagonal geteilt
+          c.fillStyle = ps[0].col; c.beginPath(); c.moveTo(cx0, ry); c.lineTo(cx0 + CW, ry); c.lineTo(cx0, ry + RH); c.fill();
+          c.fillStyle = ps[1].col; c.beginPath(); c.moveTo(cx0 + CW, ry); c.lineTo(cx0 + CW, ry + RH); c.lineTo(cx0, ry + RH); c.fill();
+        }
+        c.strokeStyle = LINE; c.strokeRect(cx0 + .5, ry + .5, CW - 1, RH - 1);
+      }
       if (hasMap && r.map) {
         const cx0 = M + LBL + nOpt * CW;
         c.fillStyle = '#fff'; c.fillRect(cx0, ry, MAPW, RH); c.strokeStyle = LINE; c.strokeRect(cx0 + .5, ry + .5, MAPW - 1, RH - 1);
       }
     });
-    /* Lösungspfad */
-    if (pts.length) {
-      c.strokeStyle = 'rgba(27,27,34,.8)'; c.lineWidth = 2; c.lineJoin = 'round'; c.beginPath();
-      pts.forEach((p, i) => { if (i) { c.moveTo(pts[i - 1][0], pts[i - 1][2]); c.lineTo(p[0], p[1]); } }); c.stroke();
-      c.fillStyle = INK; pts.forEach((p, i) => { if (i) { c.beginPath(); c.arc(p[0], p[1], 3, 0, TAU); c.fill(); c.beginPath(); c.arc(pts[i - 1][0], pts[i - 1][2], 3, 0, TAU); c.fill(); } });
-    }
     /* Beschriftungen der Zellen */
     c.textAlign = 'center';
     b.rows.forEach((r, ri) => {
       const ry = y0 + ri * RH;
       r.o.forEach((o, oi) => {
-        const on = sel[r.k] === oi, cx0 = M + LBL + oi * CW;
-        c.fillStyle = on ? '#fff' : INK; fit(o, CW - 12, 11.5, on ? 700 : 450); c.fillText(o, cx0 + CW / 2, ry + RH / 2 + 1);
+        const on = pickers(r.k, oi).length > 0, cx0 = M + LBL + oi * CW, dot = dotOf(r.k, oi);
+        fit(o, CW - (dot ? 26 : 12), 11.5, on ? 700 : 450);
+        const tw = c.measureText(o).width, mx = cx0 + CW / 2 + (dot ? 7 : 0);
+        if (dot) { c.beginPath(); c.arc(mx - tw / 2 - 9, ry + RH / 2, 4.5, 0, TAU); c.fillStyle = dot; c.fill(); c.strokeStyle = on ? 'rgba(255,255,255,.85)' : 'rgba(0,0,0,.18)'; c.lineWidth = 1; c.stroke(); }
+        c.fillStyle = on ? '#fff' : INK; c.fillText(o, mx, ry + RH / 2 + 1);
       });
       if (hasMap && r.map) {
         const cx0 = M + LBL + nOpt * CW; c.fillStyle = MUTED; c.font = `italic 450 9.5px ${FONT}`;
@@ -1798,11 +1825,17 @@ function buildBoxImage() {
     y = y0 + b.rows.length * RH + 30;
   });
 
-  /* Legende */
-  c.textAlign = 'left'; c.fillStyle = ACC; c.fillRect(M, y - 8, 14, 10);
-  c.fillStyle = MUTED; c.font = `450 11px ${FONT}`; c.fillText('gewählte Ausprägung', M + 22, y - 2);
-  c.strokeStyle = 'rgba(27,27,34,.8)'; c.lineWidth = 2; c.beginPath(); c.moveTo(M + 160, y - 3); c.lineTo(M + 190, y - 3); c.stroke();
-  c.fillText('Lösungspfad durch den Kasten', M + 198, y - 2);
+  /* Legende: wer hat was gewählt */
+  c.textAlign = 'left'; c.font = `450 11px ${FONT}`; let lx = M;
+  for (const L of layers) {
+    c.fillStyle = L.col; c.fillRect(lx, y - 8, 14, 10);
+    const t = L.name ? `gewählt von ${L.name}` : 'gewählte Ausprägung'; c.fillStyle = MUTED; c.fillText(t, lx + 22, y - 2); lx += 22 + c.measureText(t).width + 24;
+  }
+  if (cmpSel) {
+    c.fillStyle = layers[0].col; c.beginPath(); c.moveTo(lx, y - 8); c.lineTo(lx + 14, y - 8); c.lineTo(lx, y + 2); c.fill();
+    c.fillStyle = layers[1].col; c.beginPath(); c.moveTo(lx + 14, y - 8); c.lineTo(lx + 14, y + 2); c.lineTo(lx, y + 2); c.fill();
+    c.fillStyle = MUTED; c.fillText('von beiden gewählt', lx + 22, y - 2);
+  }
   return out;
 }
 $('boxpng').onclick = () => {
@@ -1812,7 +1845,8 @@ $('boxpng').onclick = () => {
       const cvs = buildBoxImage();
       cvs.toBlob(b => {
         const a = document.createElement('a'); a.href = URL.createObjectURL(b);
-        a.download = `morphologischer-kasten-${'kombination'}.png`; a.click();
+        const tag = [state.ptrack, ...(state.who.length ? state.who : [])].join('-').toLowerCase().replace(/[^a-z0-9äöüß-]+/g, '-');
+        a.download = `morphologischer-kasten-${tag}.png`; a.click();
         setTimeout(() => URL.revokeObjectURL(a.href), 2000); toast('Bild gespeichert');
       }, 'image/png');
     } catch (e) { console.error(e); toast('Export fehlgeschlagen: ' + e.message); }

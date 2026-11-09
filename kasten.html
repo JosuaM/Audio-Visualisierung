@@ -87,9 +87,12 @@ input[type=range]::-moz-range-thumb { width: 13px; height: 13px; border-radius: 
 .seek .sw2 input[type=range] { flex: 1; width: 100%; min-width: 0; position: relative; z-index: 1; }
 .seek .marks { position: absolute; left: 6.5px; right: 6.5px; top: 50%; height: 9px; margin-top: -4.5px; pointer-events: none; }
 .seek .marks i { position: absolute; top: 0; bottom: 0; min-width: 2px; border-radius: 2px; background: var(--mc); opacity: .55; }
-.seek .mlab { font-size: 11px; color: var(--mc, var(--muted)); white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
+.seek .mlab { cursor: pointer; font-size: 11px; color: var(--mc, var(--muted)); white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
 .seek .mlab::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--mc); opacity: .7; }
 .seek .mlab:empty { display: none; }
+.seek .mlab.idle { opacity: .45; }
+.seek .mlab.idle::after { content: "· still"; color: var(--muted); }
+.seek .mlab.off { opacity: .45; }
 .seek input[type=range]::-webkit-slider-runnable-track { background: linear-gradient(to right, var(--accent) var(--p, 0%), var(--line-2) var(--p, 0%)); }
 .seek input[type=range]::-moz-range-progress { height: 3px; border-radius: 3px; background: var(--accent); }
 .seek b { color: var(--ink); font-weight: 600; }
@@ -282,7 +285,7 @@ input[type=range]::-moz-range-thumb { width: 13px; height: 13px; border-radius: 
 /* ═══════════════════════════ Daten: die drei Kästen ═══════════════════════════ */
 const BOXES = [
   { id: 'look', title: 'Morphologischer Kasten 1', sub: 'Visuelle Erscheinung', q: 'Wie sieht das Soundelement aus?', rows: [
-    { k: 'element', n: 'Grundelement', o: ['Kreis', 'Rechteck', 'Quadrat', 'Polygon', 'Linie', 'Punkt', 'Fläche'], d: 0 },
+    { k: 'element', n: 'Grundelement', o: ['Kreis', 'Rechteck', 'Quadrat', 'Polygon', 'Linie', 'Punkt', 'Fläche', 'Dreieck'], d: 0 },
     { k: 'char', n: 'Formcharakter', o: ['Organisch', 'Geometrisch', 'Kantig', 'Abgerundet', 'Spitz', 'Unregelmäßig'], d: 1 },
     { k: 'size', n: 'Größe', o: ['Winzig', 'Klein', 'Mittel', 'Groß', 'Riesig'], d: 2 },
     { k: 'temp', n: 'Farbtemperatur', o: ['Warm', 'Neutral', 'Kalt'], d: 1 },
@@ -293,20 +296,21 @@ const BOXES = [
     { k: 'count', n: 'Anzahl', o: ['Einzeln', 'Wenige', 'Mehrere', 'Viele'], d: 0 },
     { k: 'layout', n: 'Anordnung', o: ['Verteilt', 'Gruppiert', 'Linear', 'Radial', 'Rasterförmig', 'Zufällig'], d: 0 },
     { k: 'dim', n: 'Dimensionalität', o: ['2D', '2.5D', '3D'], d: 0 },
+    { k: 'fill', n: 'Füllung', o: ['Gefüllt', 'Ungefüllt', 'Teilgefüllt'], d: 0 },
     { k: 'stroke', n: 'Kontur', o: ['Keine', 'Dünn', 'Dick', 'Gestrichelt', 'Gepunktet'], d: 0 },
     { k: 'surface', n: 'Oberflächenbeschaffenheit', o: ['Glatt', 'Körnig', 'Rau', 'Strukturiert', 'Texturiert'], d: 0 },
   ] },
   { id: 'move', title: 'Morphologischer Kasten 2', sub: 'Visuelles Verhalten', q: 'Wie verändert es sich und wie interagiert es mit anderen Elementen?', rows: [
     { k: 'shapeFx', n: 'Formveränderung', o: ['Vergrößern', 'Verkleinern', 'Verzerren', 'Dehnen', 'Drehen', 'Abrunden', 'Verpixeln', 'Keine'], d: -1, opt: 1 },
-    { k: 'dir', n: 'Bewegungsrichtung', o: ['Hoch', 'Runter', 'Rechts', 'Links', 'Schräg', 'Nach vorne', 'Nach hinten', 'Zur Mitte', 'Nach außen'], d: -1, opt: 1 },
-    { k: 'path', n: 'Bewegungsbahn', o: ['Gerade', 'Kreisförmig', 'Wellig', 'Zickzack', 'Spiralförmig', 'Zufällig'], d: -1, opt: 1 },
+    { k: 'dir', n: 'Bewegungsrichtung', o: ['Hoch', 'Runter', 'Rechts', 'Links', 'Schräg', 'Nach vorne', 'Nach hinten', 'Zur Mitte', 'Nach außen', 'Keine'], d: -1, opt: 1 },
+    { k: 'path', n: 'Bewegungsbahn', o: ['Gerade', 'Kreisförmig', 'Wellig', 'Zickzack', 'Spiralförmig', 'Zufällig', 'Keine'], d: -1, opt: 1 },
     { k: 'speed', n: 'Geschwindigkeit', o: ['Stillstand', 'Sehr langsam', 'Langsam', 'Moderat', 'Schnell', 'Sehr schnell'], d: 2 },
     { k: 'accel', n: 'Beschleunigung', o: ['Gleichmäßig', 'Zunehmend', 'Abnehmend', 'Plötzlich', 'Stufenweise'], d: 0 },
     { k: 'rhythm', n: 'Rhythmus', o: ['Regelmäßig', 'Unregelmäßig', 'Pulsierend', 'Repetitiv', 'Alternierend', 'Zufällig'], d: 0 },
     { k: 'appear', n: 'Erscheinungsverhalten', o: ['Fade-in', 'Jump-in', 'Aufpoppen', 'Zusammenfügen', 'Zoom-in', 'Wachsen', 'Einblenden'], d: -1, opt: 1 },
     { k: 'vanish', n: 'Verschwindeverhalten', o: ['Fade-out', 'Zerfallen', 'Zoom-out', 'Jump-out', 'Schrumpfen', 'Auflösen', 'Ausblenden'], d: -1, opt: 1 },
     { k: 'trail', n: 'Spur', o: ['Keine', 'Punkte', 'Linie', 'Nachleuchten', 'Nachzeichnen', 'Nachbild'], d: 0 },
-    { k: 'place', n: 'Position im Raum', o: ['Vordergrund', 'Hintergrund', 'Oben', 'Unten', 'Rechts', 'Links', 'Versteckt'], d: -1, opt: 1 },
+    { k: 'place', n: 'Position im Raum', o: ['Vordergrund', 'Hintergrund', 'Oben', 'Unten', 'Rechts', 'Links', 'Versteckt', 'Mitte'], d: -1, opt: 1 },
     { k: 'colorFx', n: 'Farbveränderung', o: ['Konstant', 'Dunkler', 'Heller', 'Farbwechsel', 'Sättigungswechsel', 'Farbverlauf', 'Keine'], d: 0 },
     { k: 'transform', n: 'Formtransformation', o: ['Teilung', 'Vermehrung', 'Reduktion', 'Verzweigung', 'Gruppierung', 'Keine'], d: 5 },
     { k: 'interact', n: 'Interaktion zwischen Elementen', o: ['Anziehung', 'Abstoßung', 'Kollision', 'Verfolgung', 'Verdeckung', 'Keine'], d: -1, opt: 1 },
@@ -336,13 +340,16 @@ const SOUND_TIMES = {"Riser":[[47.8,50.92]],"Hunting Horn":[[49.69,51.02]],"Flut
 
 const defaults = () => Object.fromEntries(ROWS.map(r => [r.k, -1]));   // Start: nichts gewählt
 // Für die Darstellung dienen die bisherigen Standardwerte als stiller Ersatz, solange eine Zeile nichts gewählt hat
-// „Keine“ am Ende von Formveränderung, Farbveränderung und Interaktion (hinten angehängt, damit gespeicherte Auswahlen gültig bleiben) = Effekt aus
-const vals = s => Object.fromEntries(ROWS.map(r => { const v = s[r.k] >= 0 ? r.o[s[r.k]] : (r.d >= 0 ? r.o[r.d] : null); return [r.k, v === 'Keine' && (r.k === 'shapeFx' || r.k === 'colorFx' || r.k === 'interact') ? null : v]; }));
+// „Keine“ am Ende von Formveränderung, Bewegungsrichtung, Farbveränderung und Interaktion (hinten angehängt, damit gespeicherte Auswahlen gültig bleiben) = Effekt aus
+const vals = s => Object.fromEntries(ROWS.map(r => { const v = s[r.k] >= 0 ? r.o[s[r.k]] : (r.d >= 0 ? r.o[r.d] : null); return [r.k, v === 'Keine' && (r.k === 'shapeFx' || r.k === 'colorFx' || r.k === 'interact' || r.k === 'dir' || r.k === 'path') ? null : v]; }));
 const encode = s => ROWS.map(r => s[r.k] >= 0 ? s[r.k].toString(36) : '-').join('');
+// Zeilen-Reihenfolge älterer Speicherstände (vor „Füllung“), damit gespeicherte Auswahlen gültig bleiben
+const LEGACY_KEYS = ['element', 'char', 'size', 'temp', 'light', 'hue', 'sat', 'alpha', 'count', 'layout', 'dim', 'stroke', 'surface', 'shapeFx', 'dir', 'path', 'speed', 'accel', 'rhythm', 'appear', 'vanish', 'trail', 'place', 'colorFx', 'transform', 'interact', 'loud', 'pitch', 'tempo', 'srhythm', 'timbre', 'texture', 'artic', 'attack', 'release', 'density', 'dyn', 'harm', 'space'];
 function decode(str) {
   const s = defaults();
-  if (!str || str.length !== ROWS.length) return null;
-  ROWS.forEach((r, i) => { const c = str[i]; if (c === '-') s[r.k] = -1; else { const n = parseInt(c, 36); if (n >= 0 && n < r.o.length) s[r.k] = n; } });
+  const keys = str && str.length === ROWS.length ? ROWS.map(r => r.k) : str && str.length === LEGACY_KEYS.length ? LEGACY_KEYS : null;
+  if (!keys) return null;
+  keys.forEach((k, i) => { const r = ROW[k], c = str[i]; if (!r) return; if (c === '-') s[k] = -1; else { const n = parseInt(c, 36); if (n >= 0 && n < r.o.length) s[k] = n; } });
   return s;
 }
 
@@ -502,6 +509,16 @@ function closedShape(element, ch, t, seed, o) {
       case 'Organisch': pts = organic(resample(roundPoly(regular(6, 1, -Math.PI / 2), .25), cn), t, r, .12); break;
       default: pts = regular(6, 1, -Math.PI / 2); maxRound = .5;
     }
+  } else if (element === 'Dreieck') {        // gleichseitiges Dreieck, Spitze oben
+    const tri3 = () => regular(3, 1.15, -Math.PI / 2);
+    switch (ch) {
+      case 'Kantig': pts = chamfer(tri3(), .32); maxRound = .4; break;
+      case 'Abgerundet': pts = tri3(); round = .42; maxRound = .5; break;
+      case 'Spitz': pts = star(3, 1.3, .4, -Math.PI / 2); maxRound = .15; break;
+      case 'Unregelmäßig': pts = irregular(tri3(), r, .3); maxRound = .4; break;
+      case 'Organisch': pts = organic(resample(roundPoly(tri3(), .3), cn), t, r, .12); break;
+      default: pts = tri3(); maxRound = .5;
+    }
   } else {
     const mn = Math.min(hw, hh); maxRound = mn * .9;
     switch (ch) {
@@ -607,6 +624,7 @@ class Scene {
       case 'Links': return [.06, .1, .38, .9];
       case 'Rechts': return [.62, .1, .94, .9];
       case 'Versteckt': return [0, 0, 1, 1];
+      case 'Mitte': return [.32, .3, .68, .7];   // eng um die Bildmitte
       default: return [.1, .14, .9, .86];
     }
   }
@@ -775,7 +793,8 @@ class Scene {
       }
       let ax = e.ax, ay = e.ay;
       if (life && v.layout === 'Zufällig' && !e.partner && v.place !== 'Versteckt') { const r2 = rng(e.seed + st.cyc * 7919); ax = r2(); ay = r2(); }
-      let x = W * (rg[0] + ax * rw) + e.ox * M, y = H * (rg[1] + ay * rh) + e.oy * M;
+      const oc = v.place === 'Mitte' ? .45 : 1;   // „Mitte“: auch Kreis-/Gruppenabstände enger
+      let x = W * (rg[0] + ax * rw) + e.ox * M * oc, y = H * (rg[1] + ay * rh) + e.oy * M * oc;
       let R = M * .5 * sizeF * e.sv;
       if (v.element === 'Punkt') R = Math.max(2.2, R * .22);
       if (v.element === 'Fläche') R *= 1.35;
@@ -913,7 +932,7 @@ class Scene {
   frame(t, dt, feat) {
     const v = this.v; if (!v || !this.W) return;
     const { W, H, dpr } = this, ctx = this.ctx, lx = this.lx;
-    this.M = Math.min(W, H); this.t = t; this.beat = 60 / this.bpm;
+    this.M = Math.min(W, H); this.t = t; this.beat = 60 / this.bpm; this.dtF = dt; this.fno = (this.fno || 0) + 1;
     const Z = this.zoom, zs = (c) => c.setTransform(dpr * Z.k, 0, 0, dpr * Z.k, dpr * Z.x, dpr * Z.y);   // Zoom (Pinch) auf die ganze Szene
     lx.setTransform(dpr, 0, 0, dpr, 0, 0);
     if (v.trail === 'Nachleuchten') { lx.globalCompositeOperation = 'destination-out'; lx.fillStyle = `rgba(0,0,0,${dt > 0 ? .13 : 0})`; lx.fillRect(0, 0, W, H); lx.globalCompositeOperation = 'source-over'; }
@@ -952,6 +971,7 @@ class Scene {
     }
     if (v.place === 'Hintergrund') { ctx.filter = 'blur(1.8px) saturate(.7)'; ctx.globalAlpha = .82; }
     else if (v.place === 'Versteckt') { ctx.filter = 'blur(.8px)'; ctx.globalAlpha = .85; }
+    if (this.dimmed) ctx.globalAlpha *= .28;   // gewählte Tonspur gerade still
     ctx.drawImage(src, 0, 0, W, H);
     ctx.filter = 'none'; ctx.globalAlpha = 1; ctx.imageSmoothingEnabled = true;
   }
@@ -981,7 +1001,10 @@ class Scene {
     const v = this.v, need = v.trail && v.trail !== 'Keine' && v.trail !== 'Nachleuchten';
     if (!need) return;
     const M = this.M, tx = this.tx, dpr = this.dpr;
-    if (v.trail === 'Nachzeichnen') { tx.setTransform(dpr, 0, 0, dpr, 0, 0); if (dt > 0) { tx.globalCompositeOperation = 'destination-out'; tx.fillStyle = 'rgba(0,0,0,.006)'; tx.fillRect(0, 0, this.W, this.H); tx.globalCompositeOperation = 'source-over'; } const Z = this.zoom; tx.setTransform(dpr * Z.k, 0, 0, dpr * Z.k, dpr * Z.x, dpr * Z.y); }
+    if (v.trail === 'Nachzeichnen') { tx.setTransform(dpr, 0, 0, dpr, 0, 0); this.fadeAcc = (this.fadeAcc || 0) + dt;
+      if (this.fadeAcc >= .1) {   // Spur verblasst in ca. 1,5 s; in größeren Schritten, sonst bleibt durch Rundung ein Rest stehen
+        this.fadeAcc = 0; tx.globalCompositeOperation = 'destination-out'; tx.fillStyle = 'rgba(0,0,0,.2)'; tx.fillRect(0, 0, this.W, this.H); tx.globalCompositeOperation = 'source-over';
+      } const Z = this.zoom; tx.setTransform(dpr * Z.k, 0, 0, dpr * Z.k, dpr * Z.x, dpr * Z.y); }
     for (const s of states) {
       if (s.clone) continue;
       const key = s.e.i; let h = this.hist.get(key); if (!h) { h = []; this.hist.set(key, h); }
@@ -989,10 +1012,6 @@ class Scene {
       if (last && (Math.hypot(s.x - last.x, s.y - last.y) > M * .25 || last.cyc !== s.cyc)) h.length = 0;
       if (dt > 0 || !last) h.push({ x: s.x, y: s.y, rot: s.rot, R: s.R * s.S, cyc: s.cyc });
       if (h.length > 42) h.shift();
-      if (v.trail === 'Nachzeichnen' && last && h.length > 1 && dt > 0) {
-        tx.strokeStyle = hsl(s.col, 0, .85); tx.lineWidth = Math.max(1.4, s.R * .07); tx.lineCap = 'round';
-        tx.beginPath(); tx.moveTo(last.x, last.y); tx.lineTo(s.x, s.y); tx.stroke();
-      }
     }
   }
 
@@ -1077,6 +1096,11 @@ class Scene {
     const ext = 1.9 * R * Math.max(s.sx, s.sy) + 6;
     const fillA = a * (ALPHA[v.alpha] ?? 1);
     const body = () => this.body(c, P, sh, R, s, a, fillA);
+    if (v.trail === 'Nachzeichnen' && this.dtF > 0 && !s.clone && this.fno % 3 === 0) {   // Nachzeichnen: Umriss der ganzen Form bleibt als Spur stehen
+      const tx = this.tx; tx.save(); tx.translate(s.x, s.y); tx.rotate(s.rot || 0); if (s.skew) tx.transform(1, 0, s.skew, 1, 0, 0);
+      tx.globalAlpha = .55 * Math.min(1, a); tx.strokeStyle = hsl(s.col, 0, .9); tx.lineWidth = Math.max(1, Math.min(2.2, R * .03)); tx.lineJoin = 'round'; tx.lineCap = 'round';
+      this.path(tx, P, sh.closed); tx.stroke(); tx.restore();
+    }
 
     c.save(); c.translate(s.x, s.y); c.rotate(s.rot || 0); if (s.skew) c.transform(1, 0, s.skew, 1, 0, 0);
     if (s.split > .01) {
@@ -1123,6 +1147,7 @@ class Scene {
     const v = this.v, col = s.col, dim = v.dim || '2D';
     const glow = v.trail === 'Nachleuchten' || sh.soft;
     if (!sh.closed) return this.bodyLine(c, P, sh, R, s, a, fillA, glow);
+    if (v.fill === 'Ungefüllt' || v.fill === 'Teilgefüllt') return this.bodyOutline(c, P, R, s, fillA, glow);
     const fillA0 = c.globalAlpha;
     if (dim === '2.5D') {   // ausgeschnittene, leicht angehobene Ebene: weicher Schatten + sichtbare Kante
       c.save(); c.globalAlpha = fillA * (this.dark ? .55 : .3); c.translate(R * .16, R * .26); this.path(c, P, true); c.fillStyle = this.dark ? hsl(col, -40) : '#000';
@@ -1151,6 +1176,19 @@ class Scene {
       }
     }
     this.contour(c, P, true, R, col, a);
+    c.globalAlpha = fillA0;
+  }
+  bodyOutline(c, P, R, s, fillA, glow) {   // Füllung „Ungefüllt“ / „Teilgefüllt“: Umriss (nur mit Kontur) in der Elementfarbe, ggf. untere Hälfte gefüllt
+    const v = this.v, col = s.col, st = v.stroke && v.stroke !== 'Keine' ? v.stroke : null, fillA0 = c.globalAlpha;
+    const paint = () => { if (v.colorFx === 'Farbverlauf') { const g = c.createLinearGradient(-R, -R, R, R); g.addColorStop(0, hsl(col)); g.addColorStop(1, hsl({ ...col, h: col.h + 75 })); return g; } return hsl(col); };
+    if (v.fill === 'Teilgefüllt') { c.save(); c.globalAlpha = fillA; this.path(c, P, true); c.clip(); c.beginPath(); c.rect(-R * 4, 0, R * 8, R * 4); c.fillStyle = paint(); c.fill(); c.restore(); }
+    if (!st) { c.globalAlpha = fillA0; return; }   // ohne Kontur: kein Umriss (ungefüllt = unsichtbar)
+    const lw = { 'Dünn': 1.3, 'Dick': Math.max(3, R * .1), 'Gestrichelt': Math.max(1.6, R * .045), 'Gepunktet': Math.max(2.2, R * .06) }[st];
+    c.save(); c.globalAlpha = fillA; c.lineWidth = lw; c.lineJoin = 'round';
+    if (glow) { c.shadowColor = hsl(col, 8, .9); c.shadowBlur = Math.min(this.mini ? 14 : 60, R * .5); }
+    if (st === 'Gestrichelt') c.setLineDash([lw * 3.4, lw * 2.4]);
+    if (st === 'Gepunktet') { c.setLineDash([.01, lw * 2.1]); c.lineCap = 'round'; }
+    c.strokeStyle = paint(); this.path(c, P, true); c.stroke(); c.restore();
     c.globalAlpha = fillA0;
   }
   extrude(c, P, R, col, fillA) {
@@ -1430,6 +1468,9 @@ function notesFor(v) {
   if (v.transform === 'Reduktion' && v.count === 'Einzeln') add('Reduktion bei „Einzeln“', 'die Eckenanzahl nimmt schrittweise ab');
   if (v.transform === 'Gruppierung' && v.count === 'Einzeln') add('Gruppierung bei „Einzeln“', 'Teilstücke sammeln sich um das Element');
   if (v.appear || v.vanish) add('Erscheinen/Verschwinden', 'Elemente durchlaufen Lebenszyklen von ca. 8 Schlägen');
+  if (v.fill === 'Ungefüllt' && el !== 'Linie' && (!v.stroke || v.stroke === 'Keine')) add('Ungefüllt ohne Kontur', 'Element ist unsichtbar – bei Kontur eine Linie wählen');
+  if (v.fill && v.fill !== 'Gefüllt' && (v.dim === '2.5D' || v.dim === '3D')) add('Füllung ' + v.fill, 'Umriss-Darstellung ohne Tiefenwirkung');
+  if (v.layout && v.count === 'Einzeln' && !v.interact) add('Anordnung bei „Einzeln“', 'wirkt erst ab mehreren Elementen – für die Lage im Bild: Position im Raum');
   if (v.alpha === 'Transparent' && (!v.stroke || v.stroke === 'Keine')) add('Transparent ohne Kontur', 'kaum sichtbar – eine Kontur hilft');
   if (v.place === 'Vordergrund' || v.place === 'Hintergrund') add(v.place, 'graue Bezugsebene zeigt die Tiefe');
   if (v.place === 'Versteckt') add('Versteckt', 'Elemente lugen hinter einer verdeckenden Ebene hervor');
@@ -1444,7 +1485,7 @@ const ICON = {
   size: [1.6, 2.8, 4, 5.2, 6.4].map(r => `<circle cx="8" cy="8" r="${r}"/>`),
 };
 function chipDeco(k, i) {
-  if (ICON[k]) return `<svg viewBox="0 0 16 16" aria-hidden="true">${ICON[k][i]}</svg>`;
+  if (ICON[k]) return `<svg viewBox="0 0 16 16" aria-hidden="true">${ICON[k][i] || (k === 'element' && ROW.element.o[i] === 'Dreieck' ? '<path d="M8 2.5 14 13.5H2z"/>' : '')}</svg>`;
   if (k === 'hue') return ROW.hue.o[i] === 'Unbunt' ? '<i class="sw" style="background:linear-gradient(90deg,#111 50%,#fff 50%)"></i>' : `<i class="sw" style="background:hsl(${HUE[ROW.hue.o[i]]},80%,55%)"></i>`;
   if (k === 'temp') return `<i class="sw" style="background:${['#f08a3c', '#9b9a9e', '#4a8ef0'][i]}"></i>`;
   if (k === 'light') return `<i class="sw" style="background:hsl(28,10%,${[82, 55, 26][i]}%)"></i>`;
@@ -1530,7 +1571,7 @@ function profUI() {
   $('psave').hidden = !one;
   const st = $('pstat');
   if (one) {
-    const saved = profiles[who[0]] && profiles[who[0]][state.ptrack], same = saved === encode(sel);
+    const saved = profiles[who[0]] && profiles[who[0]][state.ptrack], same = !!saved && encode(decode(saved) || defaults()) === encode(sel);   // auch ältere Speicherstände vergleichen
     st.innerHTML = saved ? (same ? 'gespeichert' : 'Änderungen nicht gespeichert') : 'noch nichts gespeichert';
     st.classList.toggle('dirty', !same); $('psave').classList.toggle('ok', !!saved && same);
   } else if (who.length === 2) {
@@ -1716,9 +1757,13 @@ function drawSeekMarks() {    // markiert, wo die gewählte Tonspur im Song vork
   box.parentElement.parentElement.style.setProperty('--mc', col);
   box.innerHTML = iv.map(([a, b]) => `<i style="left:${(a / d * 100).toFixed(2)}%;width:${((b - a) / d * 100).toFixed(2)}%" title="${name}: ${fmtT(a)}–${fmtT(b)}"></i>`).join('');
   lab.textContent = iv.length ? name : '';
-  lab.title = iv.length ? `${name} kommt vor: ` + iv.slice(0, 6).map(([a, b]) => fmtT(a) + '–' + fmtT(b)).join(', ') + (iv.length > 6 ? ' …' : '') : '';
+  lab.title = iv.length ? `${name} kommt vor: ` + iv.slice(0, 6).map(([a, b]) => fmtT(a) + '–' + fmtT(b)).join(', ') + (iv.length > 6 ? ' …' : '') + ' – Klick: nur in diesen Bereichen reagieren an/aus' : '';
 }
 drawSeekMarks();
+$('seekLab').onclick = () => {   // Klick auf den Spurnamen: Begrenzung auf die Zeitbereiche an/aus
+  trackGate = !trackGate; $('seekLab').classList.toggle('off', !trackGate);
+  toast(trackGate ? `Visualisierung reagiert nur, wenn ${state.ptrack} spielt` : 'Visualisierung reagiert auf den ganzen Song');
+};
 seekEl.addEventListener('input', () => { seeking = true; seekTo(+seekEl.value); });
 seekEl.addEventListener('change', () => { seeking = false; seekTo(+seekEl.value); });
 
@@ -1909,14 +1954,20 @@ const ro = new ResizeObserver(() => { main.resize(); drawPaths(); });
 ro.observe($('stagebox')); ro.observe(scrollEl);
 
 /* Hauptschleife */
-let last = performance.now(), T = 0, frameNo = 0;
+let last = performance.now(), T = 0, frameNo = 0, Tvis = 0, lastActive = true, trackGate = true;
 function loop(now) {
   const dt = Math.min(.05, (now - last) / 1000); last = now; frameNo++;
   if (sound.mode === 'song' && sound.audio && !sound.audio.paused) T = sound.audio.currentTime;   // Takt/Rhythmus laufen mit dem Song
   else if (playing && sound.mode !== 'song') T += dt;
   showSeek(sound.audio && sound.audio.readyState >= 1 ? sound.audio.currentTime : T % songDur());
-  const feat = sound.features();
-  main.frame(T, playing ? dt : 0, feat);
+  let feat = sound.features();
+  // Song + gewählte Tonspur: nur in deren Zeitbereichen reagiert die Visualisierung, sonst steht sie still (abgedunkelt)
+  const iv = sound.mode === 'song' && trackGate ? SOUND_TIMES[state.ptrack] : null;
+  const active = !iv || iv.some(([a, b]) => T >= a && T <= b);
+  if (active) Tvis = T; else if (feat) feat = { ...feat, amp: 0 };
+  main.dimmed = !active;
+  if (active !== lastActive) { lastActive = active; $('seekLab').classList.toggle('idle', !active); }
+  main.frame(Tvis, playing && active ? dt : 0, feat);
   if (feat) { $('mAmp').style.width = (feat.amp * 100).toFixed(0) + '%'; $('mPitch').style.width = (feat.pitch * 100).toFixed(0) + '%'; }
   requestAnimationFrame(loop);
 }

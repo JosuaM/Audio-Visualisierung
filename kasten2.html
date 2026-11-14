@@ -96,6 +96,7 @@ select { font: inherit; color: inherit; background: var(--panel); border: 1px so
 #prevShow { display: flex; width: 30px; height: auto; padding: 0; border-radius: 10px; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--muted); }
 #prevShow .op > span, #prevShow .cl > span { writing-mode: vertical-rl; transform: rotate(180deg); font-size: 11.5px; letter-spacing: .04em; }
 #prevShow:hover { color: var(--ink); }
+#prevShow .op { display: flex; }
 #prevShow .cl { display: none; }
 .wrap:not(.noprev) #prevShow .op { display: none; }
 .wrap:not(.noprev) #prevShow .cl { display: flex; }
@@ -270,6 +271,14 @@ select.trg { height: 24px; width: 100%; font-size: 11px; padding: 0 20px 0 7px; 
 .prof #psave { margin-left: auto; height: 28px; border-color: var(--selc, var(--accent)); color: var(--selc, var(--accent)); }
 .prof #psave.ok { border-color: var(--line-2); color: var(--muted); }
 .prof #psave[hidden] { display: none; }
+.tthumb { order: 10; flex-basis: 100%; display: grid; grid-template-columns: 36px minmax(0, 1fr); align-items: center; gap: 12px; padding: 8px; border-radius: 8px; background: var(--bg); border: 1px solid var(--line); }
+.tplay { width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; background: var(--ink); color: var(--bg); display: grid; place-items: center; }
+.tplay:hover { background: var(--accent); }
+.tplay svg { width: 15px; height: 15px; fill: currentColor; }
+.tplay .p2, .tplay.on .p1 { display: none; }
+.tplay.on .p2 { display: block; }
+.tthumb[hidden] { display: none; }
+#tthSvg { width: 100%; height: 40px; display: block; overflow: visible; }
 .chip svg { display: none; }
 .sw { width: 11px; height: 11px; border-radius: 50%; display: inline-block; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18); flex: none; }
 .derive { margin-top: 10px; display: flex; gap: 10px; align-items: center; padding: 10px 12px; border: 1px dashed var(--line-2); border-radius: 10px; }
@@ -372,6 +381,10 @@ select.trg { height: 24px; width: 100%; font-size: 11px; padding: 0 20px 0 7px; 
         <button data-who="both" style="--c: linear-gradient(135deg, var(--pa) 50%, var(--pb) 50%)" title="Auswahl von Jeremy &amp; Josua vergleichen"><i></i>Beide</button>
       </div>
       <span class="st" id="pstat"></span>
+      <div class="tthumb" id="tthumb" hidden>
+        <button id="tthPlay" class="tplay" aria-label="Ausschnitt abspielen" title="Ausschnitt der Tonspur anhören (Leertaste)"><svg class="p1" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z"/></svg><svg class="p2" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="1.5"/></svg></button>
+        <svg id="tthSvg" height="40" preserveAspectRatio="none" aria-hidden="true"></svg>
+      </div>
       <button id="psave" hidden><svg class="i" viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/></svg>Speichern</button>
     </div>
     <div class="tabs" role="tablist">
@@ -385,6 +398,7 @@ select.trg { height: 24px; width: 100%; font-size: 11px; padding: 0 20px 0 7px; 
 
 <div id="toast"></div>
 
+<script id="profile-data">window.PROFILES={};</script>
 <script src="analysis.js"></script>
 <script>
 'use strict';
@@ -1741,20 +1755,34 @@ function drawPaths() {
 
 /* Profile: gespeicherte Auswahl pro Name und Tonspur */
 const PEOPLE = ['Jeremy', 'Josua'], PROF_KEY = 'av-kasten2-profiles';
-let profiles = {}, imported = 0;
-try { profiles = JSON.parse(localStorage.getItem(PROF_KEY) || 'null'); } catch (e) { profiles = null; }
-if (!profiles) {   // erstes Öffnen: gespeicherte Auswahlen aus dem bisherigen Kasten übernehmen (Erscheinung, Verhalten, Interaktion)
-  profiles = {};
+// Gespeicherte Auswahlen: pro Name und Tonspur { c: Code, t: Zeitpunkt }. Sie stehen in dieser Datei (window.PROFILES,
+// kommt per Git zum anderen) und zusätzlich im Browser. Beim Zusammenführen gewinnt jeweils der neuere Eintrag.
+const normP = e => typeof e === 'string' ? { c: e, t: 0 } : e && e.c ? e : null;
+function mergeProf(a, b) {
+  const out = {};
+  for (const src of [a || {}, b || {}]) for (const n in src) for (const tr in src[n]) {
+    const e = normP(src[n][tr]); if (!e) continue;
+    const cur = out[n] && out[n][tr];
+    if (!cur || e.t >= cur.t) (out[n] = out[n] || {})[tr] = { c: e.c, t: e.t };
+  }
+  return out;
+}
+let profiles = {}, imported = 0, local = null;
+try { local = JSON.parse(localStorage.getItem(PROF_KEY) || 'null'); } catch (e) { local = null; }
+if (!local) {   // erstes Öffnen: gespeicherte Auswahlen aus dem bisherigen Kasten übernehmen (Erscheinung, Verhalten, Interaktion)
+  local = {};
   try {
     const old = JSON.parse(localStorage.getItem('av-kasten-profiles') || '{}') || {};
-    for (const n in old) for (const tr in old[n]) { const code = importOld(old[n][tr]); if (code) { (profiles[n] = profiles[n] || {})[tr] = code; imported++; } }
-    localStorage.setItem(PROF_KEY, JSON.stringify(profiles));
+    for (const n in old) for (const tr in old[n]) { const code = importOld(old[n][tr]); if (code) { (local[n] = local[n] || {})[tr] = { c: code, t: 0 }; imported++; } }
   } catch (e) {}
 }
+profiles = mergeProf(local, window.PROFILES);
+try { localStorage.setItem(PROF_KEY, JSON.stringify(profiles)); } catch (e) {}
+const codeFor = (name, track) => profiles[name] && profiles[name][track] ? profiles[name][track].c : null;
 state.who = (state.who || []).filter(n => PEOPLE.includes(n));
 state.ptrack = state.ptrack || SONG_INSTRUMENTS[0];
-const savedFor = (name, track) => { const str = profiles[name] && profiles[name][track]; return str ? decode(str) : null; };
-const savedTrigFor = (name, track) => { const str = profiles[name] && profiles[name][track]; return str ? decodeTrig(str) : null; };
+const savedFor = (name, track) => { const str = codeFor(name, track); return str ? decode(str) : null; };
+const savedTrigFor = (name, track) => { const str = codeFor(name, track); return str ? decodeTrig(str) : null; };
 function compareSels() {     // beide Namen gewählt → [Auswahl Jeremy, Auswahl Josua]
   if (state.who.length !== 2) return null;
   return state.who.map(n => savedFor(n, state.ptrack) || defaults());
@@ -1768,7 +1796,7 @@ function profUI() {
   $('psave').hidden = !one;
   const st = $('pstat');
   if (one) {
-    const saved = profiles[who[0]] && profiles[who[0]][state.ptrack], same = !!saved && saved === encode(sel);
+    const saved = codeFor(who[0], state.ptrack), same = !!saved && saved === encode(sel);
     st.innerHTML = saved ? (same ? 'gespeichert' : 'Änderungen nicht gespeichert') : 'noch nichts gespeichert';
     st.classList.toggle('dirty', !same); $('psave').classList.toggle('ok', !!saved && same);
   } else if (who.length === 2) {
@@ -1788,8 +1816,82 @@ function fillPTrack(stems = []) {
   $('ptrack').value = state.ptrack;
 }
 fillPTrack();
+
+/* Vorschau der gewählten Tonspur – so wie sie in „Tonspuren & Elemente · Version 2“ aussieht (live aus visualisierung.html) */
+let V2 = null;
+fetch('visualisierung.html', { cache: 'no-store' }).then(r => r.text()).then(t => {
+  const m = t.match(/<script id="state-data">window\.STATE=([\s\S]*?);<\/script>/);
+  V2 = m ? (JSON.parse(m[1]).variants || {}).v1 : null; drawThumb();
+}).catch(() => {});
+function thumbShape(e, k, pps, H, c) {   // gleiche Zeichenregeln wie in der Visualisierung, verkleinert
+  const W = e.w * pps, h2 = H - 4, f = v => v.toFixed(1);
+  if (e.k === 'a') {
+    const P = e.p.map(q => [q[0] * W, 2 + q[1] * h2, q[2]]), g = q => f(q[0]) + ' ' + f(q[1]);
+    let d = 'M' + g(P[0]);
+    for (let j = 1; j < P.length; j++) {
+      const b = P[j], n = P[j + 1], a = P[j - 1], at = (u, t) => [b[0] + (u[0] - b[0]) * t, b[1] + (u[1] - b[1]) * t];
+      d += b[2] === 2 && n ? 'L' + g(at(a, .28)) + 'Q' + g(b) + ' ' + g(at(n, .28)) : b[2] || !n ? 'L' + g(b) : 'Q' + g(b) + ' ' + g([(b[0] + n[0]) / 2, (b[1] + n[1]) / 2]);
+    }
+    if (e.h == null) return `<path d="${d}Z" fill="${c}"/>`;
+    const x0 = e.h * W, cnt = 9, pitch = (W - x0) / cnt;
+    let bars = `<rect x="0" y="0" width="${f(x0)}" height="${H}"/>`;
+    for (let j = 0; j < cnt; j++) bars += `<rect x="${f(x0 + j * pitch)}" y="0" width="${f(pitch * (.72 - .58 * j / (cnt - 1)))}" height="${H}"/>`;
+    return `<defs><clipPath id="tth${k}"><path d="${d}Z"/></clipPath></defs><g clip-path="url(#tth${k})" fill="${c}">${bars}</g>`;
+  }
+  if (e.k === 's') { const q = h2 / 8, dx = Math.max(0, W - q) / 7; let o = ''; for (let j = 0; j < 8; j++) o += `<rect x="${f(j * dx)}" y="${f(2 + j * q)}" width="${f(q)}" height="${f(q)}" fill="${c}"/>`; return o; }
+  if (e.k === 'e') { const sx = e.sx || 1, sy = e.sy || 1, r = Math.min(Math.max(W * sx, 3), h2 * sy) / 2; return `<ellipse cx="${(r / sx).toFixed(2)}" cy="${f(2 + h2 / 2)}" rx="${(r / sx).toFixed(2)}" ry="${(r / sy).toFixed(2)}" fill="${c}"/>`; }
+  if (e.k === 'r') return e.p.map(r => `<rect x="${f(r[0] * W)}" y="${f(2 + r[1] * h2)}" width="${f(r[2] * W)}" height="${f(r[3] * h2)}" fill="${c}"/>`).join('');
+  return '';
+}
+let thumbView = null, thumbTrack = null;   // Zeitbereich und Maßstab der Vorschau, für die Abspiel-Linie
+function drawThumb() {
+  const box = $('tthumb'), row = SONG_INSTRUMENTS.indexOf(state.ptrack);
+  const els = V2 && row >= 0 ? (V2.custom || []).filter(c => c.row === row) : [];
+  if (thumbTrack !== state.ptrack) { snipStop(); thumbTrack = state.ptrack; }   // andere Tonspur: Ausschnitt anhalten
+  if (!els.length) { box.hidden = true; snipSeg = null; return; }
+  box.hidden = false; box.title = state.ptrack + ' in Tonspuren · Version 2';
+  const t0 = Math.min(...els.map(e => e.t0)), t1 = Math.max(...els.map(e => e.t0 + e.w * (e.sx || 1)));
+  const svg = $('tthSvg'), W = svg.getBoundingClientRect().width || 600, H = 40, pps = (W - 4) / Math.max(.5, t1 - t0);
+  const col = 'var(--ink)';   // neutral: weiß im Dark Mode, schwarz im hellen – keine Farbe vorgeben
+  svg.setAttribute('viewBox', `0 0 ${W.toFixed(0)} ${H}`);
+  svg.innerHTML = els.map((e, k) => `<g transform="translate(${(2 + (e.t0 - t0) * pps).toFixed(1)} ${H / 2}) scale(${e.sx || 1} ${e.sy || 1}) translate(0 ${-H / 2})">${thumbShape(e, k, pps, H, col)}</g>`).join('') +
+    `<line id="tthPh" x1="0" x2="0" y1="-3" y2="${H + 3}" stroke="var(--accent)" stroke-width="2" visibility="hidden"/>`;
+  thumbView = { t0, pps };
+  snipSeg = segmentFor(els);
+}
+new ResizeObserver(() => drawThumb()).observe($('tthumb'));
+
+/* Ausschnitt der gewählten Tonspur anhören: erster zusammenhängender Abschnitt, höchstens 4 Takte */
+const snip = new Audio('song.m4a'); snip.preload = 'auto';
+let snipSeg = null, snipRaf = 0;
+function segmentFor(els) {
+  const a = [...els].sort((x, y) => x.t0 - y.t0), end = x => x.t0 + x.w * (x.sx || 1), bar = 4 * 60 / SONG.bpm;
+  let s = a[0].t0, e = end(a[0]);
+  for (const x of a.slice(1)) { if (x.t0 > e + .3) break; e = Math.max(e, end(x)); }   // kleine Lücken gehören noch dazu
+  return [s, Math.min(e, s + 4 * bar)];
+}
+function snipStop() {
+  if (!snip.paused) snip.pause();
+  cancelAnimationFrame(snipRaf);
+  const b = $('tthPlay'); if (b) { b.classList.remove('on'); b.setAttribute('aria-label', 'Ausschnitt abspielen'); }
+  const ph = $('tthPh'); if (ph) ph.setAttribute('visibility', 'hidden');
+}
+function snipTick() {
+  const t = snip.currentTime, ph = $('tthPh');
+  if (snip.paused || t >= snipSeg[1]) { snipStop(); return; }
+  if (ph && thumbView) { const x = (2 + (t - thumbView.t0) * thumbView.pps).toFixed(1); ph.setAttribute('x1', x); ph.setAttribute('x2', x); ph.setAttribute('visibility', 'visible'); }
+  snipRaf = requestAnimationFrame(snipTick);
+}
+function snipToggle() {
+  if (!snip.paused) { snipStop(); return; }
+  if (!snipSeg) return;
+  if (playing) setPlay(false);            // Vorschau-Song anhalten, damit nicht zwei Dinge gleichzeitig laufen
+  snip.currentTime = snipSeg[0];
+  snip.play().then(() => { $('tthPlay').classList.add('on'); $('tthPlay').setAttribute('aria-label', 'Ausschnitt stoppen'); snipTick(); }).catch(() => toast('Ausschnitt konnte nicht abgespielt werden'));
+}
+$('tthPlay').onclick = snipToggle;
 $('ptrack').onchange = () => {
-  state.ptrack = $('ptrack').value; loadProfile(); drawSeekMarks();
+  state.ptrack = $('ptrack').value; loadProfile(); drawSeekMarks(); drawThumb();
   // gibt es für das Instrument eine hochgeladene Einzelspur, reagiert die Visualisierung gleich darauf
   if ([...trackSel.options].some(o => o.value === state.ptrack) && trackSel.value !== state.ptrack) { trackSel.value = state.ptrack; trackSel.onchange(); }
 };
@@ -1801,12 +1903,55 @@ document.querySelectorAll('[data-who]').forEach(b => b.onclick = () => {
   else state.who = !both && state.who[0] === n ? [] : [n];
   loadProfile();
 });
-$('psave').onclick = () => {
+/* Speichern in die Datei kasten2.html – so kommt die Auswahl per Commit & Push zum anderen */
+const idb = (mode, fn) => new Promise(res => {
+  try {
+    const r = indexedDB.open('av-store', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('h');
+    r.onerror = () => res(null);
+    r.onsuccess = () => { const tx = r.result.transaction('h', mode), q = fn(tx.objectStore('h')); tx.oncomplete = () => res(q && q.result); tx.onerror = tx.onabort = () => res(null); };
+  } catch (e) { res(null); }
+});
+async function fileHandle() {           // kasten2.html im Projektordner – wird einmal gewählt und gemerkt
+  let h = await idb('readonly', s => s.get('html-kasten2'));
+  if (h) { try { if (await h.queryPermission({ mode: 'readwrite' }) !== 'granted' && await h.requestPermission({ mode: 'readwrite' }) !== 'granted') h = null; } catch (e) { h = null; } }
+  if (!h) {
+    h = (await showOpenFilePicker({ types: [{ description: 'kasten2.html', accept: { 'text/html': ['.html'] } }] }))[0];
+    if (await h.requestPermission({ mode: 'readwrite' }) !== 'granted') throw new Error('keine Schreibrechte');
+    idb('readwrite', s => s.put(h, 'html-kasten2'));
+  }
+  return h;
+}
+const PROF_RE = /<script id="profile-data">window\.PROFILES=([\s\S]*?);<\/script>/;
+function withProfiles(txt) {            // Einträge aus der Datei und aus dem Browser zusammenführen, neuere gewinnen
+  let fileP = {}; try { fileP = JSON.parse(txt.match(PROF_RE)[1]); } catch (e) {}
+  profiles = mergeProf(fileP, profiles);
+  try { localStorage.setItem(PROF_KEY, JSON.stringify(profiles)); } catch (e) {}
+  return txt.replace(PROF_RE, () => '<script id="profile-data">window.PROFILES=' + JSON.stringify(profiles).replace(/</g, '\\u003c') + ';<\/script>');
+}
+$('psave').onclick = async () => {
   if (state.who.length !== 1) return;
-  const n = state.who[0];
-  (profiles[n] = profiles[n] || {})[state.ptrack] = encode(sel);
-  let ok = true; try { localStorage.setItem(PROF_KEY, JSON.stringify(profiles)); } catch (e) { ok = false; }
-  profUI(); toast(ok ? `Gespeichert: ${n} · ${state.ptrack}` : 'Nur bis zum Neuladen gemerkt – der Browser-Speicher ist gesperrt');
+  const n = state.who[0], track = state.ptrack;
+  (profiles[n] = profiles[n] || {})[track] = { c: encode(sel), t: Date.now() };
+  try { localStorage.setItem(PROF_KEY, JSON.stringify(profiles)); } catch (e) {}
+  profUI();
+  try {
+    if (window.showOpenFilePicker) {
+      const h = await fileHandle(), txt = await (await h.getFile()).text();
+      if (h.name !== 'kasten2.html' || !PROF_RE.test(txt)) throw new Error('Das ist nicht die kasten2.html dieses Projekts');
+      const w = await h.createWritable(); await w.write(withProfiles(txt)); await w.close();
+      toast(`Gespeichert: ${n} · ${track} – in kasten2.html, jetzt committen & pushen`);
+    } else {                            // Browser ohne Dateizugriff: geänderte Datei herunterladen
+      const txt = await (await fetch(location.href.split('#')[0].split('?')[0], { cache: 'no-store' })).text();
+      const a = document.createElement('a'); a.download = 'kasten2.html';
+      a.href = URL.createObjectURL(new Blob([withProfiles(txt)], { type: 'text/html' })); a.click();
+      toast('kasten2.html heruntergeladen – im Projektordner ersetzen, dann committen & pushen');
+    }
+  } catch (err) {
+    toast(err.name === 'AbortError' ? 'Nur im Browser gespeichert – zum Teilen beim Speichern die Datei kasten2.html wählen'
+      : `Nur im Browser gespeichert (${err.message})`, null, null);
+  }
+  profUI();
 };
 
 /* Szene & Klang */
@@ -1928,7 +2073,7 @@ $('prevShow').onclick = () => showPreview($('wrap').classList.contains('noprev')
 /* Wiedergabe, Tempo, Klangquelle */
 let playing = true;
 const PLAY_ICON = '<svg class="i" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg>', PAUSE_ICON = '<svg class="i" viewBox="0 0 24 24"><path d="M8 5.5v13M16 5.5v13" stroke-width="3"/></svg>';
-const setPlay = p => { playing = p; $('play').innerHTML = p ? PAUSE_ICON : PLAY_ICON; if (sound.mode === 'song') { if (p) sound.playSong(); else sound.pauseSong(); } };
+const setPlay = p => { if (p) snipStop(); playing = p; $('play').innerHTML = p ? PAUSE_ICON : PLAY_ICON; if (sound.mode === 'song') { if (p) sound.playSong(); else sound.pauseSong(); } };
 setPlay(false);
 $('play').onclick = () => setPlay(!playing);
 document.querySelectorAll('[data-src]').forEach(b => b.onclick = () => {
@@ -2184,7 +2329,10 @@ $('theme').onclick = () => setTheme(document.documentElement.dataset.theme === '
 /* Tastatur */
 addEventListener('keydown', e => {
   if (e.target.closest('input, select, textarea') || e.metaKey || e.ctrlKey || e.altKey) return;
-  if (e.code === 'Space' && !e.target.closest('button')) { e.preventDefault(); setPlay(!playing); }
+  if (e.code === 'Space' && !e.target.closest('button')) {   // Vorschau zu: Leertaste spielt den Tonspur-Ausschnitt, sonst den Vorschau-Song
+    e.preventDefault();
+    if ($('wrap').classList.contains('noprev') && !$('tthumb').hidden) snipToggle(); else setPlay(!playing);
+  }
 });
 
 /* Größe */

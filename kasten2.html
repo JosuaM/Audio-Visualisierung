@@ -1,0 +1,2234 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>/* Hell/Dunkel sofort setzen, bevor die Seite gezeichnet wird – sonst blitzt sie beim Wechseln hell auf */
+try { document.documentElement.dataset.theme = localStorage.getItem('av-theme') || 'dark'; } catch (e) { document.documentElement.dataset.theme = 'dark'; }</script>
+<title>Morphologischer Kasten · Version 2 – Audio-Visualisierung</title>
+<style>
+/* weicher Übergang zwischen den Seiten statt hartem Neuaufbau */
+@view-transition { navigation: auto; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: .2s; animation-timing-function: ease; }
+@media (prefers-reduced-motion: reduce) { @view-transition { navigation: none; } }
+html { background: var(--bg); }
+:root {
+  --bg: #f4f2ed; --panel: #fbfaf7; --ink: #1b1b22; --muted: #7b7a82; --faint: #a9a8ae;
+  --line: #e3e0d8; --line-2: #cfcbc0; --accent: #ff6a14; --accent-ink: #fff; --pa: #ff6a14; --pb: #2563eb;
+  --stage: #ebe8e0; --chip: #f3f1ec; --chip-h: #e9e6df;
+  --grid: rgba(40,40,60,.08); --ctxp: rgba(110,108,124,.20); --ctxs: rgba(110,108,124,.45); --hide: #d6d2c7;
+  --c0: #12985f; --c1: #2558e8; --c2: #d8304c; --c3: #d98400; --c4: #e5158f; --c5: #7a4cff; --c6: #0c95ad; --c7: #7ea000;
+}
+:root[data-theme="dark"] {
+  --pa: #ff8a2a; --pb: #4f8dff;
+  --bg: #0b0c10; --panel: #11131a; --ink: #eeeef2; --muted: #8b8d99; --faint: #5d5f6b;
+  --line: #1f222c; --line-2: #2d313e; --accent: #ff8a2a; --accent-ink: #15120e;
+  --stage: #07080b; --chip: #161922; --chip-h: #1d212c;
+  --grid: rgba(220,225,255,.07); --ctxp: rgba(150,156,180,.13); --ctxs: rgba(150,156,180,.32); --hide: #1a1d27;
+  --c0: #3ddc97; --c1: #5ba3ff; --c2: #ff5f76; --c3: #ffb454; --c4: #ff3fa6; --c5: #b88cff; --c6: #46d9ee; --c7: #d6f45c;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; }
+body {
+  background: var(--bg); color: var(--ink);
+  font: 13px/1.4 "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 12px; padding: 14px 16px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Kopfzeile */
+header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 0 4px; }
+h1 { margin: 0; font-size: 15px; font-weight: 650; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+h1 span { color: var(--muted); font-weight: 450; }
+/* Punkte-Navigation: ein Punkt pro Seite der Kategorie, der aktuelle ist groß und farbig */
+.steps { display: flex; align-items: center; height: 30px; }
+.steps[hidden] { display: none !important; }
+.steps .ln { width: 38px; height: 2px; background: var(--line-2); }
+.steps .dot { position: relative; display: block; width: 10px; height: 10px; border-radius: 50%; background: var(--line-2); transition: transform .15s, background .15s; }
+.steps a.dot::before { content: ""; position: absolute; inset: -10px; }
+.steps a.dot:hover, .steps a.dot:focus-visible { background: var(--muted); transform: scale(1.3); outline: none; }
+.steps .dot.cur { width: 14px; height: 14px; background: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent); }
+.steps .dot::after { content: attr(data-l); position: absolute; top: 22px; left: 50%; transform: translateX(-50%); font-size: 11px; font-weight: 500; color: var(--bg); background: var(--ink); border-radius: 5px; padding: 2px 7px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .15s; }
+header.nav { position: relative; z-index: 30; }   /* Beschriftung der Punkte liegt über dem Inhalt */
+.steps .dot:hover::after, .steps .dot:focus-visible::after { opacity: 1; }
+/* Kopfzeile auf allen Seiten gleich: links Home + wo man ist, Mitte Blättern, rechts Werkzeuge */
+header.nav { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 16px; padding: 0 4px; }
+header.nav > .right { justify-self: end; min-width: 0; }
+header.nav .nc { justify-self: center; }
+.nl { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.pt { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.pt .pk { font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+header.nav .pt h1 { margin: 0; font-size: 16px; font-weight: 650; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pager .sel select { min-width: 132px; }
+/* Navigation: Home zum Hauptmenü, Pfeile innerhalb der Kategorie */
+.home { flex: none; width: 30px; height: 30px; border: 1px solid var(--line-2); border-radius: 8px; display: grid; place-items: center; color: var(--muted); background: var(--panel); }
+.home:hover { color: var(--ink); border-color: var(--muted); }
+.home:focus-visible, .pg:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.home svg, .pg svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.pager { display: inline-flex; align-items: center; gap: 6px; }
+.pg { flex: none; width: 30px; height: 30px; border: 1px solid var(--line-2); border-radius: 8px; display: grid; place-items: center; color: var(--ink); background: var(--panel); text-decoration: none; }
+.pg:hover { border-color: var(--muted); }
+.pg.off { opacity: .3; pointer-events: none; }
+.pglab { font-weight: 600; white-space: nowrap; padding: 0 4px; }
+
+.right { display: flex; align-items: center; gap: 10px; }
+
+button, .btn { font: inherit; color: inherit; background: var(--panel); border: 1px solid var(--line-2); border-radius: 8px; height: 30px; padding: 0 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; white-space: nowrap; transition: border-color .15s, background .15s, color .15s; }
+button:hover, .btn:hover { border-color: var(--muted); }
+button:focus-visible, .btn:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.icon { width: 30px; padding: 0; justify-content: center; }
+svg.i { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.seg { display: inline-flex; border: 1px solid var(--line-2); border-radius: 8px; overflow: hidden; background: var(--panel); }
+.seg button { border: 0; border-radius: 0; height: 28px; background: transparent; color: var(--muted); padding: 0 10px; }
+.seg button.on { background: var(--ink); color: var(--bg); }
+select { font: inherit; color: inherit; background: var(--panel); border: 1px solid var(--line-2); border-radius: 8px; height: 30px; padding: 0 30px 0 10px; cursor: pointer; appearance: none; -webkit-appearance: none; }
+.sel { position: relative; display: inline-flex; }
+.sel::after { content: ""; position: absolute; right: 12px; top: 50%; width: 6px; height: 6px; margin-top: -5px; border: solid var(--muted); border-width: 0 1.6px 1.6px 0; transform: rotate(45deg); pointer-events: none; }
+
+.trk { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; }
+.tempo b.fix { min-width: 0; }
+
+/* Hauptlayout */
+.wrap { display: grid; grid-template-columns: minmax(0, 1fr) clamp(560px, 56vw, 960px); gap: 12px; min-height: 0; position: relative; }
+.wrap { grid-template-columns: 30px minmax(0, 1fr) clamp(560px, 56vw, 960px); }
+.wrap.noprev { grid-template-columns: 30px minmax(0, 1fr); }
+.wrap.noprev .left { display: none; }
+#prevShow { display: flex; width: 30px; height: auto; padding: 0; border-radius: 10px; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--muted); }
+#prevShow .op > span, #prevShow .cl > span { writing-mode: vertical-rl; transform: rotate(180deg); font-size: 11.5px; letter-spacing: .04em; }
+#prevShow:hover { color: var(--ink); }
+#prevShow .cl { display: none; }
+.wrap:not(.noprev) #prevShow .op { display: none; }
+.wrap:not(.noprev) #prevShow .cl { display: flex; }
+#prevShow .op, #prevShow .cl { flex-direction: column; align-items: center; gap: 10px; }
+#prevHide { position: absolute; left: 12px; top: 10px; z-index: 3; height: 26px; padding: 0 10px 0 6px; display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--muted); background: color-mix(in srgb, var(--panel) 85%, transparent); }
+#prevHide:hover { color: var(--ink); }
+.left { display: grid; grid-template-rows: minmax(0, 1fr) auto auto auto; gap: 10px; min-height: 0; min-width: 0; }
+.stagebox { position: relative; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--stage); min-height: 220px; }
+.stagebox canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.badge { position: absolute; left: 12px; top: 10px; display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--muted); background: color-mix(in srgb, var(--panel) 82%, transparent); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; backdrop-filter: blur(6px); pointer-events: none; }
+.badge i { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
+.badge b { color: var(--ink); font-weight: 600; }
+.badge em { font-style: normal; color: var(--accent); }
+.preview-tag { position: absolute; right: 12px; top: 10px; font-size: 11px; color: var(--accent-ink); background: var(--accent); border-radius: 999px; padding: 3px 10px; opacity: 0; transition: opacity .15s; pointer-events: none; }
+.preview-tag.on { opacity: 1; }
+.zoomctl { position: absolute; right: 10px; bottom: 10px; display: flex; align-items: center; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 10px; background: color-mix(in srgb, var(--panel) 82%, transparent); backdrop-filter: blur(6px); z-index: 2; }
+.zoomctl button { width: 28px; height: 26px; padding: 0; border: 0; background: transparent; justify-content: center; color: var(--muted); }
+.zoomctl button:hover { color: var(--ink); background: var(--chip-h); }
+.zoomctl #zReset { width: auto; padding: 0 8px; font-size: 11.5px; font-variant-numeric: tabular-nums; min-width: 52px; }
+
+.bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.bar .grp { display: flex; gap: 8px; margin-left: auto; }
+.tempo { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; }
+.tempo b { color: var(--ink); font-variant-numeric: tabular-nums; min-width: 54px; }
+input[type=range] { -webkit-appearance: none; appearance: none; width: 96px; height: 14px; background: transparent; cursor: pointer; }
+input[type=range]::-webkit-slider-runnable-track { height: 3px; border-radius: 3px; background: var(--line-2); }
+input[type=range]::-moz-range-track { height: 3px; border-radius: 3px; background: var(--line-2); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 13px; height: 13px; border-radius: 50%; background: var(--ink); margin-top: -5px; border: 0; }
+input[type=range]::-moz-range-thumb { width: 13px; height: 13px; border-radius: 50%; background: var(--ink); border: 0; }
+.meters { display: flex; flex-direction: column; gap: 3px; font-size: 10px; color: var(--faint); }
+.meter { display: flex; align-items: center; gap: 5px; }
+.meter span { width: 38px; }
+.meter div { width: 70px; height: 4px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.meter div i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 3px; }
+.meters.off { display: none; }
+
+.seek { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.seek .sw2 { flex: 1; min-width: 0; position: relative; display: flex; align-items: center; }
+.seek .sw2 input[type=range] { flex: 1; width: 100%; min-width: 0; position: relative; z-index: 1; }
+.seek .marks { position: absolute; left: 6.5px; right: 6.5px; top: 50%; height: 9px; margin-top: -4.5px; pointer-events: none; }
+.seek .marks i { position: absolute; top: 0; bottom: 0; min-width: 2px; border-radius: 2px; background: var(--mc); opacity: .55; }
+.seek .mlab { cursor: pointer; font-size: 11px; color: var(--mc, var(--muted)); white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
+.seek .mlab::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--mc); opacity: .7; }
+.seek .mlab:empty { display: none; }
+.seek .mlab.idle { opacity: .45; }
+.seek .mlab.idle::after { content: "· still"; color: var(--muted); }
+.seek .mlab.off { opacity: .45; }
+.seek input[type=range]::-webkit-slider-runnable-track { background: linear-gradient(to right, var(--accent) var(--p, 0%), var(--line-2) var(--p, 0%)); }
+.seek input[type=range]::-moz-range-progress { height: 3px; border-radius: 3px; background: var(--accent); }
+.seek b { color: var(--ink); font-weight: 600; }
+.seek .t1 { min-width: 82px; text-align: right; }
+.notes { display: flex; flex-wrap: wrap; gap: 6px; min-height: 22px; }
+.note { font-size: 11.5px; color: var(--muted); border: 1px dashed var(--line-2); border-radius: 999px; padding: 2px 10px; }
+.note b { color: var(--ink); font-weight: 600; }
+
+
+/* Kasten-Panel */
+.panel { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); display: grid; grid-template-rows: auto auto minmax(0, 1fr); min-height: 0; overflow: hidden; }
+.tabs { display: flex; gap: 4px; padding: 8px; border-bottom: 1px solid var(--line); align-items: center; }
+.tabs button.t { flex: 1; border: 0; background: transparent; color: var(--muted); height: 30px; justify-content: center; }
+.tabs button.t.on { background: var(--ink); color: var(--bg); }
+.tabs button.t b { font-weight: 600; margin-right: 2px; }
+.tabs .eye { border-color: var(--line); }
+.tabs .eye.on { color: var(--accent); border-color: var(--accent); }
+.scroll { overflow: auto; padding: 0 14px 30px; }
+.box { padding: 16px 0 48px; border-bottom: 1px solid var(--line); }
+.box:last-child { border-bottom: 0; padding-bottom: 12px; }
+#scroll > .box:last-child { min-height: calc(100% + 32px); }   /* auch der letzte Kasten lässt sich ganz nach oben scrollen */
+.box + .box { padding-top: 48px; }
+.bh { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.bh h2 { font-size: 13.5px; margin: 0; font-weight: 650; letter-spacing: -.01em; }
+.bh h2 span { color: var(--muted); font-weight: 450; }
+.bq { color: var(--muted); font-size: 12px; margin: 2px 0 14px; }
+.acts { display: flex; gap: 4px; }
+.acts button { height: 24px; font-size: 11.5px; padding: 0 8px; border-color: var(--line); color: var(--muted); }
+.acts button:hover { color: var(--ink); }
+.rows { position: relative; }
+.rows svg.path { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; z-index: 2; }
+.row { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 10px; padding: 5px 0; align-items: stretch; position: relative; border-radius: 8px; }
+.row.flash { animation: flash 1.4s ease-out; }
+@keyframes flash { 0% { background: color-mix(in srgb, var(--accent) 22%, transparent); } 100% { background: transparent; } }
+.rl { display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+.rl .nm { display: flex; align-items: center; gap: 4px; font-weight: 560; font-size: 12px; line-height: 1.25; }
+.rl .nm .tx { min-width: 0; overflow-wrap: anywhere; hyphens: auto; -webkit-hyphens: auto; }
+.rl .nm .opt { color: var(--faint); font-weight: 400; font-size: 10.5px; }
+.rl small { color: var(--faint); font-size: 10.5px; line-height: 1.25; margin-top: 2px; overflow-wrap: anywhere; hyphens: auto; -webkit-hyphens: auto; }
+.lock { width: 18px; height: 18px; padding: 0; border: 0; background: transparent; color: var(--faint); opacity: 0; justify-content: center; flex: none; margin-left: -3px; }
+.lock svg { width: 12px; height: 12px; }
+.row:hover .lock, .lock.on, .lock:focus-visible { opacity: 1; }
+.lock.on { color: var(--accent); }
+.show-m { display: none; }
+.grp-h { font-size: 10.5px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); padding: 14px 0 4px; border-top: 1px solid var(--line); margin-top: 6px; }
+.rows > .grp-h:first-of-type { border-top: 0; margin-top: 0; padding-top: 2px; }
+.rowh + .grp-h { border-top: 0; margin-top: 0; padding-top: 2px; }
+/* Auslöser pro Zeile (Kasten 2 & 3) */
+.sel.mini { margin-top: 5px; width: 100%; }
+.sel.mini::after { right: 9px; width: 5px; height: 5px; margin-top: -4px; }
+select.trg { height: 24px; width: 100%; font-size: 11px; padding: 0 20px 0 7px; border-radius: 6px; color: var(--muted); background: var(--bg); }
+.trgw.live select { border-color: var(--accent); color: var(--ink); }
+.trgw.nl select { border-style: dashed; color: var(--ink); }
+.row.t3 { grid-template-columns: 150px minmax(0, 1fr) 210px; }
+.rt { display: grid; grid-template-columns: 20px minmax(0, 1fr); column-gap: 6px; align-items: center; align-content: center; min-width: 0; }
+.rt .lnk { display: grid; place-items: center; color: var(--faint); }
+.rt .lnk svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.rt.live .lnk { color: var(--accent); }
+.rt .sel.mini { margin-top: 0; }
+.rt .sel.mini::after { right: 12px; width: 6px; height: 6px; margin-top: -5px; }
+.dd { position: relative; min-width: 0; }
+.dd-btn { width: 100%; height: 36px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 12px 0 11px; border: 1px solid var(--line-2); border-radius: 6px; background: var(--bg); color: var(--muted); font-size: 12px; text-align: left; }
+.dd-btn .dd-v { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dd-btn::after { content: ""; flex: none; width: 6px; height: 6px; margin-top: -3px; border: solid var(--muted); border-width: 0 1.6px 1.6px 0; transform: rotate(45deg); transition: transform .15s, margin .15s; }
+.dd.open .dd-btn { border-color: var(--muted); color: var(--ink); }
+.dd.open .dd-btn::after { transform: rotate(-135deg); margin-top: 3px; }
+.dd.live .dd-btn { border-color: var(--accent); color: var(--ink); }
+.dd.nl .dd-btn { border-style: dashed; border-color: var(--muted); color: var(--ink); }
+.dd-pop { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 40; display: flex; flex-direction: column; padding: 4px; background: var(--panel); border: 1px solid var(--line-2); border-radius: 8px; box-shadow: 0 10px 28px rgba(0,0,0,.28); }
+.dd-pop[hidden] { display: none; }
+.row:has(.dd.open) { z-index: 50; }   /* offene Liste liegt über den folgenden Zeilen */
+.row.idle:has(.dd.open) .rt { opacity: 1; }
+.dd.up .dd-pop { top: auto; bottom: calc(100% + 4px); }
+.dd-g { font-size: 10px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); padding: 9px 8px 4px; margin-top: 4px; border-top: 1px solid var(--line); }
+.dd-g.nl { color: var(--muted); }
+.dd-o { display: flex; align-items: center; gap: 8px; width: 100%; height: 30px; padding: 0 8px; border: 0; border-radius: 5px; background: transparent; color: var(--ink); font-size: 12px; text-align: left; }
+.dd-o:hover, .dd-o:focus-visible { background: var(--chip-h, var(--bg)); outline: none; }
+.dd-o i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.dd-o.nl i { background: transparent; border: 1px dashed var(--muted); }
+.dd-o.none { color: var(--muted); }
+.dd-o.none i { background: transparent; border: 1px solid var(--line-2); }
+.dd-o[aria-selected="true"] { font-weight: 650; background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.rt small.trgn { grid-column: 2; color: var(--faint); font-size: 10.5px; line-height: 1.25; margin-top: 3px; }
+.rt small.trgn:empty { display: none; }
+.rt small.trgn.nl { color: var(--muted); }
+.rowh { padding: 0 0 2px; }
+.rowh .rth { padding-left: 26px; font-size: 10.5px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+/* Zeilen ohne Auswahl abgeschwächt – erst mit Auswahl wird die Zeile deutlich */
+.row .rl, .row .opts, .row .rt { transition: opacity .15s; }
+.row.idle .rl, .row.idle .opts, .row.idle .rt { opacity: .4; }
+.row.idle:hover .rl, .row.idle:hover .opts, .row.idle:hover .rt, .row.idle:focus-within .rl, .row.idle:focus-within .opts, .row.idle:focus-within .rt { opacity: .75; }
+.rl small.trgn { color: var(--faint); }
+.rl small.optl { color: var(--faint); font-size: 10.5px; margin-top: 2px; }
+.rl small.trgn.nl { color: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: -2px 0 12px; font-size: 11px; color: var(--muted); }
+.legend i { display: inline-block; width: 18px; height: 10px; border-radius: 3px; border: 1px solid var(--accent); margin-right: 5px; vertical-align: -1px; }
+.legend i.nl { border: 1px dashed var(--muted); }
+.opts { display: flex; position: relative; width: 100%; z-index: 1; border: 1px solid var(--line-2); border-radius: 6px; overflow: hidden; background: var(--bg); }
+.chip { flex: 0 0 calc(100% / var(--cols, 7) - .15px); min-width: 0; height: auto; min-height: 36px; padding: 4px 3px; border: 0; border-left: 1px solid var(--line-2); border-radius: 0; background: transparent; font-size: 11.5px; line-height: 1.2; color: var(--ink); gap: 4px; justify-content: center; text-align: center; white-space: normal; overflow-wrap: anywhere; hyphens: auto; }
+.chip:first-child { border-left: 0; }
+.chip:hover { background: var(--chip-h); }
+.chip.on { background: var(--selc, var(--accent)); color: #fff; font-weight: 650; }
+.chip.empty { pointer-events: none; }
+.chip.empty:hover { background: transparent; }
+.chip.pa, .chip.pb { color: #fff; font-weight: 650; }
+.chip.pa { background: var(--pa); }
+.chip.pb { background: var(--pb); }
+.chip.pa.pb { background: linear-gradient(135deg, var(--pa) 50%, var(--pb) 50%); }
+.panel.cmp .chip:not(.empty) { cursor: default; }
+.panel.cmp .chip:not(.pa):not(.pb):hover { background: transparent; }
+/* Profile: Tonspur + Name + Speichern */
+.prof { display: flex; align-items: center; gap: 8px; padding: 8px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.prof .lbl { color: var(--muted); font-size: 12px; }
+.prof select { height: 28px; }
+.who { display: inline-flex; border: 1px solid var(--line-2); border-radius: 8px; overflow: hidden; }
+.who button { border: 0; border-radius: 0; height: 26px; background: transparent; color: var(--muted); padding: 0 10px; gap: 6px; }
+.who button + button { border-left: 1px solid var(--line-2); }
+.who button i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); opacity: .45; }
+.who button.on { background: var(--c); color: #fff; }
+.who [data-who="both"] i { border-radius: 2px; }
+.who button.on i { background: #fff; opacity: 1; }
+.prof .st { font-size: 11.5px; color: var(--faint); }
+.prof .st.dirty { color: var(--muted); }
+.prof .st b { font-weight: 600; }
+.prof #psave { margin-left: auto; height: 28px; border-color: var(--selc, var(--accent)); color: var(--selc, var(--accent)); }
+.prof #psave.ok { border-color: var(--line-2); color: var(--muted); }
+.prof #psave[hidden] { display: none; }
+.chip svg { display: none; }
+.sw { width: 11px; height: 11px; border-radius: 50%; display: inline-block; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18); flex: none; }
+.derive { margin-top: 10px; display: flex; gap: 10px; align-items: center; padding: 10px 12px; border: 1px dashed var(--line-2); border-radius: 10px; }
+.derive p { margin: 0; color: var(--muted); font-size: 11.5px; flex: 1; }
+.derive button { border-color: var(--accent); color: var(--accent); }
+
+#toast { position: fixed; left: 50%; bottom: 22px; transform: translate(-50%, 20px); background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 10px; font-size: 12.5px; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; display: flex; gap: 12px; align-items: center; z-index: 10; }
+#toast.on { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+#toast button { height: 24px; font-size: 12px; background: transparent; color: var(--bg); border-color: color-mix(in srgb, var(--bg) 40%, transparent); }
+
+@media (max-width: 1180px) { .hide-m { display: none; } .show-m { display: inline; } }
+@media (max-width: 980px) {
+  html, body { height: auto; overflow: auto; }
+  body { grid-template-rows: auto auto; }
+  .wrap, .wrap.noprev { grid-template-columns: minmax(0, 1fr); }
+  #prevShow { width: 100%; height: 34px; }
+  #prevShow .op, #prevShow .cl { flex-direction: row; }
+  #prevShow .op > span, #prevShow .cl > span { writing-mode: horizontal-tb; transform: none; }
+  .left { grid-template-rows: auto auto auto auto; }
+  .stagebox { height: 56vh; }
+  .scroll { overflow: visible; }
+  .tabs { position: sticky; top: 0; z-index: 3; background: var(--panel); }
+  .box { scroll-margin-top: 48px; }
+  .panel { overflow: visible; }
+}
+@media (max-width: 560px) {
+  body { padding: 10px 16px; }
+  h1 span { display: none; }
+  .row, .row.t3 { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .rowh { display: none; }
+  .rl { flex-direction: row; gap: 8px; align-items: baseline; padding-top: 0; }
+  .lock { opacity: 1; }
+}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="nl"><a class="home" href="index.html" title="Hauptmenü" aria-label="Zum Hauptmenü"><svg viewBox="0 0 24 24"><path d="M3.5 11 12 4l8.5 7"/><path d="M6 9.5V20h12V9.5"/><path d="M10 20v-5h4v5"/></svg></a><div class="pt"><span class="pk">Morphologischer Kasten</span><h1>Version 2</h1></div></div>
+  <div class="nc"><nav class="steps" aria-label="Seiten in dieser Kategorie"><a class="dot" href="kasten.html" data-l="Version 1" title="Version 1" aria-label="Zu Version 1"></a><span class="ln" aria-hidden="true"></span><span class="dot cur" aria-current="page" data-l="Version 2" title="Version 2"></span></nav></div>
+  <div class="right">
+    <label class="trk" title="Auf welche Tonspur die Visualisierung reagiert: der ganze Song oder eine einzelne Instrumentenspur (auf der Visualisierungsseite pro Instrument hochladbar)">Tonspur
+      <span class="sel"><select id="track" aria-label="Tonspur wählen"><option value="all">Alles (Original)</option></select></span>
+    </label>
+    <button id="theme" class="icon" title="Dark / Light" aria-label="Dark / Light">
+      <svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/></svg>
+    </button>
+  </div>
+</header>
+
+<main class="wrap noprev" id="wrap">
+  <button id="prevShow" title="Vorschau ein-/ausblenden" aria-label="Vorschau ein- oder ausblenden"><span class="op"><svg class="i" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg><span>Vorschau</span></span><span class="cl"><svg class="i" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg><span>Ausblenden</span></span></button>
+  <section class="left">
+    <div class="stagebox" id="stagebox">
+      <canvas id="stage" aria-label="Visualisierung der gewählten Kombination"></canvas>
+      <div class="preview-tag" id="ptag">Vorschau</div>
+      <div class="zoomctl" role="group" aria-label="Zoom">
+        <button id="zOut" title="Rauszoomen" aria-label="Rauszoomen"><svg class="i" viewBox="0 0 24 24"><path d="M6 12h12"/></svg></button>
+        <button id="zReset" title="Auf Standard zurücksetzen (Doppelklick in die Visualisierung)" aria-label="Zoom zurücksetzen">100 %</button>
+        <button id="zIn" title="Reinzoomen" aria-label="Reinzoomen"><svg class="i" viewBox="0 0 24 24"><path d="M6 12h12M12 6v12"/></svg></button>
+      </div>
+    </div>
+
+    <div class="seek" title="Position im Song – ziehen, um zu springen">
+      <span class="mlab" id="seekLab"></span>
+      <div class="sw2"><div class="marks" id="seekMarks"></div><input type="range" id="seek" min="0" max="66" step="0.01" value="0" aria-label="Position im Song"></div>
+      <span class="t1"><b id="seekCur">0:00</b> / <span id="seekDur">1:06</span></span>
+    </div>
+
+    <div class="bar">
+      <button id="play" class="icon" title="Abspielen / Pausieren (Leertaste)" aria-label="Abspielen / Pausieren"></button>
+      <span class="tempo" title="Tempo des Songs – fest, wie auf der Visualisierungsseite">Tempo <b id="bpmv" class="fix"></b></span>
+      <span class="tempo">Klang</span>
+      <div class="seg" role="group" aria-label="Klangquelle" title="Worauf reagiert die Visualisierung? Synth spielt einen Beispielklang, Song spielt den Track ab. Die Auslöser in Kasten 2 und 3 folgen diesem Klang.">
+        <button data-src="off">Aus</button><button data-src="synth">Synth</button><button data-src="song" class="on">Song</button>
+      </div>
+      <div class="meters" id="meters">
+        <div class="meter"><span>Pegel</span><div><i id="mAmp"></i></div></div>
+        <div class="meter"><span>Tonhöhe</span><div><i id="mPitch"></i></div></div>
+      </div>
+      <div class="grp">
+      <button id="reset" class="icon" title="Alles auf Standard zurücksetzen" aria-label="Zurücksetzen"><svg class="i" viewBox="0 0 24 24"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.5 4.5v4h4"/></svg></button>
+      <button id="png" class="icon" title="Aktuelles Bild als PNG speichern" aria-label="Bild speichern"><svg class="i" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l5-4.5 4 3.5 3-2.5 4 3.5"/></svg></button>
+      <button id="boxpng" title="Alle drei Kästen als Bild exportieren (weißer Hintergrund, klassische Tabellen, Bewegungsspur)"><svg class="i" viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="2"/><path d="M3.5 9.5h17M3.5 14.5h17M9.5 4v16"/></svg>Kasten als Bild</button>
+      </div>
+    </div>
+
+    <div class="notes" id="notes" aria-live="polite"></div>
+
+  </section>
+
+  <aside class="panel" id="panel">
+    <div class="prof">
+      <span class="lbl">Tonspur</span>
+      <span class="sel"><select id="ptrack" aria-label="Tonspur für die Auswahl"></select></span>
+      <div class="who" role="group" aria-label="Wessen Auswahl?">
+        <button data-who="Jeremy" style="--c: var(--pa)" title="Auswahl von Jeremy"><i></i>Jeremy</button><button data-who="Josua" style="--c: var(--pb)" title="Auswahl von Josua"><i></i>Josua</button>
+      </div>
+      <div class="who" role="group" aria-label="Vergleich">
+        <button data-who="both" style="--c: linear-gradient(135deg, var(--pa) 50%, var(--pb) 50%)" title="Auswahl von Jeremy &amp; Josua vergleichen"><i></i>Beide</button>
+      </div>
+      <span class="st" id="pstat"></span>
+      <button id="psave" hidden><svg class="i" viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/></svg>Speichern</button>
+    </div>
+    <div class="tabs" role="tablist">
+      <button class="t on" data-go="look"><b>1</b>&nbsp;Erscheinung</button>
+      <button class="t" data-go="move"><b>2</b>&nbsp;Verhalten</button>
+      <button class="t" data-go="inter"><b>3</b>&nbsp;Interaktion</button>
+    </div>
+    <div class="scroll" id="scroll"></div>
+  </aside>
+</main>
+
+<div id="toast"></div>
+
+<script src="analysis.js"></script>
+<script>
+'use strict';
+/* ═══════════════════════════ Daten: die drei Kästen ═══════════════════════════ */
+const BOXES = [
+  { id: 'look', title: 'Morphologischer Kasten 1', sub: 'Visuelle Erscheinung', q: 'Wie sieht das Soundelement aus?', rows: [
+    { k: 'element', n: 'Grundelement', o: ['Kreis', 'Rechteck', 'Quadrat', 'Polygon', 'Linie', 'Punkt', 'Fläche', 'Dreieck'], d: 0 },
+    { k: 'char', n: 'Formcharakter', o: ['Organisch', 'Geometrisch', 'Kantig', 'Abgerundet', 'Spitz', 'Unregelmäßig'], d: 1 },
+    { k: 'size', n: 'Größe', o: ['Winzig', 'Klein', 'Mittel', 'Groß', 'Riesig'], d: 2 },
+    { k: 'temp', n: 'Farbtemperatur', o: ['Warm', 'Neutral', 'Kalt'], d: 1 },
+    { k: 'light', n: 'Helligkeit', o: ['Hell', 'Mittel', 'Dunkel'], d: 1 },
+    { k: 'hue', n: 'Farbton', o: ['Rot', 'Orange', 'Gelb', 'Grün', 'Blau', 'Violett', 'Magenta', 'Unbunt'], d: -1 },
+    { k: 'sat', n: 'Sättigung', o: ['Entsättigt', 'Mittel', 'Gesättigt'], d: 2 },
+    { k: 'alpha', n: 'Transparenz', o: ['Undurchsichtig', 'Halbtransparent', 'Transparent'], d: 0 },
+    { k: 'count', n: 'Anzahl', o: ['Einzeln', 'Wenige', 'Mehrere', 'Viele'], d: 0 },
+    { k: 'layout', n: 'Anordnung', o: ['Verteilt', 'Gruppiert', 'Linear', 'Radial', 'Rasterförmig', 'Zufällig'], d: 0 },
+    { k: 'dim', n: 'Dimensionalität', o: ['2D', '2.5D', '3D'], d: 0 },
+    { k: 'fill', n: 'Füllung', o: ['Gefüllt', 'Ungefüllt', 'Teilgefüllt'], d: 0 },
+    { k: 'stroke', n: 'Kontur', o: ['Keine', 'Dünn', 'Dick', 'Gestrichelt', 'Gepunktet'], d: 0 },
+    { k: 'surface', n: 'Oberflächenbeschaffenheit', o: ['Glatt', 'Körnig', 'Rau', 'Strukturiert', 'Texturiert'], d: 0 },
+  ] },
+  { id: 'move', title: 'Morphologischer Kasten 2', sub: 'Visuelles Verhalten', q: 'Wie verändert sich das Element und wodurch?', rows: [
+    { k: 'shapeFx', g: 'Form', n: 'Formveränderung', o: ['Vergrößern', 'Verkleinern', 'Verzerren', 'Dehnen', 'Drehen', 'Abrunden', 'Verpixeln', 'Keine'], d: -1, opt: 1, trig: 1 },
+    { k: 'transform', g: 'Form', n: 'Formtransformation', o: ['Teilung', 'Vermehrung', 'Reduktion', 'Verzweigung', 'Gruppierung', 'Keine'], d: 5, trig: 1 },
+    { k: 'colorFx', g: 'Farbe', n: 'Farbveränderung', o: ['Konstant', 'Dunkler', 'Heller', 'Farbwechsel', 'Sättigungswechsel', 'Farbverlauf', 'Keine'], d: 0, trig: 1 },
+    { k: 'place', g: 'Raum & Bewegung', n: 'Position im Raum', o: ['Vordergrund', 'Hintergrund', 'Oben', 'Unten', 'Rechts', 'Links', 'Versteckt', 'Mitte'], d: -1, opt: 1, trig: 1 },
+    { k: 'dir', g: 'Raum & Bewegung', n: 'Bewegungsrichtung', o: ['Hoch', 'Runter', 'Rechts', 'Links', 'Schräg', 'Nach vorne', 'Nach hinten', 'Zur Mitte', 'Nach außen', 'Keine'], d: -1, opt: 1, trig: 1 },
+    { k: 'path', g: 'Raum & Bewegung', n: 'Bewegungsbahn', o: ['Gerade', 'Kreisförmig', 'Wellig', 'Zickzack', 'Spiralförmig', 'Zufällig', 'Keine'], d: -1, opt: 1 },
+    { k: 'speed', g: 'Raum & Bewegung', n: 'Geschwindigkeit', o: ['Stillstand', 'Sehr langsam', 'Langsam', 'Moderat', 'Schnell', 'Sehr schnell'], d: 2, trig: 1 },
+    { k: 'accel', g: 'Raum & Bewegung', n: 'Beschleunigung', o: ['Keine', 'Zunehmend', 'Abnehmend', 'Plötzlich', 'Stufenweise'], d: 0 },
+    { k: 'rhythm', g: 'Zeitlicher Ablauf', n: 'Rhythmus', o: ['Regelmäßig', 'Unregelmäßig', 'Pulsierend', 'Repetitiv', 'Alternierend', 'Zufällig'], d: 0 },
+    { k: 'appear', g: 'Zeitlicher Ablauf', n: 'Erscheinungsverhalten', o: ['Fade-in', 'Jump-in', 'Aufpoppen', 'Zusammenfügen', 'Zoom-in', 'Wachsen', 'Einblenden'], d: -1, opt: 1, trig: 1 },
+    { k: 'vanish', g: 'Zeitlicher Ablauf', n: 'Verschwindeverhalten', o: ['Fade-out', 'Zerfallen', 'Zoom-out', 'Jump-out', 'Schrumpfen', 'Auflösen', 'Ausblenden'], d: -1, opt: 1, trig: 1 },
+    { k: 'trail', g: 'Zeitlicher Ablauf', n: 'Spur', o: ['Keine', 'Punkte', 'Linie', 'Nachleuchten', 'Nachzeichnen', 'Nachbild'], d: 0 },
+  ] },
+  { id: 'inter', title: 'Morphologischer Kasten 3', sub: 'Interaktion', q: 'Wie verhält sich das Element zu den anderen Soundelementen?', rows: [
+    { k: 'interact', n: 'Interaktion zwischen Elementen', o: ['Anziehung', 'Abstoßung', 'Kollision', 'Verfolgung', 'Verdeckung', 'Keine'], d: -1, opt: 1, trig: 1 },
+  ] },
+];
+// Auslöser: welcher Klangparameter eine Zeile steuert. live = wird in der Vorschau aus dem Klang gemessen
+const TRIGGERS = [
+  { k: 'loud', n: 'Lautstärke', live: 1, hint: 'je lauter, desto stärker' },
+  { k: 'pitch', n: 'Tonhöhe', live: 1, hint: 'je höher, desto stärker' },
+  { k: 'beat', n: 'Rhythmus (Schläge)', live: 1, hint: 'auf jedem Schlag' },
+  { k: 'dyn', n: 'Dynamik', live: 1, hint: 'beim Lauterwerden stark, beim Leiserwerden schwach' },
+  { k: 'tempo', n: 'Tempo', hint: 'im Song konstant – keine Veränderung messbar' },
+  { k: 'timbre', n: 'Klangfarbe' }, { k: 'texture', n: 'Klangtextur' }, { k: 'artic', n: 'Artikulation' },
+  { k: 'attack', n: 'Anschlag' }, { k: 'release', n: 'Ausklang' }, { k: 'density', n: 'Klangdichte' },
+  { k: 'harm', n: 'Harmonie' }, { k: 'space', n: 'Räumlichkeit' },
+];
+const trigDefaults = () => Object.fromEntries(ROWS_T().map(r => [r.k, -1]));   // Start: kein Auslöser
+const ROWS = []; BOXES.forEach(b => b.rows.forEach(r => { r.box = b.id; ROWS.push(r); }));
+function ROWS_T() { return ROWS.filter(r => r.trig); }
+const TRIG_ROWS = ROWS_T();
+const ROW = Object.fromEntries(ROWS.map(r => [r.k, r]));
+const VISUAL_KEYS = ROWS.filter(r => r.box !== 'sound').map(r => r.k);
+const SONG_INSTRUMENTS = ['Flute', 'Mosquito', 'Frog', 'Building', 'Riser', 'Hunting Horn', 'Drums', 'Ringtone'];
+// Wann welcher Sound vorkommt (Sekunden von–bis), übernommen aus der Visualisierung (original.html: data.js + eingezeichnete Korrekturen)
+const SOUND_TIMES = {"Riser":[[47.8,50.92]],"Hunting Horn":[[49.69,51.02]],"Flute":[[0,66.15]],"Mosquito":[[16.59,18.13],[19.7,21.88],[22.79,24.33],[24.84,26.38],[27.96,30.14],[31.08,32.62],[33.11,34.65],[36.22,38.4],[39.36,40.9],[41.4,42.93],[44.51,46.69],[47.6,49.14]],"Frog":[[16.6,49.66]],"Building":[[38.13,50.45]],"Drums":[[49.65,49.75],[50.16,50.26],[50.69,50.79],[51.2,51.31],[51.72,51.82],[52.23,52.33],[52.76,52.86],[53.27,53.38],[53.79,53.89],[54.29,54.4],[54.82,54.93],[55.34,55.44],[55.85,55.95],[56.36,56.46],[56.89,56.99],[57.41,57.51],[57.92,58.03],[58.43,58.53],[58.96,59.06],[59.48,59.58],[59.98,60.09],[60.49,60.6],[61.02,61.13],[61.54,61.64],[62.05,62.15],[62.56,62.66],[63.09,63.19],[63.6,63.71],[64.12,64.23],[64.63,64.73],[65.16,65.27],[65.68,65.78]],"Ringtone":[[49.76,50.16],[50.26,50.67],[50.78,51.18],[51.33,51.71],[51.82,52.22],[52.32,52.74],[52.85,53.25],[53.4,53.78],[53.89,54.29],[54.39,54.81],[54.92,55.32],[55.46,55.84],[55.95,56.36],[56.46,56.87],[56.99,57.38],[57.53,57.91],[58.03,58.43],[58.53,58.94],[59.06,59.45],[59.6,59.98],[60.08,60.48],[60.58,61.0],[61.11,61.51],[61.65,62.03],[62.14,62.55],[62.65,63.06],[63.17,63.57],[63.72,64.1],[64.22,64.62],[64.72,65.14],[65.25,65.65],[65.8,66.15]]};
+
+const defaults = () => Object.fromEntries(ROWS.map(r => [r.k, -1]));   // Start: nichts gewählt
+// Für die Darstellung dienen die bisherigen Standardwerte als stiller Ersatz, solange eine Zeile nichts gewählt hat
+// „Keine“ am Ende von Formveränderung, Bewegungsrichtung, Farbveränderung und Interaktion (hinten angehängt, damit gespeicherte Auswahlen gültig bleiben) = Effekt aus
+const vals = s => Object.fromEntries(ROWS.map(r => { const v = s[r.k] >= 0 ? r.o[s[r.k]] : (r.d >= 0 ? r.o[r.d] : null); return [r.k, v === 'Keine' && (r.k === 'shapeFx' || r.k === 'colorFx' || r.k === 'interact' || r.k === 'dir' || r.k === 'path') ? null : v]; }));
+// Code = Auswahl pro Zeile, dann „.“ und der Auslöser pro Kasten-2/3-Zeile
+// feste Reihenfolge der Zeichen im Code – bleibt gleich, auch wenn die Zeilen in der Anzeige anders sortiert werden
+const CODE_KEYS = ['element', 'char', 'size', 'temp', 'light', 'hue', 'sat', 'alpha', 'count', 'layout', 'dim', 'fill', 'stroke', 'surface', 'shapeFx', 'dir', 'path', 'speed', 'accel', 'rhythm', 'appear', 'vanish', 'trail', 'place', 'colorFx', 'transform', 'interact'];
+const TRIG_CODE = CODE_KEYS.slice(14);
+const encode = (s, g = trig) => CODE_KEYS.map(k => s[k] >= 0 ? s[k].toString(36) : '-').join('') + '.' + TRIG_CODE.map(k => ROW[k].trig && g && g[k] >= 0 ? g[k].toString(36) : '-').join('');
+function decode(str) {
+  const part = String(str || '').split('.')[0];
+  if (part.length !== CODE_KEYS.length) return null;
+  const s = defaults();
+  CODE_KEYS.forEach((k, i) => { const r = ROW[k], c = part[i]; if (c !== '-') { const n = parseInt(c, 36); if (n >= 0 && n < r.o.length) s[k] = n; } });
+  return s;
+}
+function decodeTrig(str) {
+  const part = String(str || '').split('.')[1] || '', g = trigDefaults();
+  TRIG_CODE.forEach((k, i) => { const c = part[i]; if (ROW[k].trig && c && c !== '-') { const n = parseInt(c, 36); if (n >= 0 && n < TRIGGERS.length) g[k] = n; } });
+  return g;
+}
+// Übernahme aus dem bisherigen Kasten (kasten.html): dort steht pro Zeile ein Zeichen, in dieser Reihenfolge
+const OLD_KEYS = ['element', 'char', 'size', 'temp', 'light', 'hue', 'sat', 'alpha', 'count', 'layout', 'dim', 'fill', 'stroke', 'surface', 'shapeFx', 'dir', 'path', 'speed', 'accel', 'rhythm', 'appear', 'vanish', 'trail', 'place', 'colorFx', 'transform', 'interact', 'loud', 'pitch', 'tempo', 'srhythm', 'timbre', 'texture', 'artic', 'attack', 'release', 'density', 'dyn', 'harm', 'space'];
+const OLD_LEGACY = OLD_KEYS.filter(k => k !== 'fill');
+function importOld(str) {
+  const keys = str && str.length === OLD_KEYS.length ? OLD_KEYS : str && str.length === OLD_LEGACY.length ? OLD_LEGACY : null;
+  if (!keys) return null;
+  const s = defaults();
+  keys.forEach((k, i) => { const r = ROW[k], c = str[i]; if (!r || c === '-') return; const n = parseInt(c, 36); if (n >= 0 && n < r.o.length) s[k] = n; });
+  return encode(s, trigDefaults());
+}
+
+/* ═══════════════════════════ Helfer ═══════════════════════════ */
+const $ = id => document.getElementById(id);
+const Stems = (() => {   // Einzelspuren, auf der Visualisierungsseite pro Instrument hochgeladen (IndexedDB)
+  const run = (mode, fn) => new Promise((ok, no) => { const r = indexedDB.open('av-stems', 1); r.onupgradeneeded = () => r.result.createObjectStore('s'); r.onerror = () => no(r.error);
+    r.onsuccess = () => { const tx = r.result.transaction('s', mode), q = fn(tx.objectStore('s')); tx.oncomplete = () => ok(q && q.result); tx.onerror = tx.onabort = () => no(tx.error); }; });
+  return { names: () => run('readonly', s => s.getAllKeys()).catch(() => []), get: n => run('readonly', s => s.get(n)).catch(() => null) };
+})();
+const SONG = window.SONG || { bpm: 116.1, offset: 0 };
+const TAU = Math.PI * 2;
+const clamp = (v, a = 0, b = 1) => v < a ? a : v > b ? b : v;
+const lerp = (a, b, t) => a + (b - a) * t;
+const fract = x => x - Math.floor(x);
+const smooth = t => t * t * (3 - 2 * t);
+const easeOut = t => 1 - (1 - t) * (1 - t) * (1 - t);
+const easeIn = t => t * t * t;
+const backOut = t => { const c1 = 1.9, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); };
+const expoOut = t => t >= 1 ? 1 : 1 - Math.pow(2, -10 * t);
+const wrap = (v, a, b) => { const w = b - a; return a + (((v - a) % w) + w) % w; };
+const hash = n => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+const noise1 = x => { const i = Math.floor(x), f = x - i; return lerp(hash(i), hash(i + 1), smooth(f)) * 2 - 1; };
+const tri = x => 1 - Math.abs(fract(x) * 2 - 1);            // Dreieckswelle 0..1
+const hsl = (c, dl = 0, a = 1) => `hsla(${c.h.toFixed(1)},${c.s.toFixed(1)}%,${clamp(c.l + dl, 2, 98).toFixed(1)}%,${a})`;
+function rng(seed) { let a = seed >>> 0; return () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function gauss(r) { const u = Math.max(1e-6, r()), v = r(); const m = Math.sqrt(-2 * Math.log(u)); return [m * Math.cos(TAU * v), m * Math.sin(TAU * v)]; }
+function onsetEnv(q, ons, len, decay) {
+  q = ((q % len) + len) % len; let last = ons[ons.length - 1] - len;
+  for (const o of ons) { if (o <= q) last = o; else break; }
+  return Math.exp(-(q - last) * decay);
+}
+
+/* ═══════════════════════════ Formgeometrie ═══════════════════════════ */
+function regular(n, r, a0 = 0) { const p = []; for (let k = 0; k < n; k++) { const a = a0 + k * TAU / n; p.push([Math.cos(a) * r, Math.sin(a) * r]); } return p; }
+function star(n, ro, ri, a0 = -Math.PI / 2) { const p = []; for (let k = 0; k < 2 * n; k++) { const a = a0 + k * Math.PI / n, r = k % 2 ? ri : ro; p.push([Math.cos(a) * r, Math.sin(a) * r]); } return p; }
+function resample(pts, n, closed = true) {
+  const m = pts.length, segs = closed ? m : m - 1, L = []; let tot = 0;
+  for (let i = 0; i < segs; i++) { const a = pts[i], b = pts[(i + 1) % m]; const d = Math.hypot(b[0] - a[0], b[1] - a[1]); L.push(d); tot += d; }
+  if (tot === 0) return pts.slice();
+  const out = []; let seg = 0, acc = 0; const N = closed ? n : n - 1;
+  for (let k = 0; k <= N; k++) {
+    if (closed && k === N) break;
+    const target = k * tot / N;
+    while (seg < segs - 1 && acc + L[seg] < target) { acc += L[seg]; seg++; }
+    const f = L[seg] ? clamp((target - acc) / L[seg]) : 0, a = pts[seg], b = pts[(seg + 1) % m];
+    out.push([lerp(a[0], b[0], f), lerp(a[1], b[1], f)]);
+  }
+  return out;
+}
+function partialOpen(pts, g) {   // offene Linie nur bis zum Anteil g zeichnen
+  if (g >= 1) return pts;
+  let tot = 0; for (let i = 1; i < pts.length; i++) tot += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+  const lim = tot * g, out = [pts[0]]; let acc = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const d = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+    if (acc + d >= lim) { const f = d ? (lim - acc) / d : 0; out.push([lerp(pts[i - 1][0], pts[i][0], f), lerp(pts[i - 1][1], pts[i][1], f)]); break; }
+    acc += d; out.push(pts[i]);
+  }
+  return out;
+}
+function chamfer(pts, c) {
+  const out = [], m = pts.length;
+  for (let i = 0; i < m; i++) {
+    const p = pts[(i - 1 + m) % m], v = pts[i], q = pts[(i + 1) % m];
+    const d1 = Math.hypot(p[0] - v[0], p[1] - v[1]), d2 = Math.hypot(q[0] - v[0], q[1] - v[1]);
+    const c1 = Math.min(c, d1 * .45), c2 = Math.min(c, d2 * .45);
+    out.push([v[0] + (p[0] - v[0]) / d1 * c1, v[1] + (p[1] - v[1]) / d1 * c1]);
+    out.push([v[0] + (q[0] - v[0]) / d2 * c2, v[1] + (q[1] - v[1]) / d2 * c2]);
+  }
+  return out;
+}
+function roundPoly(pts, rad, seg = 7) {
+  const out = [], m = pts.length;
+  for (let i = 0; i < m; i++) {
+    const p = pts[(i - 1 + m) % m], v = pts[i], q = pts[(i + 1) % m];
+    const d1 = Math.hypot(p[0] - v[0], p[1] - v[1]), d2 = Math.hypot(q[0] - v[0], q[1] - v[1]);
+    if (!d1 || !d2) { out.push(v); continue; }
+    const r = Math.min(rad, d1 * .5, d2 * .5);
+    const a = [v[0] + (p[0] - v[0]) / d1 * r, v[1] + (p[1] - v[1]) / d1 * r];
+    const b = [v[0] + (q[0] - v[0]) / d2 * r, v[1] + (q[1] - v[1]) / d2 * r];
+    for (let k = 0; k <= seg; k++) {
+      const t = k / seg, u = 1 - t;
+      out.push([u * u * a[0] + 2 * u * t * v[0] + t * t * b[0], u * u * a[1] + 2 * u * t * v[1] + t * t * b[1]]);
+    }
+  }
+  return out;
+}
+function spikyEdges(pts, h, step) {   // Kanten mit nach außen gerichteten Zacken
+  const out = [], m = pts.length;
+  let cx = 0, cy = 0; pts.forEach(p => { cx += p[0]; cy += p[1]; }); cx /= m; cy /= m;
+  for (let i = 0; i < m; i++) {
+    const a = pts[i], b = pts[(i + 1) % m]; const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    let nx = (b[1] - a[1]) / len, ny = -(b[0] - a[0]) / len;
+    const mx = (a[0] + b[0]) / 2 - cx, my = (a[1] + b[1]) / 2 - cy; if (nx * mx + ny * my < 0) { nx = -nx; ny = -ny; }
+    const k = Math.max(2, Math.round(len / step));
+    for (let j = 0; j < k; j++) {
+      const t0 = j / k, tm = (j + .5) / k;
+      out.push([lerp(a[0], b[0], t0), lerp(a[1], b[1], t0)]);
+      out.push([lerp(a[0], b[0], tm) + nx * h, lerp(a[1], b[1], tm) + ny * h]);
+    }
+  }
+  return out;
+}
+function irregular(pts, r, j) {
+  const out = [], m = pts.length;
+  for (let i = 0; i < m; i++) {
+    const p = pts[i], q = pts[(i + 1) % m];
+    const s = 1 + (r() - .5) * 2 * j;
+    out.push([p[0] * s + (r() - .5) * j * .6, p[1] * s + (r() - .5) * j * .6]);
+    if (r() < .55) { const t = .3 + r() * .4, s2 = 1 + (r() - .5) * 2 * j; out.push([lerp(p[0], q[0], t) * s2, lerp(p[1], q[1], t) * s2]); }
+  }
+  return out;
+}
+function organic(pts, t, r, amp) {
+  const p1 = r() * TAU, p2 = r() * TAU, p3 = r() * TAU, w1 = .7 + r() * .5, w2 = .5 + r() * .5, w3 = 1 + r() * .6;
+  return pts.map(([x, y]) => {
+    const a = Math.atan2(y, x);
+    const f = 1 + amp * (Math.sin(2 * a + p1 + t * w1) * .55 + Math.sin(3 * a + p2 - t * w2) * .35 + Math.sin(5 * a + p3 + t * w3) * .18);
+    return [x * f, y * f];
+  });
+}
+function roughen(pts, seed, amp, closed = true) {
+  const P = resample(pts, closed ? 150 : 70, closed);
+  return P.map(([x, y], k) => { const d = Math.hypot(x, y) || 1, n = (hash(seed * .013 + k * 1.37) - .5) * amp; return closed ? [x + x / d * n, y + y / d * n] : [x, y + n]; });
+}
+function warpPts(pts, w, t) {
+  return pts.map(([x, y]) => [x + Math.sin(y * 2.6 + t * 3.1) * .22 * w, y + Math.sin(x * 2.2 - t * 2.4) * .14 * w]);
+}
+
+/* Geschlossene Form aus Grundelement × Formcharakter */
+function closedShape(element, ch, t, seed, o) {
+  const r = rng(seed);
+  const circ = element === 'Kreis' || element === 'Punkt';
+  let hw = 1, hh = 1;
+  if (element === 'Rechteck') { hw = 1.28; hh = .72; } else if (element === 'Quadrat') { hw = hh = .86; } else if (element === 'Fläche') { hw = 1.62; hh = .82; }
+  const rect = () => [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]];
+  let pts, round = 0, soft = false, maxRound = 1;
+  const cn = Math.round(clamp((o.px || 60) * .9, 14, 96));   // Punktdichte passend zur Bildschirmgröße
+  ch = ch || 'Geometrisch';
+  if (circ) {
+    const dot = element === 'Punkt';
+    switch (ch) {
+      case 'Kantig': pts = dot ? regular(4, 1, Math.PI / 4) : regular(8, 1, Math.PI / 8); maxRound = .5; break;
+      case 'Spitz': pts = dot ? star(4, 1.25, .38) : star(12, 1.12, .64); maxRound = .2; break;
+      case 'Unregelmäßig': pts = irregular(regular(9, 1, r() * 3), r, .3); maxRound = .4; break;
+      case 'Organisch': pts = organic(regular(cn, 1), t, r, .17); break;
+      case 'Abgerundet': pts = regular(cn, 1); soft = true; break;
+      default: pts = regular(cn, 1);
+    }
+  } else if (element === 'Polygon') {
+    switch (ch) {
+      case 'Kantig': pts = regular(3, 1.12, -Math.PI / 2); maxRound = .55; break;
+      case 'Abgerundet': pts = regular(6, 1, -Math.PI / 2); round = .4; maxRound = .5; break;
+      case 'Spitz': pts = star(6, 1.14, .52); maxRound = .2; break;
+      case 'Unregelmäßig': pts = irregular(regular(7, 1, -Math.PI / 2), r, .3); maxRound = .4; break;
+      case 'Organisch': pts = organic(resample(roundPoly(regular(6, 1, -Math.PI / 2), .25), cn), t, r, .12); break;
+      default: pts = regular(6, 1, -Math.PI / 2); maxRound = .5;
+    }
+  } else if (element === 'Dreieck') {        // gleichseitiges Dreieck, Spitze oben
+    const tri3 = () => regular(3, 1.15, -Math.PI / 2);
+    switch (ch) {
+      case 'Kantig': pts = chamfer(tri3(), .32); maxRound = .4; break;
+      case 'Abgerundet': pts = tri3(); round = .42; maxRound = .5; break;
+      case 'Spitz': pts = star(3, 1.3, .4, -Math.PI / 2); maxRound = .15; break;
+      case 'Unregelmäßig': pts = irregular(tri3(), r, .3); maxRound = .4; break;
+      case 'Organisch': pts = organic(resample(roundPoly(tri3(), .3), cn), t, r, .12); break;
+      default: pts = tri3(); maxRound = .5;
+    }
+  } else {
+    const mn = Math.min(hw, hh); maxRound = mn * .9;
+    switch (ch) {
+      case 'Kantig': pts = chamfer(rect(), mn * .42); break;
+      case 'Abgerundet': pts = rect(); round = mn * .6; break;
+      case 'Spitz': pts = element === 'Quadrat' ? star(4, 1.3, .42, -Math.PI / 4) : spikyEdges(rect(), .26, .42); maxRound = .15; break;
+      case 'Unregelmäßig': pts = irregular(rect(), r, .26); break;
+      case 'Organisch': pts = organic(resample(roundPoly(rect(), mn * .4), Math.round(cn * 1.15)), t, r, .1); break;
+      default: pts = rect();
+    }
+  }
+  if (o.reduce > 0) pts = resample(pts.length < 40 ? resample(pts, 96) : pts, Math.max(3, Math.round(lerp(26, 3, o.reduce))));
+  round += (o.round || 0) * maxRound;
+  if (round > .005 && pts.length <= 40) pts = roundPoly(pts, round, o.px < 12 ? 2 : 7);
+  if (o.rough && o.px > 6) pts = roughen(pts, seed, .1);
+  if (o.warp > .01) { const wn = Math.round(clamp((o.px || 60) * 1.2, 16, 80)); pts = warpPts(pts.length < wn ? resample(pts, wn) : pts, o.warp, t); }
+  return { pts, closed: true, soft };
+}
+/* Offene Linie × Formcharakter */
+function lineShape(ch, t, seed, o) {
+  const r = rng(seed); let pts = [], cap = 'butt', join = 'miter', wide = 1;
+  const amp = (1 - (o.reduce || 0)) * (1 - .8 * (o.round || 0));
+  switch (ch) {
+    case 'Organisch': { const p1 = r() * TAU, p2 = r() * TAU; for (let k = 0; k <= 48; k++) { const x = -1.6 + 3.2 * k / 48; pts.push([x, amp * (.24 * Math.sin(x * 1.9 + t * 1.3 + p1) + .1 * Math.sin(x * 4.1 - t * .8 + p2))]); } cap = 'round'; join = 'round'; break; }
+    case 'Kantig': { const n = 8, w = 3.2 / n; let y = -.24 * amp; pts.push([-1.6, y]); for (let k = 0; k < n; k++) { const x = -1.6 + (k + 1) * w; pts.push([x, y]); if (k < n - 1) { y = -y; pts.push([x, y]); } } cap = 'square'; break; }
+    case 'Abgerundet': for (let k = 0; k <= 36; k++) { const x = -1.6 + 3.2 * k / 36; pts.push([x, amp * (-.4 * (1 - (x / 1.6) ** 2) + .2)]); } cap = 'round'; join = 'round'; wide = 1.6; break;
+    case 'Spitz': for (let k = 0; k <= 10; k++) pts.push([-1.6 + 3.2 * k / 10, (k % 2 ? -1 : 1) * .32 * amp]); break;
+    case 'Unregelmäßig': for (let k = 0; k <= 12; k++) pts.push([-1.6 + 3.2 * k / 12 + (k && k < 12 ? (r() - .5) * .2 : 0), (r() - .5) * .62 * amp]); break;
+    default: pts = [[-1.6, 0], [1.6, 0]];
+  }
+  if ((o.round || 0) > .05) { join = 'round'; cap = 'round'; }
+  if (o.rough) pts = roughen(pts, seed, .07, false);
+  if (o.warp > .01) pts = warpPts(resample(pts, 50, false), o.warp, t);
+  if (o.grow < 1) pts = partialOpen(pts, o.grow);
+  return { pts, closed: false, cap, join, wide };
+}
+
+/* ═══════════════════════════ Oberflächen-Muster ═══════════════════════════ */
+function makePatterns(ctx) {
+  const mk = (draw, s = 128) => { const c = document.createElement('canvas'); c.width = c.height = s; draw(c.getContext('2d'), s); return ctx.createPattern(c, 'repeat'); };
+  const R = rng(4242);
+  return {
+    'Körnig': mk((g, s) => { const d = g.createImageData(s, s); for (let i = 0; i < d.data.length; i += 4) { const r = R(); const w = r > .5 ? 255 : 0; d.data[i] = d.data[i + 1] = d.data[i + 2] = w; d.data[i + 3] = R() < .55 ? R() * 150 : 0; } g.putImageData(d, 0, 0); }),
+    'Rau': mk((g, s) => {
+      for (let k = 0; k < 340; k++) { const x = R() * s, y = R() * s, rr = 1 + R() * 6; g.fillStyle = R() > .5 ? `rgba(255,255,255,${.12 + R() * .3})` : `rgba(0,0,0,${.15 + R() * .35})`; for (const ox of [-s, 0, s]) for (const oy of [-s, 0, s]) { g.beginPath(); g.moveTo(x + ox + rr, y + oy); for (let a = 1; a <= 6; a++) { const ang = a / 6 * TAU, q = rr * (.5 + R() * .7); g.lineTo(x + ox + Math.cos(ang) * q, y + oy + Math.sin(ang) * q); } g.fill(); } }
+      const d = g.getImageData(0, 0, s, s); for (let i = 0; i < d.data.length; i += 4) if (R() < .25) { d.data[i] = d.data[i + 1] = d.data[i + 2] = 0; d.data[i + 3] = Math.max(d.data[i + 3], R() * 90); } g.putImageData(d, 0, 0);
+    }),
+    'Strukturiert': mk((g, s) => { g.lineWidth = 4; for (let k = -s; k < 2 * s; k += 16) { g.strokeStyle = 'rgba(0,0,0,.42)'; g.beginPath(); g.moveTo(k, 0); g.lineTo(k + s, s); g.stroke(); g.strokeStyle = 'rgba(255,255,255,.22)'; g.lineWidth = 2; g.beginPath(); g.moveTo(k + 7, 0); g.lineTo(k + 7 + s, s); g.stroke(); g.lineWidth = 4; } }),
+    'Texturiert': mk((g, s) => {
+      for (let k = 0; k < 46; k++) { const x = R() * s, y = R() * s, rr = 4 + R() * 13; for (const ox of [-s, 0, s]) for (const oy of [-s, 0, s]) { g.beginPath(); g.arc(x + ox, y + oy, rr, 0, TAU); g.fillStyle = `rgba(0,0,0,${.06 + R() * .14})`; g.fill(); g.lineWidth = 1.4; g.strokeStyle = `rgba(255,255,255,${.12 + R() * .2})`; g.stroke(); } }
+    }),
+  };
+}
+const SURF_A = { 'Körnig': .65, 'Rau': .75, 'Strukturiert': .75, 'Texturiert': .85 };
+
+/* ═══════════════════════════ Zuordnung Ausprägung → Wert ═══════════════════════════ */
+const SIZE = { Winzig: .045, Klein: .1, Mittel: .19, Groß: .32, Riesig: .55 };
+const COUNT = { Einzeln: 1, Wenige: 4, Mehrere: 10, Viele: 44 };
+const CSCALE = { Einzeln: 1, Wenige: .82, Mehrere: .6, Viele: .38 };
+const SPEED = { Stillstand: 0, 'Sehr langsam': .1, Langsam: .26, Moderat: .55, Schnell: 1.05, 'Sehr schnell': 2 };
+const HUE = { Rot: 2, Orange: 28, Gelb: 50, Grün: 135, Blau: 218, Violett: 272, Magenta: 318 };
+const SAT = { Entsättigt: 9, Mittel: 50, Gesättigt: 92 };
+const LIGHT = { Hell: 76, Mittel: 55, Dunkel: 30 };
+const ALPHA = { Undurchsichtig: 1, Halbtransparent: .55, Transparent: .2 };
+const APP = { 'Fade-in': .9, 'Jump-in': .001, 'Aufpoppen': .45, 'Zusammenfügen': 1.05, 'Zoom-in': .6, 'Wachsen': 1.4, 'Einblenden': .8 };
+const VAN = { 'Fade-out': .9, 'Zerfallen': 1.25, 'Zoom-out': .6, 'Jump-out': .001, 'Schrumpfen': .6, 'Auflösen': 1.3, 'Ausblenden': .8 };
+const HIDE = [.27, .22, .73, .78];   // verdeckende Ebene bei „Versteckt“
+function tempHue(h, temp) {
+  if (temp !== 'Warm' && temp !== 'Kalt') return h;
+  const target = temp === 'Warm' ? 32 : 212, diff = ((target - h + 540) % 360) - 180;
+  return h + Math.sign(diff) * Math.min(Math.abs(diff), 34);
+}
+
+/* ═══════════════════════════ Szene ═══════════════════════════ */
+class Scene {
+  constructor(cv, mini = false) {
+    this.cv = cv; this.ctx = cv.getContext('2d'); this.mini = mini;
+    this.L = document.createElement('canvas'); this.lx = this.L.getContext('2d');
+    this.T = document.createElement('canvas'); this.tx = this.T.getContext('2d');
+    this.P = document.createElement('canvas'); this.px = this.P.getContext('2d');
+    this.W = this.H = 0; this.dpr = 1; this.zoom = { k: 1, x: 0, y: 0 }; this.v = null; this.bpm = 100; this.seed = 1234;
+    this.pat = makePatterns(this.lx); this.readTheme();
+  }
+  readTheme() {
+    const cs = getComputedStyle(document.documentElement), g = n => cs.getPropertyValue(n).trim();
+    this.dark = document.documentElement.dataset.theme === 'dark';
+    this.col = { stage: g('--stage'), grid: g('--grid'), ctxp: g('--ctxp'), ctxs: g('--ctxs'), hide: g('--hide'), muted: g('--muted') };
+  }
+  resize() {
+    const r = this.cv.getBoundingClientRect();
+    const W = Math.max(20, Math.round(r.width)), H = Math.max(20, Math.round(r.height));
+    const dpr = this.mini ? 1 : Math.min(2, window.devicePixelRatio || 1);
+    if (W === this.W && H === this.H && dpr === this.dpr) return;
+    this.W = W; this.H = H; this.dpr = dpr;
+    for (const c of [this.cv, this.L, this.T]) { c.width = W * dpr; c.height = H * dpr; }
+    this.build();
+  }
+  set(v) { this.v = v; this.build(); }
+  region() {
+    switch (this.v.place) {
+      case 'Oben': return [.06, .08, .94, .38];
+      case 'Unten': return [.06, .62, .94, .92];
+      case 'Links': return [.06, .1, .38, .9];
+      case 'Rechts': return [.62, .1, .94, .9];
+      case 'Versteckt': return [0, 0, 1, 1];
+      case 'Mitte': return [.32, .3, .68, .7];   // eng um die Bildmitte
+      default: return [.1, .14, .9, .86];
+    }
+  }
+  build() {
+    if (!this.v || !this.W) return;
+    const v = this.v, R = rng(this.seed);
+    let n = COUNT[v.count] || 1;
+    if (v.element === 'Punkt') n = { 1: 1, 4: 6, 10: 24, 44: 140 }[n];
+    if (v.element === 'Fläche') n = Math.min(n, 12);
+    if (this.mini) n = Math.min(n, 60);
+    const els = [];
+    for (let i = 0; i < n; i++) els.push({ i, seed: (R() * 2147483647) | 0, phase: R(), sv: 1, rot: 0, ox: 0, oy: 0, ax: .5, ay: .5, hj: 0, rank: R() });
+    this.layout(els, R);
+    if (v.interact && n === 1) {
+      els[0].ax = v.interact === 'Verdeckung' ? .5 : .34;
+      els.push({ i: 1, partner: true, seed: 99991, phase: .37, sv: .85, rot: 0, ox: 0, oy: 0, ax: .66, ay: .5, hj: 0, rank: .5 });
+    }
+    this.els = els; this.sim = null; this.hist = new Map();
+    this.tx.setTransform(1, 0, 0, 1, 0, 0); this.tx.clearRect(0, 0, this.T.width, this.T.height);
+    this.lx.setTransform(1, 0, 0, 1, 0, 0); this.lx.clearRect(0, 0, this.L.width, this.L.height);
+  }
+  layout(els, R) {
+    const v = this.v, n = els.length, type = v.layout || 'Verteilt';
+    const rg = this.region(), asp = (this.W * (rg[2] - rg[0])) / (this.H * (rg[3] - rg[1]));
+    const g = 1.32471795724474602596, a1 = 1 / g, a2 = 1 / (g * g);
+    if (v.place === 'Versteckt') {   // Elemente sitzen am Rand der verdeckenden Ebene und lugen hervor
+      const perim = u => { const [x0, y0, x1, y1] = HIDE, w = x1 - x0, h = y1 - y0; let d = fract(u) * 2 * (w + h); if (d < w) return [x0 + d, y0]; d -= w; if (d < h) return [x1, y0 + d]; d -= h; if (d < w) return [x1 - d, y1]; d -= w; return [x0, y1 - d]; };
+      els.forEach((e, k) => { const [x, y] = perim(n === 1 ? .36 : (k + R() * .7) / n); e.ax = x; e.ay = y; });
+      return;
+    }
+    switch (type) {
+      case 'Gruppiert': {
+        const k = n <= 4 ? 1 : n <= 12 ? 2 : n <= 40 ? 3 : 4;
+        const cs = []; for (let j = 0; j < k; j++) cs.push(k === 1 ? [.5, .5] : [.18 + .64 * fract(.5 + a1 * (j + 1)), .2 + .6 * fract(.5 + a2 * (j + 1))]);
+        els.forEach((e, i) => { const c = cs[i % k]; e.ax = c[0]; e.ay = c[1]; if (n > 1) { const [gx, gy] = gauss(R); e.ox = gx * .055; e.oy = gy * .055; } });
+        break;
+      }
+      case 'Linear': els.forEach((e, i) => { e.ax = n === 1 ? .5 : (i + .5) / n; e.ay = .5; if (v.element === 'Linie') e.rot = Math.PI / 2; }); break;
+      case 'Radial': {
+        if (n === 1) break;
+        let rings = 1, cap = 0; if (n > 12) { while (cap < n) { cap += 6 * rings; rings++; } rings--; }
+        let i = 0;
+        for (let j = 1; j <= rings && i < n; j++) {
+          const cnt = rings === 1 ? n : Math.min(6 * j, n - i), rad = rings === 1 ? .3 : .44 * j / rings;
+          for (let k = 0; k < cnt; k++, i++) { const a = k / cnt * TAU - Math.PI / 2 + j * .3; const e = els[i]; e.ox = Math.cos(a) * rad; e.oy = Math.sin(a) * rad; e.rot = a + (v.element === 'Linie' ? 0 : Math.PI / 2); }
+        }
+        break;
+      }
+      case 'Rasterförmig': {
+        const cols = Math.max(1, Math.round(Math.sqrt(n * asp))), rows = Math.ceil(n / cols);
+        els.forEach((e, i) => { const c = i % cols, r = Math.floor(i / cols); const inRow = r === rows - 1 ? n - r * cols : cols; e.ax = (c + .5 + (cols - inRow) / 2) / cols; e.ay = (r + .5) / rows; });
+        break;
+      }
+      case 'Zufällig': els.forEach(e => { e.ax = R(); e.ay = R(); e.sv = .5 + R() * 1.1; e.rot = R() * TAU; e.hj = (R() - .5) * 34; }); break;
+      default: if (n > 1) els.forEach((e, i) => { e.ax = fract(.5 + a1 * (i + 1)); e.ay = fract(.5 + a2 * (i + 1)); });
+    }
+  }
+  lifeParams() {
+    const v = this.v, b = this.beat;
+    const app = v.appear ? APP[v.appear] : 0, van = v.vanish ? VAN[v.vanish] : 0;
+    const L = Math.max(8 * b, app + van + 1.4);
+    return { app, van, L, P: L + Math.max(.45, 1.5 * b) };
+  }
+  shapeTime(tm) {   // Beschleunigung: verformt die Zeit, aus der der Weg berechnet wird
+    const b = this.beat;
+    switch (this.v.accel) {
+      case 'Zunehmend': { const c = 4 * b, k = Math.floor(tm / c), f = tm / c - k; return c * (k + f * f); }
+      case 'Abnehmend': { const c = 4 * b, k = Math.floor(tm / c), f = tm / c - k; return c * (k + 1 - (1 - f) * (1 - f)); }
+      case 'Plötzlich': { const c = 2 * b, k = Math.floor(tm / c), f = tm / c - k; return c * (k + (f < .55 ? 0 : expoOut((f - .55) / .45 * 1.4))); }
+      case 'Stufenweise': { const C = 16 * b, k = Math.floor(tm / C), f = (tm / C - k) * 4, j = Math.floor(f), fac = [.4, .8, 1.2, 1.6]; let s = 0; for (let q = 0; q < j; q++) s += fac[q]; s += (f - j) * fac[j]; return C * k + s * C / 4; }
+      default: return tm;
+    }
+  }
+  motion(e, tm, bx = this.W / 2, by = this.H / 2) {
+    const v = this.v, M = this.M, W = this.W, H = this.H;
+    const ld = v.dir ? this.liveSig('dir') : null;
+    if (ld != null) {   // Bewegungsrichtung mit Auslöser: das Element weicht aus seiner Ruhelage in die Richtung aus – je stärker der Klang, desto weiter
+      const o = M * .3 * ld; let dx = 0, dy = 0, persp = 1;
+      switch (v.dir) {
+        case 'Hoch': dy = -o; break; case 'Runter': dy = o; break; case 'Rechts': dx = o; break; case 'Links': dx = -o; break;
+        case 'Schräg': dx = o * .7071; dy = -o * .7071; break;
+        case 'Nach vorne': persp = lerp(1, 1.8, ld); break; case 'Nach hinten': persp = lerp(1, .45, ld); break;
+        case 'Zur Mitte': dx = (W / 2 - bx) * ld; dy = (H / 2 - by) * ld; break;
+        case 'Nach außen': { const rx = bx - W / 2, ry = by - H / 2, d = Math.hypot(rx, ry) || 1; dx = rx / d * o; dy = ry / d * o; break; }
+      }
+      return { dx, dy, planar: false, persp, fade: 1, rfade: 1 };
+    }
+    const vpx = (SPEED[v.speed] ?? .26) * M * .18;
+    const m = this.shapeTime(tm), D = vpx * m;
+    let ux = 0, uy = 0, depth = 0;
+    switch (v.dir) { case 'Hoch': uy = -1; break; case 'Runter': uy = 1; break; case 'Rechts': ux = 1; break; case 'Links': ux = -1; break; case 'Schräg': ux = .7071; uy = -.7071; break; case 'Nach vorne': depth = 1; break; case 'Nach hinten': depth = -1; break; }
+    const planar = !!(ux || uy);
+    const path = v.path || (v.dir ? 'Gerade' : null);
+    let nx = -uy, ny = ux; if (!planar) { nx = 0; ny = 1; }
+    let fwd = planar ? D : 0, dx = 0, dy = 0, rfade = 1;
+    const radial = v.dir === 'Zur Mitte' || v.dir === 'Nach außen';
+    if (radial) {      // radial: zur Bildmitte hin oder von ihr weg, danach von vorn
+      const cx = W / 2, cy = H / 2, near = M * .25;
+      let rx = bx - cx, ry = by - cy, dist = Math.hypot(rx, ry);
+      if (dist < M * .04) { const a = (e.seed % 360) / 360 * TAU; rx = Math.cos(a); ry = Math.sin(a); } else { rx /= dist; ry /= dist; }
+      nx = -ry; ny = rx;
+      let sx = bx, sy = by, ex, ey;
+      if (v.dir === 'Zur Mitte') { if (dist < near) { sx = cx + rx * M * .32; sy = cy + ry * M * .32; } ex = cx; ey = cy; }
+      else { if (dist < near) { sx = cx; sy = cy; } ex = sx + rx * M * .45; ey = sy + ry * M * .45; }
+      const len = Math.hypot(ex - sx, ey - sy) || 1, f = fract(D / len + e.phase);
+      dx += sx + (ex - sx) * f - bx; dy += sy + (ey - sy) * f - by;
+      rfade = clamp(Math.min(f, 1 - f) / .12);
+    }
+    const A = M * .07, lam = M * .34, ro = M * .13, ph = e.phase * TAU;
+    switch (path) {
+      case 'Wellig': { const o = A * Math.sin(D / lam * TAU + ph); dx += nx * o; dy += ny * o; break; }
+      case 'Zickzack': { const o = A * (tri(D / lam + e.phase) * 2 - 1); dx += nx * o; dy += ny * o; break; }
+      case 'Kreisförmig': { const a = D / ro + ph; dx += Math.cos(a) * ro; dy += Math.sin(a) * ro; fwd *= .35; break; }
+      case 'Spiralförmig': { const rr = ro * 1.7 * (.12 + .88 * tri(D / (ro * 22) + e.phase)), a = D / (ro * .55) + ph; dx += Math.cos(a) * rr; dy += Math.sin(a) * rr; fwd *= .35; break; }
+      case 'Zufällig': { const sc = m * .5 + e.seed % 97; dx += noise1(sc) * M * .16; dy += noise1(sc + 50.3) * M * .16; fwd *= .6; break; }
+    }
+    if (v.interact === 'Verfolgung' && !e.partner && (vpx === 0 || (!v.dir && !v.path))) {   // Leitelement muss sich bewegen, sonst gibt es nichts zu verfolgen
+      dx += Math.sin(tm * .55) * W * .3; dy += Math.sin(tm * .83 + 1) * H * .24;
+    }
+    dx += ux * fwd; dy += uy * fwd;
+    let persp = 1, fade = 1;
+    if (depth) {
+      const zf = fract(D / (M * 1.4) + e.phase);
+      const z = depth > 0 ? lerp(3.2, .38, zf) : lerp(.38, 3.2, zf);
+      persp = 1 / z; fade = clamp(Math.min(zf, 1 - zf) / .12);
+    }
+    return { dx, dy, planar, persp, fade, rfade };
+  }
+  env(t, i, feat) {   // 0..1-Hüllkurve, die Formveränderung, Pixel, Sättigung usw. treibt
+    const b = t / this.beat, f = fract(b);
+    switch (this.v.rhythm) {
+      case 'Unregelmäßig': return onsetEnv(b, [0, .75, 1.5, 2.75, 3.25, 4.5, 5.25], 6, 3.2);
+      case 'Pulsierend': return Math.max(Math.exp(-f * 7), f > .28 ? .65 * Math.exp(-(f - .28) * 7) : 0);
+      case 'Repetitiv': return onsetEnv(b, [0, .5, .75, 1.25, 2, 2.5, 2.75, 3.25], 4, 5);
+      case 'Alternierend': return Math.exp(-f * 4) * (((Math.floor(b) + i) % 2) ? .15 : 1);
+      case 'Zufällig': { const k = Math.floor(b * 2), h = hash(k * 1.731 + .5); return h > .45 ? (.4 + .6 * hash(k * 3.3)) * Math.exp(-(b * 2 - k) * 2.5) : 0; }
+      default: return .5 - .5 * Math.cos(TAU * b);
+    }
+  }
+  liveSig(k) {   // 0..1 aus dem Klang, wenn die Zeile einen live messbaren Auslöser hat – sonst null
+    const g = this.trig && this.trig[k], T = TRIGGERS[g];
+    if (!T || !T.live || !this.sig) return null;
+    const x = this.sig[T.k]; return x == null ? null : x;
+  }
+  rs(k, s) { const l = this.liveSig(k); return l != null ? l : s.env; }
+  regionLive() {
+    const l = this.liveSig('place'), v = this.v;
+    if (l == null || !v.place || v.place === 'Versteckt') return this.region();
+    const d = [.1, .14, .9, .86], c = this.region(); return d.map((x, i) => lerp(x, c[i], l));
+  }
+  color(s) {
+    const v = this.v;
+    if (s.e.partner) return { h: 230, s: 6, l: 58 };
+    let h = tempHue(HUE[v.hue] ?? 28, v.temp) + (s.e.hj || 0), sat = SAT[v.sat] ?? 50, l = LIGHT[v.light] ?? 55;
+    const lc = this.liveSig('colorFx'), prog = lc != null ? lc : (s.u != null ? s.u : this.pp);
+    switch (v.colorFx) {
+      case 'Dunkler': l -= 32 * prog; break;
+      case 'Heller': l += 32 * prog; break;
+      case 'Farbwechsel': h += lc != null ? 150 * lc : 72 * Math.floor(this.t / this.beat); break;
+      case 'Sättigungswechsel': sat = lerp(4, 98, lc != null ? lc : s.env); break;
+      case 'Farbverlauf': h += lc != null ? 220 * lc : this.t * 22; break;
+    }
+    l += s.lAdd || 0; sat += s.sAdd || 0; if (s.hit) l += 22 * s.hit;
+    if (v.hue === 'Unbunt') sat = 0;   // unbunt: Schwarz, Weiß, Grau – Helligkeit bestimmt den Ton
+    else if (!v.hue && v.colorFx !== 'Farbwechsel' && v.colorFx !== 'Farbverlauf') sat = 0;   // Standard: schlichtes Grau, solange kein Farbton gewählt ist
+    return { h: ((h % 360) + 360) % 360, s: clamp(sat, 0, 100), l: clamp(l, 4, 96) };
+  }
+
+  /* ── Zustände aller Elemente für den Zeitpunkt t ── */
+  computeStates(t, dt, feat) {
+    const v = this.v, W = this.W, H = this.H, M = this.M;
+    const rg = this.regionLive(), rw = rg[2] - rg[0], rh = rg[3] - rg[1];
+    const sizeF = (SIZE[v.size] ?? .19) * (CSCALE[v.count] ?? 1);
+    // Erscheinen/Verschwinden mit Auslöser: folgt dem Klang statt einem festen Zyklus
+    const lA = v.appear ? this.liveSig('appear') : null, lV = v.vanish ? this.liveSig('vanish') : null;
+    const life = ((v.appear && lA == null) || (v.vanish && lV == null)) ? this.lifeParams() : null;
+    const els = this.els, n = els.length;
+    const tfPh = fract(t / (this.beat * 8)); this.pp = .5 - .5 * Math.cos(TAU * tfPh);
+    const quant = v.rhythm === 'Regelmäßig' || !v.rhythm;
+
+    const base = (e, tt) => {
+      const st = { e, alpha: 1, A: 1, D: 0, cyc: 0, u: null, S: 1, z: e.rank * .001, sx: 1, sy: 1, rot: e.rot };
+      let tm = tt + (this.mOff || 0) + e.phase * 11.7;   // mOff: Bewegung mit Auslöser läuft auf eigener Uhr
+      if (life) {
+        let off = e.phase * life.P; if (quant) off = Math.round(off / this.beat) * this.beat;
+        const q = tt + off, cyc = Math.floor(q / life.P), tau = q - cyc * life.P;
+        if (tau > life.L) return null;
+        st.cyc = cyc; st.A = life.app ? clamp(tau / life.app) : 1;
+        st.D = life.van ? clamp((tau - (life.L - life.van)) / life.van) : 0; st.u = tau / life.L; tm = tau;
+      }
+      let ax = e.ax, ay = e.ay;
+      if (life && v.layout === 'Zufällig' && !e.partner && v.place !== 'Versteckt') { const r2 = rng(e.seed + st.cyc * 7919); ax = r2(); ay = r2(); }
+      const oc = v.place === 'Mitte' ? .45 : 1;   // „Mitte“: auch Kreis-/Gruppenabstände enger
+      let x = W * (rg[0] + ax * rw) + e.ox * M * oc, y = H * (rg[1] + ay * rh) + e.oy * M * oc;
+      let R = M * .5 * sizeF * e.sv;
+      if (v.element === 'Punkt') R = Math.max(2.2, R * .22);
+      if (v.element === 'Fläche') R *= 1.35;
+      if (e.partner) R = Math.max(R, M * .06);
+      const mo = this.motion(e, tm, x, y);
+      x += mo.dx; y += mo.dy; if (mo.rfade < 1) st.alpha *= mo.rfade;
+      if (mo.planar) { const mg = R * 1.9; x = wrap(x, -mg, W + mg); y = wrap(y, -mg, H + mg); }
+      if (mo.persp !== 1) { const cx = W / 2, cy = H * .45; x = cx + (x - cx) * mo.persp; y = cy + (y - cy) * mo.persp; R *= mo.persp; st.alpha *= mo.fade; st.z += mo.persp; }
+      st.x = x; st.y = y; st.R = R; st.env = this.env(tt, e.i, feat);
+      if (lA != null) st.A = clamp((lA - .15) / .35);          // erscheint, wenn der Klang anschwillt
+      if (lV != null) st.D = 1 - clamp((lV - .1) / .35);       // verschwindet, wenn er abklingt
+      return st;
+    };
+
+    let out = [];
+    if (v.interact === 'Verfolgung') {
+      const lead = els[0], vpx = Math.max(M * .05, (SPEED[v.speed] ?? .26) * M * .18);
+      const R0 = M * .5 * sizeF, lag = clamp(R0 * 1.5 / vpx, .07, .6);
+      els.forEach((e, k) => { const st = base(lead, t - k * lag); if (!st) return; st.e = e; st.R *= Math.pow(.975, k); st.env = this.env(t, e.i, feat); st.z = -k * .001; out.push(st); });
+    } else for (const e of els) { const st = base(e, t); if (st) out.push(st); }
+
+    // Formveränderung
+    for (const s of out) {
+      const k = this.rs('shapeFx', s);
+      switch (v.shapeFx) {
+        case 'Vergrößern': s.S *= 1 + .65 * k; break;
+        case 'Verkleinern': s.S *= 1 - .55 * k; break;
+        case 'Verzerren': s.skew = .5 * k * Math.sin(t * 2.2 + s.e.phase * 6); s.warp = .25 + k * .75; break;
+        case 'Dehnen': s.sx = 1 + .8 * k; s.sy = 1 - .35 * k; break;
+        case 'Drehen': s.rot += t * .9 * (s.e.i % 2 ? -1 : 1) + k * .8; break;
+        case 'Abrunden': s.round = k; break;
+      }
+    }
+    // Klang wirkt nur noch über die gewählten Auslöser der einzelnen Zeilen (Kasten 2 & 3)
+    // Position im Raum
+    if (v.place === 'Vordergrund') for (const s of out) { s.S *= 1.3; s.front = true; }
+    if (v.place === 'Hintergrund') for (const s of out) s.S *= .68;
+
+    // Interaktion
+    const centroid = () => { let x = 0, y = 0; out.forEach(s => { x += s.x; y += s.y; }); return [x / out.length, y / out.length]; };
+    if (out.length) switch (v.interact) {
+      case 'Anziehung': { const [cx, cy] = centroid(); for (const s of out) { const f = .3 + .5 * this.rs('interact', s); s.x = cx + (s.x - cx) * (1 - f); s.y = cy + (s.y - cy) * (1 - f); s.link = [cx, cy]; } break; }
+      case 'Abstoßung': {
+        const [cx, cy] = centroid();
+        for (const s of out) { const f = .35 * this.rs('interact', s); s.x = cx + (s.x - cx) * (1 + f); s.y = cy + (s.y - cy) * (1 + f); }
+        if (out.length <= 160) for (let i = 0; i < out.length; i++) for (let j = i + 1; j < out.length; j++) {
+          const a = out[i], b = out[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || .01, min = (a.R + b.R) * 1.7;
+          if (d < min) { const p = (min - d) / 2 / d; a.x -= dx * p; a.y -= dy * p; b.x += dx * p; b.y += dy * p; }
+        }
+        break;
+      }
+      case 'Kollision': this.simStep(out, dt); break;
+      case 'Verdeckung': {
+        for (let k = 0; k + 1 < out.length; k += 2) {
+          const a = out[k], b = out[k + 1], ang = t * 1.1 + k, s = Math.sin(ang);
+          b.x = a.x + Math.cos(ang) * a.R * 1.15; b.y = a.y + s * a.R * .32;
+          b.z = a.z + s * .5; b.S *= 1 + .14 * s; a.S *= 1 - .06 * s;
+          (s > 0 ? b : a).front = true;
+        }
+        break;
+      }
+    }
+
+    // Formtransformation (mit Auslöser: Fortschritt folgt dem Klang statt dem 8-Schlag-Zyklus)
+    const lT = this.liveSig('transform'), ppT = lT != null ? lT : this.pp, tfT = lT != null ? lT * .95 : tfPh;
+    switch (v.transform) {
+      case 'Teilung': for (const s of out) s.split = ppT; break;
+      case 'Reduktion': {
+        if (n === 1 || out.length === 1) { for (const s of out) s.reduce = Math.floor(tfT * 6) / 6; }
+        else { const th = 1 - clamp(tfT * 1.15) * .85; out = out.filter(s => s.e.partner || s.e.rank < th + .05); for (const s of out) if (!s.e.partner) s.S *= clamp((th + .05 - s.e.rank) * 20); }
+        break;
+      }
+      case 'Verzweigung': for (const s of out) s.branch = ppT; break;
+      case 'Vermehrung': {
+        const cnt = n <= 1 ? 5 : n <= 4 ? 3 : n <= 12 ? 2 : 1, extra = [];
+        for (const s of out) { if (s.e.partner) continue;
+          for (let c = 1; c <= cnt; c++) {
+            const g = clamp((tfT * (cnt + 1.4) - c) * 2.2); if (g <= 0) continue;
+            const fadeEnd = tfT > .9 ? 1 - (tfT - .9) * 10 : 1;
+            const a = c * TAU / cnt + s.e.phase * TAU, d = s.R * s.S * 2.3;
+            extra.push({ ...s, x: s.x + Math.cos(a) * d, y: s.y + Math.sin(a) * d, cScale: backOut(g) * .72 * fadeEnd, clone: true, z: s.z - .0005 });
+          }
+        }
+        out = out.concat(extra.slice(0, 220));
+        break;
+      }
+      case 'Gruppierung': {
+        if (out.length <= 2) {
+          const extra = [];
+          for (const s of out) { if (s.e.partner) continue; for (let c = 0; c < 4; c++) { const a = c * TAU / 4 + t * .35, d = s.R * lerp(3.4, 1.25, ppT); extra.push({ ...s, x: s.x + Math.cos(a) * d, y: s.y + Math.sin(a) * d, cScale: .45, clone: true }); } }
+          out = out.concat(extra);
+        } else {
+          const k = Math.max(1, Math.round(out.length / 5)), g = 1.32471795724474602596;
+          const cs = []; for (let j = 0; j < k; j++) cs.push(k === 1 ? [W / 2, H / 2] : [W * (.2 + .6 * fract(.5 + (j + 1) / g)), H * (.22 + .56 * fract(.5 + (j + 1) / (g * g)))]);
+          const cnt = new Array(k).fill(0);
+          out.forEach((s, i) => { const j = i % k, c = cs[j], q = cnt[j]++; const a = q * 2.4, d = s.R * 1.1 * Math.sqrt(q); s.x = lerp(s.x, c[0] + Math.cos(a) * d, ppT); s.y = lerp(s.y, c[1] + Math.sin(a) * d, ppT); });
+        }
+        break;
+      }
+    }
+    return out;
+  }
+  simStep(out, dt) {   // einfache Physik für „Kollision“
+    const M = this.M, W = this.W, H = this.H;
+    if (!this.sim) this.sim = new Map();
+    const vpx = Math.max(M * .1, (SPEED[this.v.speed] ?? .26) * M * .18);
+    let ux = 0, uy = 0; switch (this.v.dir) { case 'Hoch': uy = -1; break; case 'Runter': uy = 1; break; case 'Rechts': ux = 1; break; case 'Links': ux = -1; break; case 'Schräg': ux = .7; uy = -.7; break; }
+    const S = out.map(s => {
+      let o = this.sim.get(s.e.i);
+      if (!o) { const r = rng(s.e.seed + 5), a = r() * TAU; o = { x: s.x, y: s.y, vx: (Math.cos(a) * .8 + ux) * vpx, vy: (Math.sin(a) * .8 + uy) * vpx, hit: 0 }; this.sim.set(s.e.i, o); }
+      return [s, o];
+    });
+    const sub = 2, h = dt / sub;
+    for (let it = 0; it < sub; it++) {
+      for (const [s, o] of S) {
+        const r = s.R * s.S; o.x += o.vx * h; o.y += o.vy * h;
+        if (o.x < r) { o.x = r; o.vx = Math.abs(o.vx); o.hit = Math.max(o.hit, .5); } if (o.x > W - r) { o.x = W - r; o.vx = -Math.abs(o.vx); o.hit = Math.max(o.hit, .5); }
+        if (o.y < r) { o.y = r; o.vy = Math.abs(o.vy); o.hit = Math.max(o.hit, .5); } if (o.y > H - r) { o.y = H - r; o.vy = -Math.abs(o.vy); o.hit = Math.max(o.hit, .5); }
+      }
+      if (S.length <= 160) for (let i = 0; i < S.length; i++) for (let j = i + 1; j < S.length; j++) {
+        const [sa, a] = S[i], [sb, b] = S[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || .01, min = sa.R * sa.S + sb.R * sb.S;
+        if (d < min) {
+          const nx = dx / d, ny = dy / d, p = (min - d) / 2; a.x -= nx * p; a.y -= ny * p; b.x += nx * p; b.y += ny * p;
+          const rel = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+          if (rel < 0) { a.vx += rel * nx; a.vy += rel * ny; b.vx -= rel * nx; b.vy -= rel * ny; a.hit = b.hit = 1; }
+        }
+      }
+    }
+    for (const [s, o] of S) {
+      const sp = Math.hypot(o.vx, o.vy) || 1, f = lerp(1, vpx / sp, .02); o.vx *= f; o.vy *= f;   // Tempo pendelt sich wieder ein
+      o.hit = Math.max(0, o.hit - dt * 3.5); s.x = o.x; s.y = o.y; s.hit = o.hit;
+      if (o.hit > 0) { s.sx = 1 + .18 * o.hit; s.sy = 1 - .18 * o.hit; }
+    }
+  }
+
+  /* ── ein Bild ── */
+  frame(t, dt, feat) {
+    const v = this.v; if (!v || !this.W) return;
+    const { W, H, dpr } = this, ctx = this.ctx, lx = this.lx;
+    this.M = Math.min(W, H); this.t = t; this.beat = 60 / this.bpm; this.dtF = dt; this.fno = (this.fno || 0) + 1;
+    const Z = this.zoom, zs = (c) => c.setTransform(dpr * Z.k, 0, 0, dpr * Z.k, dpr * Z.x, dpr * Z.y);   // Zoom (Pinch) auf die ganze Szene
+    lx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (v.trail === 'Nachleuchten') { lx.globalCompositeOperation = 'destination-out'; lx.fillStyle = `rgba(0,0,0,${dt > 0 ? .13 : 0})`; lx.fillRect(0, 0, W, H); lx.globalCompositeOperation = 'source-over'; }
+    else lx.clearRect(0, 0, W, H);
+    zs(lx);
+
+    // Signale für die Auslöser: Lautstärke, Tonhöhe, Schläge, Dynamik (lauter/leiser werden)
+    const beatPulse = Math.exp(-fract(t / this.beat) * 5);
+    if (feat) { this.aF = lerp(this.aF ?? feat.amp, feat.amp, .25); this.aS = lerp(this.aS ?? feat.amp, feat.amp, .03); }
+    this.sig = feat ? { loud: feat.amp, pitch: feat.pitch, beat: beatPulse, dyn: clamp(.5 + (this.aF - this.aS) * 3) } : { beat: beatPulse };
+    const lsp = this.liveSig('speed');   // Geschwindigkeit mit Auslöser: Bewegung läuft auf eigener, klanggesteuerter Uhr
+    if (lsp != null) { this.mclock = (this.mclock ?? t) + dt * (.12 + 1.75 * lsp); this.mOff = this.mclock - t; } else { this.mclock = null; this.mOff = 0; }
+    const states = this.computeStates(t, dt, feat);
+    this.pixEnv = states.length ? this.rs('shapeFx', states[0]) : 0;
+    states.forEach(s => { s.col = this.color(s); });
+    this.updateHistory(states, dt);
+    states.sort((a, b) => a.z - b.z);
+    for (const s of states) this.drawUnder(lx, s);
+    for (const s of states) this.drawElement(lx, s);
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.globalAlpha = 1; ctx.filter = 'none'; ctx.imageSmoothingEnabled = true;
+    ctx.fillStyle = this.col.stage; ctx.fillRect(0, 0, W, H);
+    zs(ctx);
+    if (v.dim === '3D' || v.dir === 'Nach vorne' || v.dir === 'Nach hinten') this.drawFloor(ctx);
+    if (v.trail === 'Nachzeichnen') { ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.drawImage(this.T, 0, 0, W, H); zs(ctx); }
+    const needCtx = v.place === 'Vordergrund' || v.place === 'Hintergrund' || v.place === 'Versteckt';
+    const behind = v.place === 'Hintergrund' || v.place === 'Versteckt';
+    if (needCtx && !behind) this.drawContext(ctx);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); this.composeLayer(ctx); zs(ctx);
+    if (needCtx && behind) this.drawContext(ctx);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  composeLayer(ctx) {
+    const v = this.v, { W, H } = this; let src = this.L;
+    if (v.shapeFx === 'Verpixeln') {
+      const pix = 1.5 + this.pixEnv * (this.mini ? 7 : 20);
+      const w = Math.max(2, Math.round(W / pix)), h = Math.max(2, Math.round(H / pix));
+      if (this.P.width !== w || this.P.height !== h) { this.P.width = w; this.P.height = h; }
+      this.px.clearRect(0, 0, w, h); this.px.imageSmoothingEnabled = true; this.px.drawImage(this.L, 0, 0, w, h);
+      src = this.P; ctx.imageSmoothingEnabled = false;
+    }
+    if (v.place === 'Hintergrund') { ctx.filter = 'blur(1.8px) saturate(.7)'; ctx.globalAlpha = .82; }
+    else if (v.place === 'Versteckt') { ctx.filter = 'blur(.8px)'; ctx.globalAlpha = .85; }
+    if (this.dimmed) ctx.globalAlpha *= .28;   // gewählte Tonspur gerade still
+    ctx.drawImage(src, 0, 0, W, H);
+    ctx.filter = 'none'; ctx.globalAlpha = 1; ctx.imageSmoothingEnabled = true;
+  }
+  drawFloor(ctx) {
+    const { W, H } = this, hy = H * .45, cx = W / 2;
+    ctx.save(); ctx.strokeStyle = this.col.grid; ctx.lineWidth = 1;
+    for (let k = -12; k <= 12; k++) { ctx.beginPath(); ctx.moveTo(cx, hy); ctx.lineTo(cx + k * W * .13, H); ctx.stroke(); }
+    for (let j = 1; j <= 9; j++) { const y = hy + (H - hy) * (j / 9) ** 2; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+    ctx.beginPath(); ctx.moveTo(0, hy); ctx.lineTo(W, hy); ctx.stroke();
+    ctx.restore();
+  }
+  drawContext(ctx) {   // neutrale Bezugsebene, damit Vorder-/Hintergrund lesbar werden
+    const { W, H } = this, v = this.v;
+    const rr = (x, y, w, h, r) => { ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, w, h, r) : ctx.rect(x, y, w, h); };
+    ctx.save();
+    if (v.place === 'Versteckt') {
+      const [x0, y0, x1, y1] = HIDE; rr(W * x0, H * y0, W * (x1 - x0), H * (y1 - y0), 14);
+      ctx.fillStyle = this.col.hide; ctx.fill(); ctx.strokeStyle = this.col.ctxs; ctx.lineWidth = 1; ctx.stroke();
+      if (!this.mini) { ctx.fillStyle = this.col.muted; ctx.font = '11px Inter, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('verdeckende Ebene', W * .5, H * .5 + 4); }
+    } else {
+      for (const [x, y, w, h] of [[.16, .32, .2, .4], [.41, .2, .18, .58], [.64, .36, .2, .32]]) { rr(W * x, H * y, W * w, H * h, 10); ctx.fillStyle = this.col.ctxp; ctx.fill(); ctx.strokeStyle = this.col.ctxs; ctx.lineWidth = 1; ctx.stroke(); }
+      if (!this.mini) { ctx.fillStyle = this.col.muted; ctx.font = '11px Inter, system-ui, sans-serif'; ctx.fillText('Bezugsebene (Mitte)', 12, H - 12); }
+    }
+    ctx.restore();
+  }
+  updateHistory(states, dt) {
+    const v = this.v, need = v.trail && v.trail !== 'Keine' && v.trail !== 'Nachleuchten';
+    if (!need) return;
+    const M = this.M, tx = this.tx, dpr = this.dpr;
+    if (v.trail === 'Nachzeichnen') { tx.setTransform(dpr, 0, 0, dpr, 0, 0); this.fadeAcc = (this.fadeAcc || 0) + dt;
+      if (this.fadeAcc >= .1) {   // Spur verblasst in ca. 1,5 s; in größeren Schritten, sonst bleibt durch Rundung ein Rest stehen
+        this.fadeAcc = 0; tx.globalCompositeOperation = 'destination-out'; tx.fillStyle = 'rgba(0,0,0,.2)'; tx.fillRect(0, 0, this.W, this.H); tx.globalCompositeOperation = 'source-over';
+      } const Z = this.zoom; tx.setTransform(dpr * Z.k, 0, 0, dpr * Z.k, dpr * Z.x, dpr * Z.y); }
+    for (const s of states) {
+      if (s.clone) continue;
+      const key = s.e.i; let h = this.hist.get(key); if (!h) { h = []; this.hist.set(key, h); }
+      const last = h[h.length - 1];
+      if (last && (Math.hypot(s.x - last.x, s.y - last.y) > M * .25 || last.cyc !== s.cyc)) h.length = 0;
+      if (dt > 0 || !last) h.push({ x: s.x, y: s.y, rot: s.rot, R: s.R * s.S, cyc: s.cyc });
+      if (h.length > 42) h.shift();
+    }
+  }
+
+  /* Spuren, Verzweigungen, Anziehungslinien – unter den Körpern */
+  drawUnder(c, s) {
+    const v = this.v, col = s.col, alpha = (ALPHA[v.alpha] ?? 1) * s.alpha;
+    if (s.link) { c.save(); c.strokeStyle = hsl(col, 0, .22 * alpha); c.setLineDash([3, 4]); c.lineWidth = 1; c.beginPath(); c.moveTo(s.x, s.y); c.lineTo(s.link[0], s.link[1]); c.stroke(); c.restore(); }
+    if (s.branch > .02 && !s.clone) this.drawBranches(c, s, alpha);
+    const h = this.hist && this.hist.get(s.e.i);
+    if (!h || h.length < 2 || s.clone) return;
+    c.save();
+    const N = h.length;
+    switch (v.trail) {
+      case 'Punkte':
+        for (let j = 0; j < N - 1; j += 3) { const p = h[j], f = j / N; c.globalAlpha = f * .85 * alpha; c.fillStyle = hsl(col); c.beginPath(); c.arc(p.x, p.y, Math.max(1.2, s.R * .09) * (.4 + .6 * f), 0, TAU); c.fill(); }
+        break;
+      case 'Linie':
+        c.strokeStyle = hsl(col); c.lineCap = 'round'; c.lineWidth = Math.max(1.3, s.R * .1);
+        for (let j = 1; j < N; j++) { c.globalAlpha = (j / N) * .7 * alpha; c.beginPath(); c.moveTo(h[j - 1].x, h[j - 1].y); c.lineTo(h[j].x, h[j].y); c.stroke(); }
+        break;
+      case 'Nachbild': {
+        const isLine = v.element === 'Linie';
+        for (let j = 0; j < N - 1; j += 7) {
+          const p = h[j], f = j / N;
+          const sh = isLine ? lineShape(v.char, this.t, s.e.seed, {}) : closedShape(v.element, v.char, this.t, s.e.seed, {});
+          c.save(); c.translate(p.x, p.y); c.rotate(p.rot || 0); c.globalAlpha = (.08 + .3 * f) * alpha;
+          this.path(c, sh.pts.map(q => [q[0] * p.R, q[1] * p.R]), !isLine);
+          if (isLine) { c.strokeStyle = hsl(col); c.lineWidth = Math.max(1.2, p.R * .085); c.stroke(); } else { c.fillStyle = hsl(col); c.fill(); }
+          c.restore();
+        }
+        break;
+      }
+    }
+    c.restore();
+  }
+  drawBranches(c, s, alpha) {
+    const g = s.branch, seed = s.e.seed, roots = 3 + (seed % 3);
+    c.save(); c.translate(s.x, s.y); c.strokeStyle = c.fillStyle = hsl(s.col); c.lineCap = 'round'; c.globalAlpha = .85 * alpha;
+    const rec = (x, y, a, len, d, w, id) => {
+      const gg = clamp(g * 3.2 - d); if (gg <= 0) return;
+      const ex = x + Math.cos(a) * len * gg, ey = y + Math.sin(a) * len * gg;
+      c.lineWidth = w; c.beginPath(); c.moveTo(x, y); c.lineTo(ex, ey); c.stroke();
+      if (gg >= 1 && d < 2) { rec(ex, ey, a - .45 - hash(id * 3.1 + seed * .001) * .35, len * .62, d + 1, w * .65, id * 2 + 1); rec(ex, ey, a + .4 + hash(id * 5.7 + seed * .001) * .35, len * .62, d + 1, w * .65, id * 2 + 2); }
+      else if (gg >= 1) { c.beginPath(); c.arc(ex, ey, Math.max(1.5, w * 1.8), 0, TAU); c.fill(); }
+    };
+    for (let k = 0; k < roots; k++) rec(0, 0, k * TAU / roots + hash(seed * .01 + k) * .5, s.R * s.S * 1.5, 0, Math.max(1, s.R * .07), k + 1);
+    c.restore();
+  }
+  path(c, P, closed) { c.beginPath(); c.moveTo(P[0][0], P[0][1]); for (let i = 1; i < P.length; i++) c.lineTo(P[i][0], P[i][1]); if (closed) c.closePath(); }
+
+  /* ── ein Element inkl. Erscheinen / Verschwinden ── */
+  drawElement(c, s) {
+    const v = this.v, isLine = v.element === 'Linie';
+    let a = s.alpha, S = s.S * (s.cScale ?? 1), frag = 0, fragMode = null, wipe = null, grow = 1, dust = 0;
+    if (s.A < 1) {
+      const A = s.A;
+      switch (v.appear) {
+        case 'Fade-in': a *= smooth(A); break;
+        case 'Aufpoppen': S *= Math.max(0, backOut(A)); break;
+        case 'Zusammenfügen': frag = 1 - easeOut(A); fragMode = 'in'; a *= clamp(A * 2.5); break;
+        case 'Zoom-in': S *= lerp(3.4, 1, easeOut(A)); a *= clamp(A * 1.6); break;
+        case 'Wachsen': if (isLine) grow = easeOut(A); else S *= easeOut(A); break;
+        case 'Einblenden': wipe = [1, smooth(A)]; break;
+        case 'Jump-in': if (A < .5) a = 0; break;
+      }
+    }
+    if (s.D > 0) {
+      const D = s.D;
+      switch (v.vanish) {
+        case 'Fade-out': a *= 1 - smooth(D); break;
+        case 'Zerfallen': frag = D; fragMode = 'fall'; a *= 1 - D * D; break;
+        case 'Zoom-out': S *= lerp(1, 3.4, D * D); a *= 1 - D; break;
+        case 'Schrumpfen': S *= 1 - easeIn(D); break;
+        case 'Auflösen': dust = D; a *= 1 - smooth(clamp(D * 1.6)); break;
+        case 'Ausblenden': wipe = [-1, smooth(D)]; break;
+        case 'Jump-out': if (D > .5) a = 0; break;
+      }
+    }
+    if (S <= .002 || (a <= .003 && !dust)) return;
+    const R = s.R * S;
+    const opt = { round: s.round || 0, reduce: s.reduce || 0, rough: v.surface === 'Rau', warp: s.warp || 0, grow, px: R };
+    const sh = isLine ? lineShape(v.char, this.t, s.e.seed, opt) : closedShape(v.element, v.char, this.t, s.e.seed, opt);
+    const P = sh.pts.map(p => [p[0] * R * s.sx, p[1] * R * s.sy]);
+    const ext = 1.9 * R * Math.max(s.sx, s.sy) + 6;
+    const fillA = a * (ALPHA[v.alpha] ?? 1);
+    const body = () => this.body(c, P, sh, R, s, a, fillA);
+    if (v.trail === 'Nachzeichnen' && this.dtF > 0 && !s.clone && this.fno % 3 === 0) {   // Nachzeichnen: Umriss der ganzen Form bleibt als Spur stehen
+      const tx = this.tx; tx.save(); tx.translate(s.x, s.y); tx.rotate(s.rot || 0); if (s.skew) tx.transform(1, 0, s.skew, 1, 0, 0);
+      tx.globalAlpha = .55 * Math.min(1, a); tx.strokeStyle = hsl(s.col, 0, .9); tx.lineWidth = Math.max(1, Math.min(2.2, R * .03)); tx.lineJoin = 'round'; tx.lineCap = 'round';
+      this.path(tx, P, sh.closed); tx.stroke(); tx.restore();
+    }
+
+    c.save(); c.translate(s.x, s.y); c.rotate(s.rot || 0); if (s.skew) c.transform(1, 0, s.skew, 1, 0, 0);
+    if (s.split > .01) {
+      for (const side of [-1, 1]) { c.save(); c.translate(side * s.split * R * .75, 0); c.beginPath(); c.rect(side < 0 ? -ext * 2 : 0, -ext * 2, ext * 2, ext * 4); c.clip(); body(); c.restore(); }
+    } else if (frag > .001) {
+      const K = 7, rot0 = s.e.phase * TAU;
+      for (let k = 0; k < K; k++) {
+        const h1 = hash(k + s.e.seed * .001), h2 = hash(k * 3 + s.e.seed * .002);
+        c.save();
+        if (isLine) {
+          const x0 = -ext + k * 2 * ext / K, xm = x0 + ext / K;
+          const dx = fragMode === 'in' ? (xm / ext) * frag * R * 1.6 : (xm / ext) * frag * R * .6, dy = fragMode === 'in' ? (h1 - .5) * frag * R * 3 : frag * frag * R * 3.4 * (.6 + h1);
+          c.translate(dx, dy); c.rotate((h2 - .5) * frag * 2.4); c.beginPath(); c.rect(x0, -ext, 2 * ext / K + .5, 2 * ext); c.clip();
+        } else {
+          const a0 = rot0 + k * TAU / K, a1 = a0 + TAU / K + .002, am = (a0 + a1) / 2;
+          const dist = fragMode === 'in' ? frag * R * 2.3 * (.7 + h1 * .6) : frag * R * .8;
+          c.translate(Math.cos(am) * dist, Math.sin(am) * dist + (fragMode === 'fall' ? frag * frag * R * 3.4 * (.6 + h1) : 0));
+          c.rotate((h2 - .5) * frag * (fragMode === 'in' ? 3 : 2.4));
+          c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, ext * 2, a0, a1); c.closePath(); c.clip();
+        }
+        body(); c.restore();
+      }
+    } else if (wipe) {
+      const edge = lerp(-ext, ext, wipe[1]);
+      c.beginPath(); if (wipe[0] > 0) c.rect(-ext * 2, -ext * 2, edge + ext * 2, ext * 4); else c.rect(edge, -ext * 2, ext * 3, ext * 4);
+      c.clip(); body();
+    } else body();
+    c.restore();
+
+    if (dust > 0) {   // Auflösen: Partikel driften weg
+      c.save(); c.fillStyle = hsl(s.col);
+      const N = this.mini ? 18 : 40, sz = Math.max(1.2, R * .07);
+      for (let k = 0; k < N; k++) {
+        const h1 = hash(k * 1.3 + s.e.seed * .001), h2 = hash(k * 2.7 + s.e.seed * .003), ang = h1 * TAU, r0 = R * Math.sqrt(h2);
+        const x = s.x + Math.cos(ang) * r0 * (1 + dust * 1.8), y = s.y + Math.sin(ang) * r0 * (1 + dust * 1.8) - dust * R * (1 + h2);
+        c.globalAlpha = (1 - dust) * .9 * (ALPHA[v.alpha] ?? 1); c.fillRect(x - sz / 2, y - sz / 2, sz * (1 - dust * .5), sz * (1 - dust * .5));
+      }
+      c.restore();
+    }
+  }
+
+  /* Körper: Dimensionalität, Füllung, Oberfläche, Kontur */
+  body(c, P, sh, R, s, a, fillA) {
+    const v = this.v, col = s.col, dim = v.dim || '2D';
+    const glow = v.trail === 'Nachleuchten' || sh.soft;
+    if (!sh.closed) return this.bodyLine(c, P, sh, R, s, a, fillA, glow);
+    if (v.fill === 'Ungefüllt' || v.fill === 'Teilgefüllt') return this.bodyOutline(c, P, R, s, fillA, glow);
+    const fillA0 = c.globalAlpha;
+    if (dim === '2.5D') {   // ausgeschnittene, leicht angehobene Ebene: weicher Schatten + sichtbare Kante
+      c.save(); c.globalAlpha = fillA * (this.dark ? .55 : .3); c.translate(R * .16, R * .26); this.path(c, P, true); c.fillStyle = this.dark ? hsl(col, -40) : '#000';
+      if (!this.mini && this.els.length <= 12) c.filter = `blur(${Math.min(12, R * .12).toFixed(1)}px)`; c.fill(); c.restore();
+      for (let k = 3; k >= 1; k--) { c.save(); c.globalAlpha = fillA; c.translate(R * .045 * k, R * .055 * k); this.path(c, P, true); c.fillStyle = hsl(col, -10 - 6 * k); c.fill(); c.restore(); }
+    }
+    if (dim === '3D') this.extrude(c, P, R, col, fillA);
+    c.save();
+    c.globalAlpha = fillA;
+    if (glow) { c.shadowColor = hsl(col, 8, .9); c.shadowBlur = Math.min(this.mini ? 14 : 60, R * (sh.soft && v.trail !== 'Nachleuchten' ? .4 : .75)); }
+    else if (s.front) { c.shadowColor = 'rgba(0,0,0,.35)'; c.shadowBlur = Math.min(40, R * .35); c.shadowOffsetY = R * .12; }
+    this.path(c, P, true);
+    if (v.colorFx === 'Farbverlauf') { const g = c.createLinearGradient(-R, -R, R, R); g.addColorStop(0, hsl(col)); g.addColorStop(1, hsl({ ...col, h: col.h + 75 })); c.fillStyle = g; }
+    else if (dim === '3D') { const g = c.createRadialGradient(-R * .35, -R * .4, 0, -R * .1, -R * .1, R * 1.5); g.addColorStop(0, hsl(col, 20)); g.addColorStop(.55, hsl(col)); g.addColorStop(1, hsl(col, -16)); c.fillStyle = g; }
+    else c.fillStyle = hsl(col);
+    c.fill();
+    c.restore();
+    if (v.surface && v.surface !== 'Glatt') {
+      const pat = this.pat[v.surface];
+      if (pat) {
+        c.save(); this.path(c, P, true); c.clip();
+        const k = v.surface === 'Körnig' ? 1 / this.dpr * Math.max(1, R / 90) : Math.max(.3, R / 75);
+        try { pat.setTransform(new DOMMatrix().scaleSelf(k, k)); } catch (e) {}
+        c.globalAlpha = fillA * SURF_A[v.surface] + (1 - (ALPHA[v.alpha] ?? 1)) * .25 * a; c.fillStyle = pat; c.fillRect(-R * 2.2, -R * 2.2, R * 4.4, R * 4.4);
+        c.restore();
+      }
+    }
+    this.contour(c, P, true, R, col, a);
+    c.globalAlpha = fillA0;
+  }
+  bodyOutline(c, P, R, s, fillA, glow) {   // Füllung „Ungefüllt“ / „Teilgefüllt“: Umriss (nur mit Kontur) in der Elementfarbe, ggf. untere Hälfte gefüllt
+    const v = this.v, col = s.col, st = v.stroke && v.stroke !== 'Keine' ? v.stroke : null, fillA0 = c.globalAlpha;
+    const paint = () => { if (v.colorFx === 'Farbverlauf') { const g = c.createLinearGradient(-R, -R, R, R); g.addColorStop(0, hsl(col)); g.addColorStop(1, hsl({ ...col, h: col.h + 75 })); return g; } return hsl(col); };
+    if (v.fill === 'Teilgefüllt') { c.save(); c.globalAlpha = fillA; this.path(c, P, true); c.clip(); c.beginPath(); c.rect(-R * 4, 0, R * 8, R * 4); c.fillStyle = paint(); c.fill(); c.restore(); }
+    if (!st) { c.globalAlpha = fillA0; return; }   // ohne Kontur: kein Umriss (ungefüllt = unsichtbar)
+    const lw = { 'Dünn': 1.3, 'Dick': Math.max(3, R * .1), 'Gestrichelt': Math.max(1.6, R * .045), 'Gepunktet': Math.max(2.2, R * .06) }[st];
+    c.save(); c.globalAlpha = fillA; c.lineWidth = lw; c.lineJoin = 'round';
+    if (glow) { c.shadowColor = hsl(col, 8, .9); c.shadowBlur = Math.min(this.mini ? 14 : 60, R * .5); }
+    if (st === 'Gestrichelt') c.setLineDash([lw * 3.4, lw * 2.4]);
+    if (st === 'Gepunktet') { c.setLineDash([.01, lw * 2.1]); c.lineCap = 'round'; }
+    c.strokeStyle = paint(); this.path(c, P, true); c.stroke(); c.restore();
+    c.globalAlpha = fillA0;
+  }
+  extrude(c, P, R, col, fillA) {
+    const dx = R * .22, dy = -R * .17, m = P.length;
+    let cx = 0, cy = 0; P.forEach(p => { cx += p[0]; cy += p[1]; }); cx /= m; cy /= m;
+    c.save(); c.globalAlpha = fillA;
+    if (m > 28) {   // runde / feine Umrisse: geschichtete Extrusion statt vieler Seitenflächen (deutlich schneller)
+      const N = this.mini ? 5 : 10;
+      for (let k = N; k >= 1; k--) { c.save(); c.translate(dx * k / N, dy * k / N); this.path(c, P, true); c.fillStyle = hsl(col, -27 + 10 * (1 - k / N)); c.fill(); c.restore(); }
+      c.restore(); return;
+    }
+    c.save(); c.translate(dx, dy); this.path(c, P, true); c.fillStyle = hsl(col, -26); c.fill(); c.restore();
+    const sides = [];
+    for (let i = 0; i < m; i++) {
+      const p = P[i], q = P[(i + 1) % m]; let nx = q[1] - p[1], ny = -(q[0] - p[0]); const len = Math.hypot(nx, ny) || 1; nx /= len; ny /= len;
+      const mx = (p[0] + q[0]) / 2, my = (p[1] + q[1]) / 2; if (nx * (mx - cx) + ny * (my - cy) < 0) { nx = -nx; ny = -ny; }
+      if (nx * dx + ny * dy <= 0) continue;
+      sides.push({ p, q, d: mx * dx + my * dy, lam: nx * -.55 + ny * -.83 });
+    }
+    sides.sort((A, B) => B.d - A.d);
+    c.lineWidth = .8;
+    for (const sd of sides) {
+      c.beginPath(); c.moveTo(sd.p[0], sd.p[1]); c.lineTo(sd.q[0], sd.q[1]); c.lineTo(sd.q[0] + dx, sd.q[1] + dy); c.lineTo(sd.p[0] + dx, sd.p[1] + dy); c.closePath();
+      c.fillStyle = c.strokeStyle = hsl(col, -20 + 16 * sd.lam); c.fill(); c.stroke();
+    }
+    c.restore();
+  }
+  bodyLine(c, P, sh, R, s, a, fillA, glow) {
+    if (P.length < 2) return;
+    const v = this.v, col = s.col, dim = v.dim || '2D';
+    let lw = Math.max(1.2, R * .085) * ({ 'Dünn': .45, 'Dick': 2.1 }[v.stroke] || 1) * sh.wide;
+    c.save(); c.lineCap = sh.cap; c.lineJoin = sh.join; c.miterLimit = 8;
+    if (v.stroke === 'Gestrichelt') c.setLineDash([lw * 3.5, lw * 2.4]);
+    else if (v.stroke === 'Gepunktet') { c.setLineDash([.01, lw * 2]); c.lineCap = 'round'; }
+    c.lineWidth = lw;
+    if (dim === '2.5D') {
+      c.save(); c.globalAlpha = fillA * (this.dark ? .55 : .3); c.translate(R * .12, R * .2); this.path(c, P, false); c.strokeStyle = this.dark ? hsl(col, -40) : '#000'; c.stroke(); c.restore();
+      for (let k = 3; k >= 1; k--) { c.save(); c.globalAlpha = fillA; c.translate(R * .035 * k, R * .045 * k); this.path(c, P, false); c.strokeStyle = hsl(col, -10 - 6 * k); c.stroke(); c.restore(); }
+    }
+    if (dim === '3D') { for (let k = 8; k >= 1; k--) { c.save(); c.globalAlpha = fillA; c.translate(R * .22 * k / 8, -R * .17 * k / 8); this.path(c, P, false); c.strokeStyle = hsl(col, -26 + k); c.stroke(); c.restore(); } }
+    c.globalAlpha = fillA;
+    if (glow) { c.shadowColor = hsl(col, 8, .9); c.shadowBlur = Math.min(this.mini ? 12 : 40, R * .6); }
+    else if (s.front) { c.shadowColor = 'rgba(0,0,0,.35)'; c.shadowBlur = Math.min(30, R * .3); c.shadowOffsetY = R * .1; }
+    if (v.colorFx === 'Farbverlauf') { const g = c.createLinearGradient(-R * 1.6, 0, R * 1.6, 0); g.addColorStop(0, hsl(col)); g.addColorStop(1, hsl({ ...col, h: col.h + 75 })); c.strokeStyle = g; } else c.strokeStyle = hsl(col);
+    this.path(c, P, false); c.stroke();
+    c.shadowColor = 'transparent';
+    if (dim === '3D') { c.save(); c.lineWidth = lw * .3; c.strokeStyle = hsl(col, 24, .8); c.translate(-lw * .15, -lw * .18); this.path(c, P, false); c.stroke(); c.restore(); }
+    if (v.surface && v.surface !== 'Glatt' && this.pat[v.surface]) { c.globalAlpha = fillA * SURF_A[v.surface]; c.strokeStyle = this.pat[v.surface]; this.path(c, P, false); c.stroke(); }
+    c.restore();
+  }
+  contour(c, P, closed, R, col, a) {
+    const st = this.v.stroke; if (!st || st === 'Keine') return;
+    const lw = { 'Dünn': 1.3, 'Dick': Math.max(3, R * .1), 'Gestrichelt': Math.max(1.6, R * .045), 'Gepunktet': Math.max(2.2, R * .06) }[st];
+    c.save(); c.globalAlpha = a; c.lineWidth = lw; c.lineJoin = 'round';
+    c.strokeStyle = this.dark ? hsl({ ...col, l: Math.max(col.l + 30, 80) }) : hsl({ ...col, l: Math.min(col.l - 30, 24) });
+    if (st === 'Gestrichelt') c.setLineDash([lw * 3.4, lw * 2.4]);
+    if (st === 'Gepunktet') { c.setLineDash([.01, lw * 2.1]); c.lineCap = 'round'; }
+    this.path(c, P, closed); c.stroke(); c.restore();
+  }
+}
+
+/* ═══════════════════════════ Klang: Synthesizer & Song-Analyse ═══════════════════════════ */
+class Sound {
+  constructor() { this.ac = null; this.mode = 'song'; this.direct = location.protocol === 'file:'; this.env = null; this.track = 'all'; this.url = 'song.m4a'; this.notes = []; this.v = {}; this.bpm = 100; this.sm = 0; this.pitchSm = .5; this.peak = .05; }
+  ensure() {
+    if (this.ac) return;
+    const ac = this.ac = new (window.AudioContext || window.webkitAudioContext)();
+    this.out = ac.createGain(); this.out.gain.value = 0; this.out.connect(ac.destination);
+    this.master = ac.createGain(); this.lp = ac.createBiquadFilter(); this.lp.type = 'lowpass'; this.lp.frequency.value = 18000;
+    this.bus = ac.createGain(); this.dry = ac.createGain(); this.wet = ac.createGain(); this.conv = ac.createConvolver();
+    const len = ac.sampleRate * 3.2, ir = ac.createBuffer(2, len, ac.sampleRate);
+    for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2); }
+    this.conv.buffer = ir;
+    this.bus.connect(this.lp); this.lp.connect(this.dry); this.lp.connect(this.conv); this.conv.connect(this.wet);
+    this.dry.connect(this.master); this.wet.connect(this.master); this.master.connect(this.out);
+    const nb = ac.createBuffer(1, ac.sampleRate, ac.sampleRate), nd = nb.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1; this.noise = nb;
+    const curve = new Float32Array(1024); for (let i = 0; i < 1024; i++) { const x = i / 512 - 1; curve[i] = Math.tanh(x * 6) * .8; } this.curve = curve;
+    this.an = ac.createAnalyser(); this.an.fftSize = 2048; this.an.smoothingTimeConstant = .5;
+    this.tbuf = new Float32Array(this.an.fftSize); this.fbuf = new Uint8Array(this.an.frequencyBinCount);
+  }
+  setMode(m) {
+    if (m !== 'off') { this.ensure(); this.ac.resume(); }
+    this.mode = m;
+    clearInterval(this.timer);
+    if (this.audio) this.audio.pause();
+    if (!this.ac) return;
+    const now = this.ac.currentTime;
+    this.out.gain.cancelScheduledValues(now); this.out.gain.setTargetAtTime(m === 'off' ? 0 : 1, now, .05);
+    if (m === 'synth') { this.next = now + .06; this.step = 0; this.timer = setInterval(() => this.tick(), 25); this.apply(); }
+    if (m === 'song') { this.mkAudio(); if (playing) this.playSong(); }
+  }
+  mkAudio() {
+    if (this.audio) return;
+    this.ensure();
+    this.audio = new Audio(this.url); this.audio.loop = false;
+    this.audio.addEventListener('ended', () => { setPlay(false); this.audio.currentTime = 0; T = 0; });   // am Ende stoppen und zurück auf 0
+    if (this.direct) { this.envFor(this.track); return; }   // file://: Browser sperrt die Analyse – Hüllkurve wird vorab berechnet
+    const src = this.ac.createMediaElementSource(this.audio); src.connect(this.an); this.an.connect(this.out);
+  }
+  playSong() { this.ensure(); this.ac.resume(); this.out.gain.setTargetAtTime(1, this.ac.currentTime, .05); this.mkAudio(); this.audio.play().catch(() => toast('Tonspur konnte nicht abgespielt werden.')); }
+  async envFor(name) {          // Pegel-Hüllkurve (Werte 0..1, SONG.peakRate pro Sekunde) für den Betrieb ohne Server
+    const rate = SONG.peakRate || 20; let env;
+    if (name === 'all') { const raw = Uint8Array.from(atob(SONG.peaks), c => c.charCodeAt(0)), p = new Int8Array(raw.buffer); env = new Float32Array(p.length >> 1); for (let j = 0; j < env.length; j++) env[j] = Math.max(Math.abs(p[2 * j]), p[2 * j + 1]) / 127; }
+    else { const r = await Stems.get(name); if (!r) return; this.ensure(); const buf = await this.ac.decodeAudioData(await r.blob.arrayBuffer()), d = buf.getChannelData(0), step = Math.max(1, Math.floor(buf.sampleRate / rate)); env = new Float32Array(Math.ceil(d.length / step)); for (let j = 0; j < env.length; j++) { let m = 0; for (let k = j * step, e = Math.min(d.length, k + step); k < e; k += 4) m = Math.max(m, Math.abs(d[k])); env[j] = m; } }
+    let pk = 0.02; for (const v of env) if (v > pk) pk = v;
+    if (this.track === name) { this.env = env; this.envRate = rate; this.envPeak = pk; }
+  }
+  pauseSong() { if (this.audio) this.audio.pause(); }
+  async setTrack(name) {        // 'all' = ganzer Song, sonst Einzelspur eines Instruments
+    let url = 'song.m4a';
+    if (name !== 'all') { const r = await Stems.get(name); if (!r) { toast('Diese Tonspur gibt es nicht mehr.'); return false; } url = URL.createObjectURL(r.blob); }
+    if (this.url.startsWith('blob:')) URL.revokeObjectURL(this.url);
+    this.track = name; this.url = url;
+    if (this.direct) { this.env = null; this.envFor(name); }
+    if (!this.audio) return true;
+    const t = this.audio.currentTime, was = !this.audio.paused;
+    this.audio.src = url;
+    this.audio.addEventListener('loadedmetadata', () => { try { this.audio.currentTime = t; } catch (e) {} }, { once: true });
+    if (was) this.audio.play().catch(() => {});
+    return true;
+  }
+  params() {
+    const v = this.v;
+    return {
+      base: { 'Sehr tief': 36, 'Tief': 48, 'Mittel': 60, 'Hoch': 72, 'Sehr hoch': 84 }[v.pitch] ?? 60,
+      gain: { 'Sehr leise': .05, 'Leise': .11, 'Mittel': .2, 'Laut': .32, 'Sehr laut': .46 }[v.loud] ?? .2,
+      vis: { 'Sehr leise': .25, 'Leise': .45, 'Mittel': .65, 'Laut': .85, 'Sehr laut': 1 }[v.loud] ?? .65,
+      cut: ({ 'Hell': 7000, 'Dunkel': 650, 'Warm': 1500, 'Kühl': 4200, 'Metallisch': 9000, 'Weich': 1700 }[v.timbre] ?? 3000) * (v.texture === 'Klar' ? 1.4 : 1),
+      att: { 'Hart': .004, 'Weich': .12, 'Abrupt': .001, 'Allmählich': .55 }[v.attack] ?? .015,
+      rel: { 'Kurz': .1, 'Lang': 1.6, 'Abrupt': .015, 'Allmählich': .9 }[v.release] ?? .3,
+    };
+  }
+  apply() {
+    if (!this.ac) return;
+    const v = this.v, P = this.params(), now = this.ac.currentTime;
+    const wet = { 'Nah': .04, 'Fern': .45, 'Trocken': 0, 'Hallend': .8 }[v.space] ?? .15;
+    this.master.gain.setTargetAtTime(P.gain * (v.space === 'Fern' ? .6 : v.space === 'Nah' ? 1.2 : 1), now, .05);
+    this.lp.frequency.setTargetAtTime(v.space === 'Fern' ? 1400 : 18000, now, .05);
+    this.wet.gain.setTargetAtTime(wet, now, .05); this.dry.gain.setTargetAtTime(1 - wet * .6, now, .05);
+  }
+  tick() {
+    const step = 60 / this.bpm / 4;
+    while (this.next < this.ac.currentTime + .12) { this.schedule(this.step, this.next, step); this.next += step; this.step++; }
+  }
+  schedule(s, time, step) {
+    const v = this.v, P = this.params(), pos = s % 16, bar = Math.floor(s / 16);
+    const cons = v.harm !== 'Dissonant';
+    const scale = cons ? [0, 2, 4, 7, 9, 12, 14] : [0, 1, 6, 7, 11, 13, 18];
+    const chord = cons ? [0, 4, 7] : [0, 1, 6];
+    let hits, acc = 1;
+    switch (v.srhythm) {
+      case 'Unregelmäßig': { const r = rng(bar * 131 + 7), set = new Set([0]); while (set.size < 5) set.add(Math.floor(r() * 16)); hits = [...set]; break; }
+      case 'Pulsierend': hits = [0, 3, 8, 11]; acc = pos % 8 === 0 ? 1 : .55; break;
+      case 'Repetitiv': hits = [0, 2, 3, 6, 8, 10, 11, 14]; break;
+      case 'Alternierend': hits = [0, 4, 8, 12]; acc = (pos / 4) % 2 ? .5 : 1; break;
+      default: hits = [0, 4, 8, 12];
+    }
+    let on = hits.includes(pos), vel = acc;
+    if (v.density === 'Dicht' && !on && pos % 2 === 0) { on = true; vel = .5; }
+    if (v.density === 'Vereinzelt' && on && hash(s * 1.17) < .55) on = false;
+    if (v.density === 'Vielschichtig' && pos === 0) this.voice(time, P.base - 12, step * 15, .45, P, { att: Math.max(P.att, .3), rel: 1.2 });
+    if (v.density === 'Vielschichtig' && pos % 8 === 6 && hash(s * .7) > .4) this.voice(time, P.base + 24 + scale[Math.floor(hash(s) * 5)], step * 1.5, .3, P);
+    if (!on) return;
+    const c = s % 32 / 32;
+    const dyn = { 'Crescendo': .2 + .8 * c, 'Decrescendo': 1 - .8 * c, 'Wechselhaft': .3 + .7 * hash(Math.floor(s / 4) * 2.3) }[v.dyn] ?? 1;
+    let deg;
+    if (v.srhythm === 'Repetitiv') deg = [0, 2, 4, 2, 5, 4, 2, 1][hits.indexOf(pos)];
+    else if (v.srhythm === 'Alternierend') deg = (pos / 4) % 2 ? 3 : 0;
+    else deg = Math.floor(rng(s * 17 + 3)() * 6);
+    const midi = P.base + scale[deg];
+    const dur = v.artic === 'Staccato' ? Math.min(.09, step * .6) : v.artic === 'Legato' ? step * 4.2 : step * 1.6;
+    const notes = v.density === 'Dicht' && vel > .6 ? chord.map(x => P.base + x + (deg > 3 ? 12 : 0)) : [midi];
+    notes.forEach(m => this.voice(time, m, dur, vel * dyn / Math.sqrt(notes.length), P));
+  }
+  voice(time, midi, dur, vel, P, o = {}) {
+    const ac = this.ac, v = this.v, f = 440 * Math.pow(2, (midi - 69) / 12);
+    const att = o.att ?? P.att, rel = o.rel ?? P.rel;
+    const g = ac.createGain(); g.gain.value = 0;
+    const flt = ac.createBiquadFilter(); flt.type = 'lowpass'; flt.frequency.value = P.cut; flt.Q.value = v.timbre === 'Metallisch' ? 4 : .8;
+    const srcs = [];
+    const osc = (type, fr, det = 0) => { const n = ac.createOscillator(); n.type = type; n.frequency.value = fr; n.detune.value = det; srcs.push(n); return n; };
+    switch (v.timbre) {
+      case 'Metallisch': { const car = osc('sine', f), mod = osc('sine', f * 3.53), mg = ac.createGain(); mg.gain.value = f * 2.4; mod.connect(mg); mg.connect(car.frequency); car.connect(flt); break; }
+      case 'Warm': osc('sawtooth', f, -9).connect(flt); osc('sawtooth', f, 9).connect(flt); break;
+      case 'Kühl': osc('square', f, -5).connect(flt); { const t2 = osc('triangle', f * 2, 6), tg = ac.createGain(); tg.gain.value = .4; t2.connect(tg); tg.connect(flt); } break;
+      case 'Hell': osc('sawtooth', f).connect(flt); break;
+      case 'Dunkel': osc('triangle', f).connect(flt); break;
+      default: osc('sine', f).connect(flt);
+    }
+    let tail = flt;
+    if (v.texture === 'Rau') { const ws = ac.createWaveShaper(); ws.curve = this.curve; tail.connect(ws); tail = ws; }
+    if (v.texture === 'Körnig') { const tg = ac.createGain(); tg.gain.value = .5; const l = osc('square', 31), lg = ac.createGain(); lg.gain.value = .5; l.connect(lg); lg.connect(tg.gain); tail.connect(tg); tail = tg; }
+    tail.connect(g);
+    if (v.texture === 'Verrauscht') { const b = ac.createBufferSource(); b.buffer = this.noise; b.loop = true; const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = Math.min(9000, f * 3); bp.Q.value = .7; const ng = ac.createGain(); ng.gain.value = .9; b.connect(bp); bp.connect(ng); ng.connect(g); srcs.push(b); }
+    const peak = vel * .5, hold = time + Math.max(att, dur), end = hold + rel * 1.6 + .05;
+    g.gain.setValueAtTime(0, time);
+    if (att < .003) g.gain.setValueAtTime(peak, time); else g.gain.linearRampToValueAtTime(peak, time + att);
+    g.gain.setValueAtTime(peak, hold); g.gain.setTargetAtTime(0, hold, rel / 4);
+    g.connect(this.bus);
+    srcs.forEach(n => { n.start(time); n.stop(end); });
+    srcs[0].onended = () => g.disconnect();
+    this.notes.push({ t0: time, att, hold, rel, vel, midi, end });
+    if (this.notes.length > 80) this.notes.splice(0, this.notes.length - 80);
+  }
+  features() {
+    if (this.mode === 'off' || (!this.ac && !this.direct)) return null;
+    let amp = 0, pitch = this.pitchSm;
+    if (this.mode === 'synth') {
+      const now = this.ac.currentTime, P = this.params(); let best = null;
+      for (const n of this.notes) {
+        if (now < n.t0 || now > n.end) continue;
+        const e = now < n.t0 + n.att ? (now - n.t0) / n.att : now < n.hold ? 1 : Math.exp(-(now - n.hold) / (n.rel / 4));
+        const val = e * n.vel; if (val > amp) { amp = val; best = n; }
+      }
+      amp = clamp(amp * P.vis * 1.15);
+      if (best) pitch = clamp((best.midi - 30) / 66);
+    } else if (this.direct) {
+      const e = this.env, t = this.audio && !this.audio.paused ? this.audio.currentTime : -1;
+      if (e && t >= 0) { const i = Math.min(e.length - 1, Math.floor(t * this.envRate)); amp = clamp(((e[i] + (e[i + 1] ?? e[i]) + (e[Math.max(0, i - 1)])) / 3) / this.envPeak * 1.25); }
+    } else {
+      this.an.getFloatTimeDomainData(this.tbuf); let s = 0; for (let i = 0; i < this.tbuf.length; i++) s += this.tbuf[i] * this.tbuf[i];
+      const rms = Math.sqrt(s / this.tbuf.length); this.peak = Math.max(this.peak * .997, rms, .02); amp = clamp(rms / this.peak);
+      this.an.getByteFrequencyData(this.fbuf); let num = 0, den = 0; const hz = this.ac.sampleRate / 2 / this.fbuf.length;
+      for (let i = 0; i < this.fbuf.length; i++) { num += this.fbuf[i] * i * hz; den += this.fbuf[i]; }
+      pitch = den ? clamp((num / den) / 4500) : .5;
+    }
+    this.sm = amp > this.sm ? lerp(this.sm, amp, .6) : lerp(this.sm, amp, .14);
+    this.pitchSm = lerp(this.pitchSm, pitch, .2);
+    return { amp: this.sm, pitch: this.pitchSm };
+  }
+}
+
+/* ═══════════════════════════ Klang → visuelle Vorschläge ═══════════════════════════ */
+function deriveFromSound(s) {
+  const v = vals(s), set = {};
+  const put = (k, o) => { const i = ROW[k].o.indexOf(o); if (i >= 0) set[k] = i; };
+  ({ 'Konsonant': () => { put('layout', 'Radial'); put('char', 'Geometrisch'); }, 'Dissonant': () => { put('layout', 'Zufällig'); put('char', 'Unregelmäßig'); put('interact', 'Verdeckung'); } }[v.harm] || (() => {}))();
+  ({ 'Dünn': () => put('count', 'Einzeln'), 'Dicht': () => { put('count', 'Viele'); put('layout', 'Gruppiert'); }, 'Vereinzelt': () => { put('count', 'Wenige'); put('layout', 'Verteilt'); }, 'Vielschichtig': () => { put('count', 'Mehrere'); put('dim', '2.5D'); } }[v.density] || (() => {}))();
+  ({ 'Sehr leise': () => { put('size', 'Winzig'); put('sat', 'Entsättigt'); }, 'Leise': () => put('size', 'Klein'), 'Mittel': () => put('size', 'Mittel'), 'Laut': () => { put('size', 'Groß'); put('sat', 'Gesättigt'); }, 'Sehr laut': () => { put('size', 'Riesig'); put('sat', 'Gesättigt'); } }[v.loud] || (() => {}))();
+  ({ 'Sehr tief': () => { put('light', 'Dunkel'); put('place', 'Unten'); }, 'Tief': () => { put('light', 'Dunkel'); put('place', 'Unten'); }, 'Mittel': () => put('light', 'Mittel'), 'Hoch': () => { put('light', 'Hell'); put('place', 'Oben'); }, 'Sehr hoch': () => { put('light', 'Hell'); put('place', 'Oben'); } }[v.pitch] || (() => {}))();
+  if (v.tempo) put('speed', ['Sehr langsam', 'Langsam', 'Moderat', 'Schnell', 'Sehr schnell'][ROW.tempo.o.indexOf(v.tempo)]);
+  if (v.srhythm) { put('rhythm', v.srhythm); if (v.srhythm === 'Pulsierend') put('shapeFx', 'Vergrößern'); }
+  ({ 'Crescendo': () => { put('shapeFx', 'Vergrößern'); put('colorFx', 'Heller'); }, 'Decrescendo': () => { put('shapeFx', 'Verkleinern'); put('colorFx', 'Dunkler'); }, 'Konstant': () => put('colorFx', 'Konstant'), 'Wechselhaft': () => put('colorFx', 'Farbwechsel') }[v.dyn] || (() => {}))();
+  ({ 'Staccato': () => { put('appear', 'Jump-in'); put('vanish', 'Jump-out'); put('trail', 'Keine'); }, 'Legato': () => { put('appear', 'Fade-in'); put('vanish', 'Fade-out'); put('trail', 'Linie'); } }[v.artic] || (() => {}))();
+  ({ 'Hart': () => put('appear', 'Aufpoppen'), 'Weich': () => put('appear', 'Einblenden'), 'Abrupt': () => put('appear', 'Jump-in'), 'Allmählich': () => put('appear', 'Fade-in') }[v.attack] || (() => {}))();
+  ({ 'Kurz': () => put('vanish', 'Schrumpfen'), 'Lang': () => { put('vanish', 'Fade-out'); put('trail', 'Nachleuchten'); }, 'Abrupt': () => put('vanish', 'Jump-out'), 'Allmählich': () => put('vanish', 'Auflösen') }[v.release] || (() => {}))();
+  ({ 'Glatt': () => { put('surface', 'Glatt'); put('stroke', 'Keine'); }, 'Rau': () => { put('surface', 'Rau'); put('stroke', 'Dick'); }, 'Körnig': () => put('surface', 'Körnig'), 'Verrauscht': () => { put('surface', 'Körnig'); put('stroke', 'Gepunktet'); }, 'Klar': () => { put('surface', 'Glatt'); put('stroke', 'Dünn'); } }[v.texture] || (() => {}))();
+  ({ 'Hell': () => { put('light', 'Hell'); put('char', 'Spitz'); put('temp', 'Kalt'); }, 'Dunkel': () => { put('light', 'Dunkel'); put('char', 'Abgerundet'); }, 'Warm': () => { put('temp', 'Warm'); put('char', 'Organisch'); put('hue', 'Orange'); }, 'Kühl': () => { put('temp', 'Kalt'); put('char', 'Geometrisch'); put('hue', 'Blau'); }, 'Metallisch': () => { put('char', 'Kantig'); put('surface', 'Strukturiert'); put('sat', 'Entsättigt'); put('temp', 'Kalt'); }, 'Weich': () => { put('char', 'Abgerundet'); put('surface', 'Glatt'); put('stroke', 'Keine'); } }[v.timbre] || (() => {}))();
+  ({ 'Nah': () => { put('place', 'Vordergrund'); put('alpha', 'Undurchsichtig'); }, 'Fern': () => { put('place', 'Hintergrund'); put('alpha', 'Halbtransparent'); }, 'Trocken': () => put('trail', 'Keine'), 'Hallend': () => { put('trail', 'Nachbild'); put('alpha', 'Halbtransparent'); } }[v.space] || (() => {}))();
+  return set;
+}
+
+/* ═══════════════════════════ Hinweise zur Darstellung ═══════════════════════════ */
+function notesFor(v) {
+  const N = [], el = v.element, ch = v.char;
+  const add = (a, b) => N.push(`<b>${a}</b> → ${b}`);
+  if (el === 'Kreis' && ch === 'Kantig') add('Kreis + Kantig', 'als Achteck dargestellt');
+  if (el === 'Kreis' && ch === 'Abgerundet') add('Kreis + Abgerundet', 'ist schon rund – dargestellt mit weicher, leuchtender Kante');
+  if (el === 'Kreis' && ch === 'Spitz') add('Kreis + Spitz', 'Stern mit 12 Zacken');
+  if (el === 'Kreis' && ch === 'Unregelmäßig') add('Kreis + Unregelmäßig', 'verzogenes Vieleck');
+  if (el === 'Punkt' && ch === 'Kantig') add('Punkt + Kantig', 'kleines Quadrat');
+  if (el === 'Punkt' && ch === 'Spitz') add('Punkt + Spitz', 'vierzackiger Funke');
+  if (el === 'Punkt') add('Punkt', 'bleibt auch bei großer Größe klein');
+  if (el === 'Polygon') add('Polygon', { Kantig: 'Dreieck', Spitz: 'sechszackiger Stern', Abgerundet: 'Sechseck mit runden Ecken', Organisch: 'weiches, atmendes Sechseck', Unregelmäßig: 'unregelmäßiges Siebeneck' }[ch] || 'regelmäßiges Sechseck');
+  if ((el === 'Rechteck' || el === 'Quadrat' || el === 'Fläche') && ch === 'Kantig') add(el + ' + Kantig', 'abgeschrägte Ecken');
+  if (el === 'Quadrat' && ch === 'Spitz') add('Quadrat + Spitz', 'vierzackiger Stern über den Ecken');
+  if ((el === 'Rechteck' || el === 'Fläche') && ch === 'Spitz') add(el + ' + Spitz', 'gezackte Kanten');
+  if (el === 'Linie') add('Linie', { Kantig: 'Treppenlinie', Spitz: 'Zickzacklinie', Organisch: 'fließende Welle', Abgerundet: 'weicher Bogen mit runden Enden', Unregelmäßig: 'zittrige Linie' }[ch] || 'gerade Linie');
+  if (el === 'Linie' && v.stroke && v.stroke !== 'Keine') add('Kontur bei Linie', 'steuert Strichstärke bzw. Strichelung');
+  if (el === 'Fläche') add('Fläche', 'großflächige Form, Anzahl auf max. 12 begrenzt');
+  if (v.interact && v.count === 'Einzeln') add('Interaktion bei „Einzeln“', 'graues Partnerelement zeigt das Verhalten');
+  if (v.interact === 'Kollision') add('Kollision', 'Elemente prallen voneinander und vom Rand ab (ersetzt die Bewegungsbahn)');
+  if (v.interact === 'Verfolgung' && (v.speed === 'Stillstand' || (!v.dir && !v.path))) add('Verfolgung', 'Leitelement wandert automatisch, damit die anderen folgen können');
+  const moving = v.speed !== 'Stillstand' && (v.dir || v.path);
+  if (v.trail && v.trail !== 'Keine' && !moving && v.interact !== 'Kollision' && v.interact !== 'Verfolgung') add('Spur', 'wird erst mit Bewegung sichtbar – Richtung oder Bahn und Geschwindigkeit wählen');
+  if ((v.dir || v.path) && v.speed === 'Stillstand') add('Stillstand', 'Bewegungsrichtung/-bahn wirkt erst ab „Sehr langsam“');
+  if (v.transform === 'Reduktion' && v.count === 'Einzeln') add('Reduktion bei „Einzeln“', 'die Eckenanzahl nimmt schrittweise ab');
+  if (v.transform === 'Gruppierung' && v.count === 'Einzeln') add('Gruppierung bei „Einzeln“', 'Teilstücke sammeln sich um das Element');
+  if (v.appear || v.vanish) add('Erscheinen/Verschwinden', 'Elemente durchlaufen Lebenszyklen von ca. 8 Schlägen');
+  if (v.fill === 'Ungefüllt' && el !== 'Linie' && (!v.stroke || v.stroke === 'Keine')) add('Ungefüllt ohne Kontur', 'Element ist unsichtbar – bei Kontur eine Linie wählen');
+  if (v.fill && v.fill !== 'Gefüllt' && (v.dim === '2.5D' || v.dim === '3D')) add('Füllung ' + v.fill, 'Umriss-Darstellung ohne Tiefenwirkung');
+  if (v.layout && v.count === 'Einzeln' && !v.interact) add('Anordnung bei „Einzeln“', 'wirkt erst ab mehreren Elementen – für die Lage im Bild: Position im Raum');
+  if (v.alpha === 'Transparent' && (!v.stroke || v.stroke === 'Keine')) add('Transparent ohne Kontur', 'kaum sichtbar – eine Kontur hilft');
+  if (v.place === 'Vordergrund' || v.place === 'Hintergrund') add(v.place, 'graue Bezugsebene zeigt die Tiefe');
+  if (v.place === 'Versteckt') add('Versteckt', 'Elemente lugen hinter einer verdeckenden Ebene hervor');
+  if (v.shapeFx === 'Verpixeln') add('Verpixeln', 'Pixelgröße folgt dem Rhythmus');
+  return N;
+}
+
+/* ═══════════════════════════ UI ═══════════════════════════ */
+const ICON = {
+  element: ['<circle cx="8" cy="8" r="5.6"/>', '<rect x="1.8" y="4.4" width="12.4" height="7.2" rx=".6"/>', '<rect x="2.8" y="2.8" width="10.4" height="10.4" rx=".6"/>', '<path d="M8 1.9l5.3 3.05v6.1L8 14.1l-5.3-3.05v-6.1z"/>', '<path d="M2 12.5L14 3.5"/>', '<circle cx="8" cy="8" r="2.2" fill="currentColor"/>', '<rect x="1.2" y="3" width="13.6" height="10" rx="1" fill="currentColor" opacity=".35" stroke="none"/>'],
+  char: ['<path d="M8 2.2c3 0 5.8 1.9 5.6 5.1-.2 3.4-3 6.4-6.1 6.3C4.4 13.5 2.2 11 2.4 7.9 2.6 4.6 5 2.2 8 2.2z"/>', '<rect x="3" y="3" width="10" height="10"/>', '<path d="M5.5 2.5h5l3 3v5l-3 3h-5l-3-3v-5z"/>', '<rect x="2.6" y="2.6" width="10.8" height="10.8" rx="4"/>', '<path d="M8 1.5l1.8 4.6 4.7.5-3.6 3 1.1 4.8L8 11.9l-4 2.5 1.1-4.8-3.6-3 4.7-.5z"/>', '<path d="M3 4.2l5.8-1.8 4.6 3.8-1.6 6.6-5.6 1.2-3.8-3.4z"/>'],
+  size: [1.6, 2.8, 4, 5.2, 6.4].map(r => `<circle cx="8" cy="8" r="${r}"/>`),
+};
+function chipDeco(k, i) {
+  if (ICON[k]) return `<svg viewBox="0 0 16 16" aria-hidden="true">${ICON[k][i] || (k === 'element' && ROW.element.o[i] === 'Dreieck' ? '<path d="M8 2.5 14 13.5H2z"/>' : '')}</svg>`;
+  if (k === 'hue') return ROW.hue.o[i] === 'Unbunt' ? '<i class="sw" style="background:linear-gradient(90deg,#111 50%,#fff 50%)"></i>' : `<i class="sw" style="background:hsl(${HUE[ROW.hue.o[i]]},80%,55%)"></i>`;
+  if (k === 'temp') return `<i class="sw" style="background:${['#f08a3c', '#9b9a9e', '#4a8ef0'][i]}"></i>`;
+  if (k === 'light') return `<i class="sw" style="background:hsl(28,10%,${[82, 55, 26][i]}%)"></i>`;
+  if (k === 'sat') return `<i class="sw" style="background:hsl(20,${[8, 50, 95][i]}%,55%)"></i>`;
+  if (k === 'alpha') return `<i class="sw" style="background:rgba(255,106,20,${[1, .5, .16][i]});box-shadow:inset 0 0 0 1px rgba(255,106,20,.6)"></i>`;
+  return '';
+}
+const LOCK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="7" width="10" height="7" rx="1.5"/><path d="M5.2 7V5a2.8 2.8 0 0 1 5.6 0v2"/></svg>';
+
+const STORE = 'av-kasten2-v1';
+let state = { sel: defaults(), trig: trigDefaults(), locks: {}, instruments: [], bpm: 100, current: null };
+try {   // beim ersten Öffnen: Name, Tonspur und Sperren aus dem bisherigen Kasten übernehmen
+  const s = JSON.parse(localStorage.getItem(STORE) || 'null') || JSON.parse(localStorage.getItem('av-kasten-v1') || 'null');
+  if (s && s.sel) state = { ...state, ...s, sel: defaults(), trig: trigDefaults() };
+} catch (e) {}
+{ const m = location.hash.match(/k=([0-9a-z.-]+)/i); const d = m && decode(m[1]); if (d) { state.sel = d; state.trig = decodeTrig(m[1]); } }
+let sel = state.sel, trig = state.trig;
+
+function save() {
+  state.sel = sel; state.trig = trig;
+  try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) {}
+  history.replaceState(null, '', '#k=' + encode(sel));
+}
+
+/* Panel aufbauen */
+function trigSelect(r) {   // eigene Aufklappliste im Stil des Feldes, Gruppen „Live darstellbar“ / „Nicht live darstellbar“
+  const opt = (T, i) => `<button type="button" class="dd-o${T.live ? '' : ' nl'}" data-v="${i}" role="option"><i></i>${T.n}</button>`;
+  return `<span class="lnk" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M19 12H5M10 7l-5 5 5 5"/></svg></span>` +
+    `<div class="dd trgw" data-trgw="${r.k}"><button type="button" class="dd-btn" data-dd="${r.k}" aria-haspopup="listbox" aria-expanded="false" aria-label="Klangparameter für ${r.n}"><span class="dd-v">kein Auslöser</span></button>` +
+    `<div class="dd-pop" role="listbox" hidden>` +
+    `<button type="button" class="dd-o none" data-v="-1" role="option"><i></i>kein Auslöser</button>` +
+    `<div class="dd-g">Live darstellbar</div>${TRIGGERS.map((T, i) => T.live ? opt(T, i) : '').join('')}` +
+    `<div class="dd-g nl">Nicht live darstellbar</div>${TRIGGERS.map((T, i) => T.live ? '' : opt(T, i)).join('')}` +
+    `</div></div><small class="trgn" data-trgn="${r.k}"></small>`;
+}
+const scrollEl = $('scroll');
+const COLS = Math.max(7, ...ROWS.map(r => r.o.length));   // alle Zeilen gleich viele Spalten → Tabelle
+scrollEl.style.setProperty('--cols', COLS);
+scrollEl.innerHTML = BOXES.map(b => `
+  <section class="box" id="box-${b.id}" data-box="${b.id}">
+    <div class="bh"><h2>${b.title} <span>· ${b.sub}</span></h2>
+      <div class="acts"><button data-reset="${b.id}" title="Diesen Kasten zurücksetzen">Standard</button></div></div>
+    <p class="bq">${b.q}</p>
+    ${b.id !== 'look' ? '<div class="legend"><span><i></i>live darstellbar</span><span><i class="nl"></i>nicht live darstellbar – nur als Gestaltungsentscheidung</span></div>' : ''}
+    <div class="rows"><svg class="path"></svg>
+      ${b.rows.some(r => r.trig) ? '<div class="row t3 rowh" aria-hidden="true"><div></div><div></div><div class="rth">gekoppelt an Klangparameter</div></div>' : ''}
+      ${b.rows.map((r, ri) => `${r.g && (ri === 0 || b.rows[ri - 1].g !== r.g) ? `<div class="grp-h">${r.g}</div>` : ''}
+        <div class="row${b.rows.some(x => x.trig) ? ' t3' : ''}" data-k="${r.k}">
+          <div class="rl"><span class="nm"><span class="tx">${r.n}</span></span>${r.opt ? '<small class="optl">optional</small>' : ''}</div>
+          <div class="opts">${r.o.map((o, i) => `<button class="chip" data-k="${r.k}" data-i="${i}" aria-pressed="false">${chipDeco(r.k, i)}${o}</button>`).join('')}${'<span class="chip empty" aria-hidden="true"></span>'.repeat(COLS - r.o.length)}</div>${b.rows.some(x => x.trig) ? `<div class="rt">${r.trig ? trigSelect(r) : ''}</div>` : ''}
+        </div>`).join('')}
+    </div>
+    ${b.id === 'sound' ? `<div class="derive"><p>Passende visuelle Ausprägungen aus dem Klang ableiten – nach der Zuordnung „Wie die Parameter die Visualisierung steuern können“. Gesperrte Zeilen bleiben unverändert.</p><button id="derive">Klang → Visuell</button></div>` : ''}
+  </section>`).join('');
+
+function syncChips() {
+  const cmp = compareSels();
+  scrollEl.querySelectorAll('.chip:not(.empty)').forEach(ch => {
+    const k = ch.dataset.k, i = +ch.dataset.i, on = !cmp && sel[k] === i;
+    ch.classList.toggle('on', on); ch.setAttribute('aria-pressed', on);
+    ch.classList.toggle('pa', !!cmp && cmp[0][k] === i); ch.classList.toggle('pb', !!cmp && cmp[1][k] === i);
+  });
+  scrollEl.querySelectorAll('.lock').forEach(l => l.classList.toggle('on', !!state.locks[l.dataset.lock]));
+  scrollEl.querySelectorAll('.row[data-k]').forEach(row => {   // nichts gewählt → abgeschwächt
+    const k = row.dataset.k, has = cmp ? (cmp[0][k] >= 0 || cmp[1][k] >= 0) : sel[k] >= 0;
+    row.classList.toggle('idle', !has);
+  });
+  scrollEl.querySelectorAll('.dd').forEach(w => {
+    const k = w.dataset.trgw, g = trig[k] ?? -1, T = TRIGGERS[g];
+    w.querySelector('.dd-v').textContent = T ? T.n : 'kein Auslöser';
+    w.querySelectorAll('.dd-o').forEach(o => o.setAttribute('aria-selected', +o.dataset.v === g));
+    w.classList.toggle('live', !!T && !!T.live); w.classList.toggle('nl', !!T && !T.live);
+    const el = w;
+    el.closest('.rt').classList.toggle('live', !!T && !!T.live);
+    const n = scrollEl.querySelector(`[data-trgn="${k}"]`);
+    n.textContent = !T ? '' : T.live ? (T.hint || '') : (T.hint || 'nicht live darstellbar');
+    n.classList.toggle('nl', !!T && !T.live);
+  });
+  drawPaths();
+}
+
+/* Lösungspfad durch den Kasten (klassische Darstellung) */
+
+function drawPaths() {
+  scrollEl.querySelectorAll('.box').forEach(box => {
+    const rows = box.querySelector('.rows'), svg = rows.querySelector('svg.path'), rr = rows.getBoundingClientRect();
+    svg.setAttribute('width', rows.scrollWidth); svg.setAttribute('height', rows.scrollHeight);
+    const pts = (s) => [...rows.querySelectorAll('.row')].map(row => { const k = row.dataset.k; if (!(s[k] >= 0)) return null; const ch = row.querySelector(`.chip[data-i="${s[k]}"]`); if (!ch) return null; const r = ch.getBoundingClientRect(); return [r.left - rr.left + r.width / 2, r.top - rr.top + r.height / 2]; }).filter(Boolean);
+    const line = (p, color, dash, w) => p.length ? `<polyline points="${p.map(q => q.map(n => n.toFixed(1)).join(',')).join(' ')}" fill="none" stroke="${color}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round" ${dash ? 'stroke-dasharray="5 5"' : ''} opacity=".18"/>` : '';
+    const cmp = compareSels();
+    let html = cmp ? line(pts(cmp[0]), 'var(--pa)', false, 1.5) + line(pts(cmp[1]), 'var(--pb)', true, 1.5) : line(pts(sel), 'var(--ink)', false, 1.5);
+    svg.innerHTML = html;
+  });
+}
+
+/* Profile: gespeicherte Auswahl pro Name und Tonspur */
+const PEOPLE = ['Jeremy', 'Josua'], PROF_KEY = 'av-kasten2-profiles';
+let profiles = {}, imported = 0;
+try { profiles = JSON.parse(localStorage.getItem(PROF_KEY) || 'null'); } catch (e) { profiles = null; }
+if (!profiles) {   // erstes Öffnen: gespeicherte Auswahlen aus dem bisherigen Kasten übernehmen (Erscheinung, Verhalten, Interaktion)
+  profiles = {};
+  try {
+    const old = JSON.parse(localStorage.getItem('av-kasten-profiles') || '{}') || {};
+    for (const n in old) for (const tr in old[n]) { const code = importOld(old[n][tr]); if (code) { (profiles[n] = profiles[n] || {})[tr] = code; imported++; } }
+    localStorage.setItem(PROF_KEY, JSON.stringify(profiles));
+  } catch (e) {}
+}
+state.who = (state.who || []).filter(n => PEOPLE.includes(n));
+state.ptrack = state.ptrack || SONG_INSTRUMENTS[0];
+const savedFor = (name, track) => { const str = profiles[name] && profiles[name][track]; return str ? decode(str) : null; };
+const savedTrigFor = (name, track) => { const str = profiles[name] && profiles[name][track]; return str ? decodeTrig(str) : null; };
+function compareSels() {     // beide Namen gewählt → [Auswahl Jeremy, Auswahl Josua]
+  if (state.who.length !== 2) return null;
+  return state.who.map(n => savedFor(n, state.ptrack) || defaults());
+}
+function profUI() {
+  const who = state.who, one = who.length === 1, panel = $('panel');
+  document.querySelectorAll('[data-who]').forEach(b => b.classList.toggle('on', b.dataset.who === 'both' ? who.length === 2 : one && who[0] === b.dataset.who));
+  panel.classList.toggle('cmp', who.length === 2);
+  const col = one ? (who[0] === PEOPLE[0] ? 'var(--pa)' : 'var(--pb)') : '';
+  panel.style.setProperty('--selc', col || 'var(--accent)');
+  $('psave').hidden = !one;
+  const st = $('pstat');
+  if (one) {
+    const saved = profiles[who[0]] && profiles[who[0]][state.ptrack], same = !!saved && saved === encode(sel);
+    st.innerHTML = saved ? (same ? 'gespeichert' : 'Änderungen nicht gespeichert') : 'noch nichts gespeichert';
+    st.classList.toggle('dirty', !same); $('psave').classList.toggle('ok', !!saved && same);
+  } else if (who.length === 2) {
+    const miss = who.filter(n => !savedFor(n, state.ptrack));
+    st.innerHTML = miss.length ? `Vergleich · für ${miss.join(' & ')} nichts gespeichert` : '<b style="color:var(--pa)">Jeremy</b> & <b style="color:var(--pb)">Josua</b> im Vergleich';
+    st.classList.remove('dirty');
+  } else { st.textContent = ''; }
+}
+function loadProfile() {      // genau ein Name: dessen gespeicherte Auswahl für die Tonspur laden (sonst leer)
+  if (state.who.length === 1) { sel = savedFor(state.who[0], state.ptrack) || defaults(); trig = savedTrigFor(state.who[0], state.ptrack) || trigDefaults(); }   // nur, was für Name + Tonspur gespeichert ist
+  apply();
+}
+function fillPTrack(stems = []) {
+  const list = [...SONG_INSTRUMENTS, ...stems.filter(n => !SONG_INSTRUMENTS.includes(n))];
+  if (!list.includes(state.ptrack)) list.push(state.ptrack);
+  $('ptrack').innerHTML = list.map(n => `<option value="${String(n).replace(/"/g, '&quot;')}">${n}</option>`).join('');
+  $('ptrack').value = state.ptrack;
+}
+fillPTrack();
+$('ptrack').onchange = () => {
+  state.ptrack = $('ptrack').value; loadProfile(); drawSeekMarks();
+  // gibt es für das Instrument eine hochgeladene Einzelspur, reagiert die Visualisierung gleich darauf
+  if ([...trackSel.options].some(o => o.value === state.ptrack) && trackSel.value !== state.ptrack) { trackSel.value = state.ptrack; trackSel.onchange(); }
+};
+document.querySelectorAll('[data-who]').forEach(b => b.onclick = () => {
+  const n = b.dataset.who;
+  // Switch: immer nur ein Name – oder „Beide“ zum Vergleichen; erneuter Klick auf den aktiven Button wählt ab
+  const both = state.who.length === 2;
+  if (n === 'both') state.who = both ? [] : [...PEOPLE];
+  else state.who = !both && state.who[0] === n ? [] : [n];
+  loadProfile();
+});
+$('psave').onclick = () => {
+  if (state.who.length !== 1) return;
+  const n = state.who[0];
+  (profiles[n] = profiles[n] || {})[state.ptrack] = encode(sel);
+  let ok = true; try { localStorage.setItem(PROF_KEY, JSON.stringify(profiles)); } catch (e) { ok = false; }
+  profUI(); toast(ok ? `Gespeichert: ${n} · ${state.ptrack}` : 'Nur bis zum Neuladen gemerkt – der Browser-Speicher ist gesperrt');
+};
+
+/* Szene & Klang */
+const stageCv = $('stage');
+const main = new Scene(stageCv);
+const sound = new Sound();
+function trigNotes(v) {   // Hinweise zu den Auslösern
+  const N = [];
+  for (const r of TRIG_ROWS) {
+    const T = TRIGGERS[trig[r.k]]; if (!T) continue;
+    const name = `${r.n} ← ${T.n}`;
+    if (!(sel[r.k] >= 0)) N.push(`<b>${name}</b> → erst eine Ausprägung wählen`);
+    else if (!T.live) N.push(`<b>${name}</b> → nicht live darstellbar, Vorschau ohne Klangbezug`);
+    else if (r.k === 'interact' && v.interact !== 'Anziehung' && v.interact !== 'Abstoßung') N.push(`<b>${name}</b> → wirkt in der Vorschau nicht sichtbar`);
+  }
+  if (sound.mode === 'off' && TRIG_ROWS.some(r => TRIGGERS[trig[r.k]] && TRIGGERS[trig[r.k]].live && TRIGGERS[trig[r.k]].k !== 'beat')) N.push('<b>Klang aus</b> → Auslöser folgen dem Rhythmus – Song oder Synth wählen');
+  return N;
+}
+function apply(rebuild = true) {
+  const v = vals(sel);
+  main.trig = trig;
+  if (rebuild) main.set(v);
+  sound.v = v; sound.apply();
+  $('notes').innerHTML = [...trigNotes(v), ...notesFor(v)].map(n => `<span class="note">${n}</span>`).join('');
+  syncChips(); save(); profUI();
+}
+function setSel(k, i, opts = {}) {
+  const r = ROW[k];
+  if (sel[k] === i) i = -1;                   // erneutes Klicken wählt ab
+  sel = { ...sel, [k]: i };
+  apply();
+}
+function setBpm(b) { state.bpm = b; main.bpm = b; sound.bpm = b; $('bpmv').textContent = String(b).replace(/\.0$/, '') + ' BPM'; }
+
+function closeDD(except) {
+  scrollEl.querySelectorAll('.dd.open').forEach(w => { if (w === except) return; w.classList.remove('open', 'up'); w.querySelector('.dd-pop').hidden = true; w.querySelector('.dd-btn').setAttribute('aria-expanded', 'false'); });
+}
+scrollEl.addEventListener('click', e => {
+  const btn = e.target.closest('.dd-btn');
+  if (btn) {   // Liste auf-/zuklappen; nach oben, wenn unten kein Platz ist
+    const w = btn.closest('.dd'), pop = w.querySelector('.dd-pop'), open = !w.classList.contains('open');
+    closeDD(w); w.classList.toggle('open', open); pop.hidden = !open; btn.setAttribute('aria-expanded', open);
+    if (open) { const box = scrollEl.getBoundingClientRect(), r = btn.getBoundingClientRect(); w.classList.toggle('up', r.bottom + pop.offsetHeight + 8 > box.bottom && r.top - pop.offsetHeight - 8 > box.top); }
+    return;
+  }
+  const o = e.target.closest('.dd-o');
+  if (o) {
+    const w = o.closest('.dd'); closeDD();
+    if (compareSels()) { toast('Vergleich von Jeremy & Josua – zum Bearbeiten nur einen Namen wählen'); return; }
+    trig = { ...trig, [w.dataset.trgw]: +o.dataset.v };
+    const T = TRIGGERS[+o.dataset.v];
+    if (T && !T.live) toast(`${T.n} lässt sich in der Vorschau nicht live darstellen – die Auswahl wird trotzdem gespeichert`);
+    apply(); w.querySelector('.dd-btn').focus();
+  }
+});
+document.addEventListener('pointerdown', e => { if (!e.target.closest('.dd')) closeDD(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDD(); });
+scrollEl.addEventListener('scroll', () => closeDD(), { passive: true });
+scrollEl.addEventListener('click', e => {
+  if (compareSels() && e.target.closest('.chip, [data-rand], [data-reset], #derive')) { toast('Vergleich von Jeremy & Josua – zum Bearbeiten nur einen Namen wählen'); return; }
+  const ch = e.target.closest('.chip'); if (ch) { hoverOff(true); setSel(ch.dataset.k, +ch.dataset.i); return; }
+  const lk = e.target.closest('.lock'); if (lk) { const k = lk.dataset.lock; state.locks[k] = !state.locks[k]; syncChips(); save(); return; }
+  const rs = e.target.closest('[data-reset]'); if (rs) { const d = defaults(); const s = { ...sel }; const g = { ...trig }; BOXES.find(b => b.id === rs.dataset.reset).rows.forEach(r => { s[r.k] = d[r.k]; if (r.trig) g[r.k] = -1; }); sel = s; trig = g; apply(); return; }
+  if (e.target.closest('#derive')) {
+    const set = deriveFromSound(sel), changed = [];
+    const s = { ...sel }; for (const k in set) if (!state.locks[k] && s[k] !== set[k]) { s[k] = set[k]; changed.push(k); }
+    if (!changed.length) { toast('Keine Änderungen – passt schon zum Klang.'); return; }
+    const before = sel; sel = s; apply();
+    changed.forEach(k => { const row = scrollEl.querySelector(`.row[data-k="${k}"]`); row.classList.remove('flash'); void row.offsetWidth; row.classList.add('flash'); });
+    toast(`${changed.length} visuelle Ausprägungen aus dem Klang abgeleitet`, 'Rückgängig', () => { sel = before; apply(); });
+  }
+});
+
+/* Hover-Vorschau */
+let hoverOn = false, hoverT = 0, previewing = false;   // Vorschau beim Überfahren standardmäßig aus – erst Klick zeigt die Wirkung
+function hoverOff(skipRebuild) { clearTimeout(hoverT); if (previewing) { previewing = false; $('ptag').classList.remove('on'); if (!skipRebuild) main.set(vals(sel)); } }
+scrollEl.addEventListener('pointerover', e => {
+  const ch = e.target.closest('.chip'); if (!ch || ch.classList.contains('empty') || compareSels() || !hoverOn || e.pointerType === 'touch') return;
+  clearTimeout(hoverT);
+  hoverT = setTimeout(() => {
+    const k = ch.dataset.k, i = +ch.dataset.i; if (sel[k] === i) { hoverOff(); return; }
+    previewing = true; $('ptag').textContent = `Vorschau: ${ROW[k].n} = ${ROW[k].o[i]}`; $('ptag').classList.add('on');
+    main.set(vals({ ...sel, [k]: i }));
+  }, 140);
+});
+scrollEl.addEventListener('pointerout', e => { const ch = e.target.closest('.chip'); if (ch && !ch.contains(e.relatedTarget)) hoverOff(); });
+
+/* Zufall */
+function randomize(boxIds) {
+  const s = { ...sel };
+  BOXES.filter(b => boxIds.includes(b.id)).forEach(b => b.rows.forEach(r => {
+    if (state.locks[r.k]) return;
+    s[r.k] = r.opt && Math.random() < .3 ? -1 : Math.floor(Math.random() * r.o.length);
+  }));
+  if (boxIds.includes('look') && !state.locks.alpha && Math.random() < .6) s.alpha = 0;   // nicht zu oft unsichtbar
+  sel = s; apply();
+}
+$('reset').onclick = () => { const before = sel, bt = trig; sel = defaults(); trig = trigDefaults(); apply(); toast('Auf Standard zurückgesetzt', 'Rückgängig', () => { sel = before; trig = bt; apply(); }); };
+
+/* Tabs */
+const tabs = [...document.querySelectorAll('.tabs .t')];
+const boxTop = box => box.getBoundingClientRect().top - scrollEl.getBoundingClientRect().top + scrollEl.scrollTop;   // Position im Scrollbereich
+const headTop = box => box.querySelector('.bh').getBoundingClientRect().top - scrollEl.getBoundingClientRect().top + scrollEl.scrollTop - 16;   // Überschrift immer gleich weit oben
+tabs.forEach(t => t.onclick = () => { const box = $('box-' + t.dataset.go); scrollEl.scrollTo({ top: headTop(box), behavior: 'smooth' }); if (getComputedStyle(scrollEl).overflowY === 'visible') box.scrollIntoView({ behavior: 'smooth' }); });
+scrollEl.addEventListener('scroll', () => {
+  let cur = 'look'; for (const b of BOXES) { if (boxTop($('box-' + b.id)) - scrollEl.scrollTop < 80) cur = b.id; }
+  if (scrollEl.scrollTop + scrollEl.clientHeight >= scrollEl.scrollHeight - 4) cur = 'inter';
+  tabs.forEach(t => t.classList.toggle('on', t.dataset.go === cur));
+});
+
+/* Vorschau ein-/ausblenden – beim Öffnen ausgeblendet, damit die Kästen den ganzen Platz haben */
+function showPreview(on) {
+  $('wrap').classList.toggle('noprev', !on);
+  if (!on && playing) setPlay(false);   // ausgeblendet: Song anhalten
+  requestAnimationFrame(() => { main.resize(); drawPaths(); });
+}
+$('prevShow').onclick = () => showPreview($('wrap').classList.contains('noprev'));
+
+/* Wiedergabe, Tempo, Klangquelle */
+let playing = true;
+const PLAY_ICON = '<svg class="i" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg>', PAUSE_ICON = '<svg class="i" viewBox="0 0 24 24"><path d="M8 5.5v13M16 5.5v13" stroke-width="3"/></svg>';
+const setPlay = p => { playing = p; $('play').innerHTML = p ? PAUSE_ICON : PLAY_ICON; if (sound.mode === 'song') { if (p) sound.playSong(); else sound.pauseSong(); } };
+setPlay(false);
+$('play').onclick = () => setPlay(!playing);
+document.querySelectorAll('[data-src]').forEach(b => b.onclick = () => {
+  document.querySelectorAll('[data-src]').forEach(x => x.classList.toggle('on', x === b));
+  sound.setMode(b.dataset.src); $('meters').classList.toggle('off', b.dataset.src === 'off'); apply(false); if (b.dataset.src === 'song' && !playing) toast('Play drücken – die Visualisierung reagiert auf die gewählte Tonspur');
+  if (b.dataset.src === 'synth') toast('Synth spielt einen Beispielklang – die Auslöser reagieren auf Lautstärke, Tonhöhe und Schläge');
+});
+
+/* Zoom in der Visualisierung: Finger auseinander = rein, zusammen = raus (Trackpad, Touch, Safari); Doppelklick = zurücksetzen */
+{
+  const box = $('stagebox'), ZMIN = .5, ZMAX = 8;
+  const zoomAt = (f, px, py) => {
+    const Z = main.zoom, k = Math.min(ZMAX, Math.max(ZMIN, Z.k * f)); f = k / Z.k;
+    Z.x = px - (px - Z.x) * f; Z.y = py - (py - Z.y) * f; Z.k = k;
+    if (Math.abs(k - 1) < .02) { Z.k = 1; Z.x = 0; Z.y = 0; }
+    showZoom();
+  };
+  const showZoom = () => { $('zReset').textContent = Math.round(main.zoom.k * 100) + ' %'; };
+  const reset = () => { Object.assign(main.zoom, { k: 1, x: 0, y: 0 }); showZoom(); };
+  const mid = () => { const r = box.getBoundingClientRect(); return [r.width / 2, r.height / 2]; };
+  $('zIn').onclick = () => zoomAt(1.25, ...mid());
+  $('zOut').onclick = () => zoomAt(1 / 1.25, ...mid());
+  $('zReset').onclick = reset;
+  const local = e => { const r = box.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+  box.addEventListener('wheel', e => {               // Trackpad-Pinch kommt im Browser als Wheel mit ctrlKey
+    if (!e.ctrlKey) return; e.preventDefault();
+    const [x, y] = local(e); zoomAt(Math.exp(-e.deltaY * .01), x, y);
+  }, { passive: false });
+  let gs = 1;                                         // Safari (Mac): eigene Gesten-Events
+  box.addEventListener('gesturestart', e => { e.preventDefault(); gs = 1; });
+  box.addEventListener('gesturechange', e => { e.preventDefault(); const [x, y] = local(e); zoomAt(e.scale / gs, x, y); gs = e.scale; });
+  box.addEventListener('gestureend', e => e.preventDefault());
+  const pts = new Map(); let pd = 0;                  // Touchscreen: zwei Finger
+  box.style.touchAction = 'none';
+  const two = () => { const [a, b] = [...pts.values()]; return [Math.hypot(a[0] - b[0], a[1] - b[1]), (a[0] + b[0]) / 2, (a[1] + b[1]) / 2]; };
+  box.addEventListener('pointerdown', e => { if (e.pointerType !== 'touch' || e.target.closest('.zoomctl')) return; pts.set(e.pointerId, local(e)); if (pts.size === 2) pd = two()[0]; });
+  box.addEventListener('pointermove', e => { if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, local(e)); if (pts.size === 2) { const [d, x, y] = two(); if (pd > 0) zoomAt(d / pd, x, y); pd = d; } });
+  const up = e => { pts.delete(e.pointerId); pd = 0; };
+  box.addEventListener('pointerup', up); box.addEventListener('pointercancel', up);
+  box.addEventListener('dblclick', e => { if (!e.target.closest('.zoomctl')) reset(); });
+}
+
+/* Position im Song: Schieberegler zum Springen */
+const seekEl = $('seek'), fmtT = s => { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+let seeking = false;
+const songDur = () => (sound.audio && isFinite(sound.audio.duration) && sound.audio.duration) || SONG.dur || 66;
+function showSeek(t) {
+  const d = songDur();
+  if (+seekEl.max !== d) { seekEl.max = d; $('seekDur').textContent = fmtT(d); }
+  if (!seeking) seekEl.value = t;
+  seekEl.style.setProperty('--p', (Math.min(1, (seeking ? +seekEl.value : t) / d) * 100).toFixed(2) + '%');
+  $('seekCur').textContent = fmtT(seeking ? +seekEl.value : t);
+}
+function seekTo(t) {
+  sound.mkAudio();
+  const a = sound.audio;
+  if (a.readyState < 1) a.addEventListener('loadedmetadata', () => { try { a.currentTime = t; } catch (e) {} }, { once: true });
+  else try { a.currentTime = t; } catch (e) {}
+  T = t; showSeek(t);
+}
+function drawSeekMarks() {    // markiert, wo die gewählte Tonspur im Song vorkommt
+  const name = state.ptrack, iv = SOUND_TIMES[name] || [], d = SONG.dur || 66, ci = SONG_INSTRUMENTS.indexOf(name);
+  const box = $('seekMarks'), lab = $('seekLab'), col = ci >= 0 ? `var(--c${ci})` : 'var(--muted)';
+  box.parentElement.parentElement.style.setProperty('--mc', col);
+  box.innerHTML = iv.map(([a, b]) => `<i style="left:${(a / d * 100).toFixed(2)}%;width:${((b - a) / d * 100).toFixed(2)}%" title="${name}: ${fmtT(a)}–${fmtT(b)}"></i>`).join('');
+  lab.textContent = iv.length ? name : '';
+  lab.title = iv.length ? `${name} kommt vor: ` + iv.slice(0, 6).map(([a, b]) => fmtT(a) + '–' + fmtT(b)).join(', ') + (iv.length > 6 ? ' …' : '') + ' – Klick: nur in diesen Bereichen reagieren an/aus' : '';
+}
+drawSeekMarks();
+$('seekLab').onclick = () => {   // Klick auf den Spurnamen: Begrenzung auf die Zeitbereiche an/aus
+  trackGate = !trackGate; $('seekLab').classList.toggle('off', !trackGate);
+  toast(trackGate ? `Visualisierung reagiert nur, wenn ${state.ptrack} spielt` : 'Visualisierung reagiert auf den ganzen Song');
+};
+seekEl.addEventListener('input', () => { seeking = true; seekTo(+seekEl.value); });
+seekEl.addEventListener('change', () => { seeking = false; seekTo(+seekEl.value); });
+
+/* Bild & Link */
+$('png').onclick = () => { const a = document.createElement('a'); a.download = `kasten-${'kombination'}.png`; a.href = stageCv.toDataURL('image/png'); a.click(); };
+/* Export: alle Kästen als klassische Tabellen auf Weiß, dazu Bewegungsspur (Mehrfachbelichtung) und Einzelbilder */
+function buildBoxImage() {
+  const S = 2, WD = 1100, M = 40, INNER = WD - 2 * M, FONT = 'Inter, system-ui, -apple-system, "Segoe UI", sans-serif';
+  const INK = '#1b1b22', MUTED = '#7b7a82', LINE = '#cfcbc0', FILL = '#f3f1ec', ACC = '#74747c';
+  const LBL = 190, COLS = Math.max(7, ...ROWS.filter(r => r.box !== 'sound').map(r => r.o.length)), CW0 = (INNER - LBL) / COLS, RH = 30, HH = 22;
+  /* Wer hat was gewählt? Beide Namen → Vergleich, ein Name → dessen Farbe, kein Name → Akzent */
+  const PCOL = { Jeremy: '#ff6a14', Josua: '#2563eb' }, cmpSel = compareSels();
+  const layers = cmpSel ? state.who.map((n, i) => ({ name: n, col: PCOL[n], s: cmpSel[i] }))
+               : [{ name: state.who[0] || '', col: state.who.length ? PCOL[state.who[0]] : '#ff6a14', s: sel }];
+  const pickers = (k, i) => layers.filter(L => L.s[k] === i);
+  const dotOf = (k, i) => { const m = chipDeco(k, i).match(/background:([^;"]+)/); return m ? (m[1].startsWith('linear-gradient') ? '#8a8a8a' : m[1]) : null; };
+
+  /* Bewegung: Szene unabhängig vom Bildschirm auf Weiß rendern */
+  const FW = 620, FH = 340, dpr = 2;
+  const cv = document.createElement('canvas'); cv.width = FW * dpr; cv.height = FH * dpr;
+  const tmp = new Scene(cv);
+  tmp.W = FW; tmp.H = FH; tmp.dpr = dpr; tmp.bpm = state.bpm; tmp.dark = false;
+  for (const c of [tmp.L, tmp.T]) { c.width = FW * dpr; c.height = FH * dpr; }
+  tmp.col = { stage: '#ffffff', grid: 'rgba(40,40,60,.10)', ctxp: 'rgba(110,108,124,.16)', ctxs: 'rgba(110,108,124,.40)', hide: '#e4e1d8', muted: MUTED };
+  tmp.trig = trig; tmp.set(vals(sel));
+  const beat = 60 / state.bpm, span = 6 * beat, step = 1 / 30, N = Math.round(span / step);
+  const acc = document.createElement('canvas'); acc.width = FW * dpr; acc.height = FH * dpr;
+  const ax = acc.getContext('2d'); ax.fillStyle = '#fff'; ax.fillRect(0, 0, acc.width, acc.height);
+  const shots = [], shotAt = new Set([0, 1, 2, 3, 4, 5].map(k => Math.round(k * N / 5)));
+  for (let i = 0; i <= N; i++) {
+    tmp.frame(i * step, i ? step : 0, null);
+    if (i % 4 === 0 || i === N) { ax.globalCompositeOperation = 'darken'; ax.globalAlpha = i === N ? 1 : .3 + .7 * i / N; ax.drawImage(tmp.cv, 0, 0); }
+    if (shotAt.has(i)) { const c = document.createElement('canvas'); c.width = FW * dpr; c.height = FH * dpr; c.getContext('2d').drawImage(tmp.cv, 0, 0); shots.push({ c, t: i * step }); }
+  }
+
+  /* Höhen vorab berechnen */
+  const meas = document.createElement('canvas').getContext('2d');
+  const wrapLines = (c, text, maxW) => { const out = []; let cur = ''; for (const w of String(text).split(' ')) { const t = cur ? cur + ' ' + w : w; if (c.measureText(t).width > maxW && cur) { out.push(cur); cur = w; } else cur = t; } if (cur) out.push(cur); return out; };
+  meas.font = `italic 11.5px ${FONT}`;
+  const qLines = BOXES.map(b => wrapLines(meas, b.q, INNER));
+  const boxH = (b, i) => 24 + qLines[i].length * 15 + 8 + HH + b.rows.length * RH + 30;
+  const TOP = 92, STUDY = 22 + FH + 30;
+  const H = TOP + STUDY + BOXES.reduce((h, b, i) => h + boxH(b, i), 0) + 36;
+
+  const out = document.createElement('canvas'); out.width = WD * S; out.height = H * S;
+  const c = out.getContext('2d'); c.scale(S, S);
+  c.fillStyle = '#fff'; c.fillRect(0, 0, WD, H);
+  const rr = (x, y, w, h, r) => { c.beginPath(); c.roundRect ? c.roundRect(x, y, w, h, r) : c.rect(x, y, w, h); };
+  const fit = (text, maxW, size, weight) => { let s = size; for (;;) { c.font = `${weight} ${s}px ${FONT}`; if (c.measureText(text).width <= maxW || s <= 8) return; s -= .5; } };
+  c.textBaseline = 'middle';
+
+  /* Kopf */
+  c.fillStyle = INK; c.font = `700 24px ${FONT}`; c.textAlign = 'left'; c.fillText('Morphologischer Kasten · Version 2', M, 40);
+  { /* Tonspur gut sichtbar oben rechts */
+    const TC = ['#12985f', '#2558e8', '#d8304c', '#d98400', '#e5158f', '#7a4cff', '#0c95ad', '#7ea000'], ci = SONG_INSTRUMENTS.indexOf(state.ptrack), tc = ci >= 0 ? TC[ci] : INK;
+    c.font = `700 18px ${FONT}`; const tw = c.measureText(state.ptrack).width; c.font = `450 13px ${FONT}`; const lw = c.measureText('Tonspur').width;
+    const bw = 12 + lw + 10 + 14 + 8 + tw + 14, bx = WD - M - bw;
+    rr(bx, 22, bw, 34, 8); c.fillStyle = '#f3f1ec'; c.fill(); c.strokeStyle = LINE; c.lineWidth = 1; c.stroke();
+    c.fillStyle = MUTED; c.fillText('Tonspur', bx + 12, 40);
+    c.fillStyle = tc; rr(bx + 12 + lw + 10, 33, 14, 14, 3); c.fill();
+    c.fillStyle = INK; c.font = `700 18px ${FONT}`; c.fillText(state.ptrack, bx + 12 + lw + 10 + 14 + 8, 40);
+  }
+  c.fillStyle = MUTED; c.font = `450 13px ${FONT}`;
+  const who = cmpSel ? `${state.who[0]} & ${state.who[1]} im Vergleich` : state.who.length ? `Auswahl von ${state.who[0]}` : 'Aktuelle Auswahl';
+  c.fillText(`Audio-Visualisierung · Tonspur: ${state.ptrack} · ${who} · ${state.bpm} BPM`, M, 66);
+  c.textAlign = 'right'; c.fillText(new Date().toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' }), WD - M, 66);
+  c.textAlign = 'left';
+  c.strokeStyle = LINE; c.lineWidth = 1; c.beginPath(); c.moveTo(M, 82); c.lineTo(WD - M, 82); c.stroke();
+
+  /* Bewegungsstudie */
+  let y = TOP;
+  c.fillStyle = INK; c.font = `650 12px ${FONT}`; c.fillText('Bewegungsspur', M, y + 8);
+  c.fillStyle = MUTED; c.font = `450 11px ${FONT}`; c.fillText(cmpSel ? '– der aktuellen Auswahl im Editor, Mehrfachbelichtung über 6 Schläge' : '– Mehrfachbelichtung über 6 Schläge, frühe Bilder blass', M + 92, y + 8);
+  const gx = M + FW + 20, gw = INNER - FW - 20, fw = (gw - 10) / 2, fh = fw * FH / FW;
+  c.fillStyle = INK; c.font = `650 12px ${FONT}`; c.fillText('Einzelbilder', gx, y + 8);
+  y += 22;
+  c.drawImage(acc, M, y, FW, FH); c.strokeStyle = LINE; rr(M + .5, y + .5, FW - 1, FH - 1, 4); c.stroke();
+  shots.forEach((s, k) => {
+    const px = gx + (k % 2) * (fw + 10), py = y + Math.floor(k / 2) * (fh + 12);
+    c.drawImage(s.c, px, py, fw, fh); c.strokeStyle = LINE; c.strokeRect(px + .5, py + .5, fw - 1, fh - 1);
+    c.fillStyle = MUTED; c.font = `450 10px ${FONT}`; c.fillText(`${k + 1} · t = ${s.t.toFixed(1)} s`, px + 6, py + 10);
+  });
+  y += FH + 30;
+
+  /* Kästen als klassische Tabellen */
+  BOXES.forEach((b, bi) => {
+    c.textAlign = 'left'; c.fillStyle = INK; c.font = `700 15px ${FONT}`; c.fillText(b.title, M, y + 10);
+    const tw = c.measureText(b.title).width; c.fillStyle = MUTED; c.font = `450 15px ${FONT}`; c.fillText('· ' + b.sub, M + tw + 6, y + 10);
+    y += 24; c.fillStyle = MUTED; c.font = `italic 11.5px ${FONT}`;
+    qLines[bi].forEach((l, i) => c.fillText(l, M, y + 7 + i * 15)); y += qLines[bi].length * 15 + 8;
+    const hasMap = b.rows.some(r => r.trig), nOpt = COLS, MAPW = 150, CW = hasMap ? (INNER - LBL - MAPW) / nOpt : CW0;
+    const mapText = r => { const T = TRIGGERS[trig[r.k]]; return T ? `← ${T.n}${T.live ? '' : ' (nicht live)'}` : '–'; };
+    /* Kopfzeile */
+    c.fillStyle = FILL; c.fillRect(M, y, INNER, HH); c.strokeStyle = LINE; c.lineWidth = 1; c.strokeRect(M + .5, y + .5, INNER - 1, HH - 1);
+    c.fillStyle = INK; c.font = `650 11px ${FONT}`; c.fillText('Parameter', M + 10, y + HH / 2 + 1);
+    c.fillText('Ausprägungen', M + LBL + 10, y + HH / 2 + 1);
+    if (hasMap) c.fillText('Auslöser', M + LBL + nOpt * CW + 10, y + HH / 2 + 1);
+    y += HH;
+    const y0 = y;
+    b.rows.forEach((r, ri) => {
+      const ry = y0 + ri * RH;
+      c.fillStyle = FILL; c.fillRect(M, ry, LBL, RH); c.strokeStyle = LINE; c.strokeRect(M + .5, ry + .5, LBL - 1, RH - 1);
+      c.fillStyle = INK; fit(r.n, LBL - (r.opt ? 70 : 20), 12, 600); c.fillText(r.n, M + 10, ry + RH / 2 + 1);
+      if (r.opt) { const nw = c.measureText(r.n).width; c.fillStyle = '#a9a8ae'; c.font = `450 9.5px ${FONT}`; c.fillText('(optional)', M + 14 + nw, ry + RH / 2 + 1); }
+      for (let oi = 0; oi < nOpt; oi++) {        // volle Tabelle: auch leere Zellen bekommen Linien
+        const cx0 = M + LBL + oi * CW, ps = oi < r.o.length ? pickers(r.k, oi) : [];
+        c.fillStyle = '#fff'; c.fillRect(cx0, ry, CW, RH);
+        if (ps.length === 1) { c.fillStyle = ps[0].col; c.fillRect(cx0, ry, CW, RH); }
+        if (ps.length === 2) {                   // beide gewählt: diagonal geteilt
+          c.fillStyle = ps[0].col; c.beginPath(); c.moveTo(cx0, ry); c.lineTo(cx0 + CW, ry); c.lineTo(cx0, ry + RH); c.fill();
+          c.fillStyle = ps[1].col; c.beginPath(); c.moveTo(cx0 + CW, ry); c.lineTo(cx0 + CW, ry + RH); c.lineTo(cx0, ry + RH); c.fill();
+        }
+        c.strokeStyle = LINE; c.strokeRect(cx0 + .5, ry + .5, CW - 1, RH - 1);
+      }
+      if (hasMap && r.trig) {
+        const cx0 = M + LBL + nOpt * CW;
+        c.fillStyle = '#fff'; c.fillRect(cx0, ry, MAPW, RH); c.strokeStyle = LINE; c.strokeRect(cx0 + .5, ry + .5, MAPW - 1, RH - 1);
+      }
+    });
+    /* Beschriftungen der Zellen */
+    c.textAlign = 'center';
+    b.rows.forEach((r, ri) => {
+      const ry = y0 + ri * RH;
+      r.o.forEach((o, oi) => {
+        const on = pickers(r.k, oi).length > 0, cx0 = M + LBL + oi * CW, dot = dotOf(r.k, oi);
+        fit(o, CW - (dot ? 26 : 12), 11.5, on ? 700 : 450);
+        const tw = c.measureText(o).width, mx = cx0 + CW / 2 + (dot ? 7 : 0);
+        if (dot) { c.beginPath(); c.arc(mx - tw / 2 - 9, ry + RH / 2, 4.5, 0, TAU); c.fillStyle = dot; c.fill(); c.strokeStyle = on ? 'rgba(255,255,255,.85)' : 'rgba(0,0,0,.18)'; c.lineWidth = 1; c.stroke(); }
+        c.fillStyle = on ? '#fff' : INK; c.fillText(o, mx, ry + RH / 2 + 1);
+      });
+      if (hasMap && r.trig) {
+        const cx0 = M + LBL + nOpt * CW; c.fillStyle = TRIGGERS[trig[r.k]] ? INK : MUTED; c.font = `italic 450 9.5px ${FONT}`;
+        const ls = wrapLines(c, mapText(r), MAPW - 12); ls.slice(0, 2).forEach((l, i, a) => c.fillText(l, cx0 + MAPW / 2, ry + RH / 2 + 1 + (i - (a.length - 1) / 2) * 11));
+      }
+    });
+    y = y0 + b.rows.length * RH + 30;
+  });
+
+  /* Legende: wer hat was gewählt */
+  c.textAlign = 'left'; c.font = `450 11px ${FONT}`; let lx = M;
+  for (const L of layers) {
+    c.fillStyle = L.col; c.fillRect(lx, y - 8, 14, 10);
+    const t = L.name ? `gewählt von ${L.name}` : 'gewählte Ausprägung'; c.fillStyle = MUTED; c.fillText(t, lx + 22, y - 2); lx += 22 + c.measureText(t).width + 24;
+  }
+  if (cmpSel) {
+    c.fillStyle = layers[0].col; c.beginPath(); c.moveTo(lx, y - 8); c.lineTo(lx + 14, y - 8); c.lineTo(lx, y + 2); c.fill();
+    c.fillStyle = layers[1].col; c.beginPath(); c.moveTo(lx + 14, y - 8); c.lineTo(lx + 14, y + 2); c.lineTo(lx, y + 2); c.fill();
+    c.fillStyle = MUTED; c.fillText('von beiden gewählt', lx + 22, y - 2);
+  }
+  return out;
+}
+$('boxpng').onclick = () => {
+  toast('Bild wird erstellt …');
+  setTimeout(() => {
+    try {
+      const cvs = buildBoxImage();
+      cvs.toBlob(b => {
+        const a = document.createElement('a'); a.href = URL.createObjectURL(b);
+        const tag = [state.ptrack, ...(state.who.length ? state.who : [])].join('-').toLowerCase().replace(/[^a-z0-9äöüß-]+/g, '-');
+        a.download = `morphologischer-kasten-${tag}.png`; a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 2000); toast('Bild gespeichert');
+      }, 'image/png');
+    } catch (e) { console.error(e); toast('Export fehlgeschlagen: ' + e.message); }
+  }, 40);
+};
+
+/* Toast */
+let toastT = 0;
+function toast(msg, act, fn) {
+  const t = $('toast'); t.innerHTML = `<span>${msg}</span>` + (act ? `<button>${act}</button>` : '');
+  if (act) t.querySelector('button').onclick = () => { fn(); t.classList.remove('on'); };
+  t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), act ? 5000 : 2600);
+}
+
+/* Theme */
+function setTheme(t) { document.documentElement.dataset.theme = t; try { localStorage.setItem('av-theme', t); } catch (e) {} main.readTheme(); }
+{ let t; try { t = localStorage.getItem('av-theme'); } catch (e) {} document.documentElement.dataset.theme = t || 'dark'; main.readTheme(); }
+$('theme').onclick = () => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+
+/* Tastatur */
+addEventListener('keydown', e => {
+  if (e.target.closest('input, select, textarea') || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.code === 'Space' && !e.target.closest('button')) { e.preventDefault(); setPlay(!playing); }
+});
+
+/* Größe */
+const ro = new ResizeObserver(() => { main.resize(); drawPaths(); });
+ro.observe($('stagebox')); ro.observe(scrollEl);
+
+/* Hauptschleife */
+let last = performance.now(), T = 0, frameNo = 0, Tvis = 0, lastActive = true, trackGate = true;
+function loop(now) {
+  const dt = Math.min(.05, (now - last) / 1000); last = now; frameNo++;
+  if (sound.mode === 'song' && sound.audio && !sound.audio.paused) T = sound.audio.currentTime;   // Takt/Rhythmus laufen mit dem Song
+  else if (playing && sound.mode !== 'song') T += dt;
+  showSeek(sound.audio && sound.audio.readyState >= 1 ? sound.audio.currentTime : T % songDur());
+  let feat = sound.features();
+  // Song + gewählte Tonspur: nur in deren Zeitbereichen reagiert die Visualisierung, sonst steht sie still (abgedunkelt)
+  const iv = sound.mode === 'song' && trackGate ? SOUND_TIMES[state.ptrack] : null;
+  const active = !iv || iv.some(([a, b]) => T >= a && T <= b);
+  if (active) Tvis = T; else if (feat) feat = { ...feat, amp: 0 };
+  main.dimmed = !active;
+  if (active !== lastActive) { lastActive = active; $('seekLab').classList.toggle('idle', !active); }
+  main.frame(Tvis, playing && active ? dt : 0, feat);
+  if (feat) { $('mAmp').style.width = (feat.amp * 100).toFixed(0) + '%'; $('mPitch').style.width = (feat.pitch * 100).toFixed(0) + '%'; }
+  requestAnimationFrame(loop);
+}
+
+/* Tonspur-Auswahl */
+const trackSel = $('track');
+async function fillTracks() {
+  const names = (await Stems.names()).sort(), cur = trackSel.value;
+  trackSel.innerHTML = '<option value="all">Alles (Original)</option>' + names.map(n => `<option value="${String(n).replace(/"/g, '&quot;')}">${n}</option>`).join('');
+  trackSel.value = names.includes(cur) ? cur : 'all';
+  fillPTrack(names);
+}
+trackSel.onchange = async () => { const v = trackSel.value; if (!(await sound.setTrack(v))) { trackSel.value = sound.track; return; } toast(v === 'all' ? 'Visualisierung reagiert auf den ganzen Song' : `Visualisierung reagiert nur auf die Spur „${v}“`); };
+fillTracks(); addEventListener('focus', fillTracks); document.addEventListener('visibilitychange', () => { if (!document.hidden) fillTracks(); });
+
+/* Start */
+setBpm(SONG.bpm);
+sound.mode = 'song';
+main.resize();
+loadProfile();
+if (imported) toast(`${imported} gespeicherte Auswahl${imported > 1 ? 'en' : ''} aus Version 1 übernommen`);
+requestAnimationFrame(loop);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(drawPaths);
+</script>
+</body>
+</html>

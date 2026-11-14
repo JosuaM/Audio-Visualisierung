@@ -3,8 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Morphologischer Kasten – Audio-Visualisierung</title>
+<script>/* Hell/Dunkel sofort setzen, bevor die Seite gezeichnet wird – sonst blitzt sie beim Wechseln hell auf */
+try { document.documentElement.dataset.theme = localStorage.getItem('av-theme') || 'dark'; } catch (e) { document.documentElement.dataset.theme = 'dark'; }</script>
+<title>Morphologischer Kasten · Version 1 – Audio-Visualisierung</title>
 <style>
+/* weicher Übergang zwischen den Seiten statt hartem Neuaufbau */
+@view-transition { navigation: auto; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: .2s; animation-timing-function: ease; }
+@media (prefers-reduced-motion: reduce) { @view-transition { navigation: none; } }
+html { background: var(--bg); }
 :root {
   --bg: #f4f2ed; --panel: #fbfaf7; --ink: #1b1b22; --muted: #7b7a82; --faint: #a9a8ae;
   --line: #e3e0d8; --line-2: #cfcbc0; --accent: #ff6a14; --accent-ink: #fff; --pa: #ff6a14; --pb: #2563eb;
@@ -33,6 +40,37 @@ body {
 header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 0 4px; }
 h1 { margin: 0; font-size: 15px; font-weight: 650; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 h1 span { color: var(--muted); font-weight: 450; }
+/* Punkte-Navigation: ein Punkt pro Seite der Kategorie, der aktuelle ist groß und farbig */
+.steps { display: flex; align-items: center; height: 30px; }
+.steps[hidden] { display: none !important; }
+.steps .ln { width: 38px; height: 2px; background: var(--line-2); }
+.steps .dot { position: relative; display: block; width: 10px; height: 10px; border-radius: 50%; background: var(--line-2); transition: transform .15s, background .15s; }
+.steps a.dot::before { content: ""; position: absolute; inset: -10px; }
+.steps a.dot:hover, .steps a.dot:focus-visible { background: var(--muted); transform: scale(1.3); outline: none; }
+.steps .dot.cur { width: 14px; height: 14px; background: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent); }
+.steps .dot::after { content: attr(data-l); position: absolute; top: 22px; left: 50%; transform: translateX(-50%); font-size: 11px; font-weight: 500; color: var(--bg); background: var(--ink); border-radius: 5px; padding: 2px 7px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .15s; }
+header.nav { position: relative; z-index: 30; }   /* Beschriftung der Punkte liegt über dem Inhalt */
+.steps .dot:hover::after, .steps .dot:focus-visible::after { opacity: 1; }
+/* Kopfzeile auf allen Seiten gleich: links Home + wo man ist, Mitte Blättern, rechts Werkzeuge */
+header.nav { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 16px; padding: 0 4px; }
+header.nav > .right { justify-self: end; min-width: 0; }
+header.nav .nc { justify-self: center; }
+.nl { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.pt { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.pt .pk { font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+header.nav .pt h1 { margin: 0; font-size: 16px; font-weight: 650; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pager .sel select { min-width: 132px; }
+/* Navigation: Home zum Hauptmenü, Pfeile innerhalb der Kategorie */
+.home { flex: none; width: 30px; height: 30px; border: 1px solid var(--line-2); border-radius: 8px; display: grid; place-items: center; color: var(--muted); background: var(--panel); }
+.home:hover { color: var(--ink); border-color: var(--muted); }
+.home:focus-visible, .pg:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.home svg, .pg svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.pager { display: inline-flex; align-items: center; gap: 6px; }
+.pg { flex: none; width: 30px; height: 30px; border: 1px solid var(--line-2); border-radius: 8px; display: grid; place-items: center; color: var(--ink); background: var(--panel); text-decoration: none; }
+.pg:hover { border-color: var(--muted); }
+.pg.off { opacity: .3; pointer-events: none; }
+.pglab { font-weight: 600; white-space: nowrap; padding: 0 4px; }
+
 .right { display: flex; align-items: center; gap: 10px; }
 
 button, .btn { font: inherit; color: inherit; background: var(--panel); border: 1px solid var(--line-2); border-radius: 8px; height: 30px; padding: 0 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; white-space: nowrap; transition: border-color .15s, background .15s, color .15s; }
@@ -198,15 +236,13 @@ input[type=range]::-moz-range-thumb { width: 13px; height: 13px; border-radius: 
 </head>
 <body>
 
-<header>
-  <h1>Morphologischer Kasten <span>– Visuelle Erscheinung, Verhalten &amp; Klang</span></h1>
+<header class="nav">
+  <div class="nl"><a class="home" href="index.html" title="Hauptmenü" aria-label="Zum Hauptmenü"><svg viewBox="0 0 24 24"><path d="M3.5 11 12 4l8.5 7"/><path d="M6 9.5V20h12V9.5"/><path d="M10 20v-5h4v5"/></svg></a><div class="pt"><span class="pk">Morphologischer Kasten</span><h1>Version 1</h1></div></div>
+  <div class="nc"><nav class="steps" aria-label="Seiten in dieser Kategorie"><span class="dot cur" aria-current="page" data-l="Version 1" title="Version 1"></span><span class="ln" aria-hidden="true"></span><a class="dot" href="kasten2.html" data-l="Version 2" title="Version 2" aria-label="Zu Version 2"></a></nav></div>
   <div class="right">
     <label class="trk" title="Auf welche Tonspur die Visualisierung reagiert: der ganze Song oder eine einzelne Instrumentenspur (auf der Visualisierungsseite pro Instrument hochladbar)">Tonspur
       <span class="sel"><select id="track" aria-label="Tonspur wählen"><option value="all">Alles (Original)</option></select></span>
     </label>
-    <a class="btn" href="index.html" title="Zurück zur Visualisierung">
-      <svg class="i" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg><span class="hide-m">Zur Visualisierung</span>
-    </a>
     <button id="theme" class="icon" title="Dark / Light" aria-label="Dark / Light">
       <svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/></svg>
     </button>

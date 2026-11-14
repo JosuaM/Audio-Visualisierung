@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>/* Hell/Dunkel sofort setzen, bevor die Seite gezeichnet wird – sonst blitzt sie beim Wechseln hell auf */
+try { document.documentElement.dataset.theme = localStorage.getItem('av-theme') || 'dark'; } catch (e) { document.documentElement.dataset.theme = 'dark'; }</script>
+<title>Animationsideen – Audio-Visualisierung</title>
+<style>
+/* weicher Übergang zwischen den Seiten statt hartem Neuaufbau */
+@view-transition { navigation: auto; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: .2s; animation-timing-function: ease; }
+@media (prefers-reduced-motion: reduce) { @view-transition { navigation: none; } }
+html { background: var(--bg); }
+/* Farben wie auf den anderen Seiten – Spurfarben --c0 … --c7 = Zeile 0 … 7 */
+:root {
+  --bg: #f4f2ed; --panel: #fbfaf7; --ink: #1b1b22; --muted: #7b7a82; --faint: #a9a8ae;
+  --line: #e3e0d8; --line-2: #cfcbc0; --accent: #ff6a14; --accent-ink: #fff; --stage: #ebe8e0;
+  --c0: #12985f; --c1: #2558e8; --c2: #d8304c; --c3: #d98400; --c4: #e5158f; --c5: #7a4cff; --c6: #0c95ad; --c7: #7ea000;
+  --pill-ink: #fff;
+}
+:root[data-theme="dark"] {
+  --bg: #0b0c10; --panel: #11131a; --ink: #eeeef2; --muted: #8b8d99; --faint: #5d5f6b;
+  --line: #1f222c; --line-2: #2d313e; --accent: #ff8a2a; --accent-ink: #15120e; --stage: #07080b;
+  --c0: #3ddc97; --c1: #5ba3ff; --c2: #ff5f76; --c3: #ffb454; --c4: #ff3fa6; --c5: #b88cff; --c6: #46d9ee; --c7: #d6f45c;
+  --pill-ink: #0b0c10;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--ink);
+  font: 14px/1.5 "Inter", system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased;
+  padding: 0 max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px));
+}
+button { font: inherit; color: inherit; }
+
+/* Kopfzeile wie auf den anderen Seiten (Home links, Hell/Dunkel rechts) */
+header.nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 30; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 16px;
+  margin: 0 calc(-1 * max(16px, env(safe-area-inset-left, 0px))); padding: 14px 20px; background: var(--bg); border-bottom: 1px solid var(--line); }
+.nl { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.pt { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.pt .pk { font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.pt h1 { margin: 0; font-size: 16px; font-weight: 650; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.home { flex: none; width: 30px; height: 30px; border: 1px solid var(--line-2); border-radius: 8px; display: grid; place-items: center; color: var(--muted); background: var(--panel); }
+.home:hover { color: var(--ink); border-color: var(--muted); }
+.home:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.home svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.facts { display: flex; flex-wrap: wrap; gap: 6px; justify-self: center; }
+.fact { font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; background: var(--panel); white-space: nowrap; }
+.fact b { color: var(--ink); font-weight: 600; }
+#theme { justify-self: end; flex: none; width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--panel); color: inherit; display: grid; place-items: center; cursor: pointer; }
+#theme:hover { border-color: var(--muted); }
+#theme svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+@media (max-width: 760px) { header.nav { grid-template-columns: minmax(0, 1fr) auto; } header.nav .facts { display: none; } }
+
+.wrap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 22px 4px 0; }
+.wrap > * { min-width: 0; }
+.ttl { margin: 0; font-size: 19px; font-weight: 650; letter-spacing: -.01em; }
+.panel { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.lb { font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+
+/* Tonspur-Auswahl */
+.pick { display: grid; gap: 10px; padding: 12px 14px; }
+.pick .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.trk { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px 0 10px; border: 1px solid var(--line-2); border-radius: 999px; background: var(--bg); font-size: 13px; font-weight: 600; cursor: pointer; color: var(--muted); }
+.trk i { width: 10px; height: 10px; border-radius: 50%; background: var(--tc); }
+.trk:hover { color: var(--ink); border-color: var(--muted); }
+.trk[aria-pressed="true"] { background: var(--tc); border-color: var(--tc); color: var(--pill-ink); }
+.trk[aria-pressed="true"] i { background: var(--pill-ink); }
+.trk:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.strip { display: flex; align-items: center; gap: 10px; }
+.strip .lb { flex: none; min-width: 120px; }
+#stripSvg { flex: 1; height: 22px; display: block; border-radius: 5px; background: var(--bg); border: 1px solid var(--line); cursor: pointer; min-width: 0; }
+.strip .info { flex: none; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* Player */
+.player { display: flex; align-items: center; gap: 14px; padding: 10px 16px 10px 10px; flex-wrap: wrap; }
+.playb { flex: none; width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; cursor: pointer; }
+.playb:hover { filter: brightness(1.07); }
+.playb:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.playb svg { width: 18px; height: 18px; fill: currentColor; }
+.tm { flex: none; font-variant-numeric: tabular-nums; font-size: 12.5px; color: var(--muted); min-width: 44px; }
+.tm.cur { color: var(--ink); font-weight: 600; text-align: right; }
+.prog { position: relative; flex: 1; min-width: 160px; height: 34px; cursor: pointer; touch-action: none; }
+.prog:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+.prog::before { content: ""; position: absolute; left: 0; right: 0; top: 14px; height: 6px; border-radius: 3px; background: var(--line-2); }
+.pfill { position: absolute; left: 0; top: 14px; height: 6px; border-radius: 3px; background: var(--accent); width: 0; }
+.pknob { position: absolute; top: 10px; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--panel); left: 0; }
+.rate { flex: none; display: flex; align-items: center; gap: 8px; }
+.rate .sel { position: relative; display: inline-flex; }
+.rate .sel::after { content: ""; position: absolute; right: 11px; top: 50%; width: 6px; height: 6px; margin-top: -5px; border: solid var(--muted); border-width: 0 1.6px 1.6px 0; transform: rotate(45deg); pointer-events: none; }
+.rate select { appearance: none; -webkit-appearance: none; height: 30px; padding: 0 28px 0 10px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--panel); color: var(--ink); font: 600 12.5px/1 "Inter", system-ui, sans-serif; font-variant-numeric: tabular-nums; cursor: pointer; }
+.rate select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.rate.on select { border-color: var(--accent); color: var(--accent); }
+.beatnow { flex: none; font-size: 12px; color: var(--muted); min-width: 150px; text-align: right; font-variant-numeric: tabular-nums; }
+.beatnow b { color: var(--ink); font-weight: 600; }
+@media (max-width: 760px) { .rate .lb, .beatnow { display: none; } }
+
+/* Kästen mit Animationen */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 12px; }
+.box { display: grid; grid-template-rows: auto auto; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); overflow: hidden; min-width: 0; }
+.stage { position: relative; aspect-ratio: 4 / 3; background: var(--stage); }
+.stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.stage .tag { position: absolute; right: 10px; bottom: 10px; font-size: 10.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); background: color-mix(in srgb, var(--panel) 85%, transparent); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; }
+.cap { padding: 10px 14px 13px; display: grid; gap: 2px; }
+.cap h3 { margin: 0; font-size: 14px; font-weight: 650; display: flex; align-items: center; gap: 8px; }
+.cap h3 .n { font-size: 11px; font-weight: 650; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: var(--ink); color: var(--bg); flex: none; }
+.cap p { margin: 0; color: var(--muted); font-size: 12.5px; }
+.box.empty { border-style: dashed; border-color: var(--line-2); background: transparent; }
+.box.empty .stage { background: transparent; display: grid; place-items: center; }
+.box.empty .plus { width: 38px; height: 38px; border-radius: 50%; border: 1.5px dashed var(--line-2); display: grid; place-items: center; color: var(--faint); font-size: 22px; line-height: 1; }
+.box.empty .cap h3 { color: var(--muted); }
+.box.empty .cap h3 .n { background: var(--line-2); color: var(--panel); }
+.note { margin: 0; color: var(--muted); font-size: 12.5px; }
+.note code { font: 12px/1.4 ui-monospace, "SF Mono", Menlo, monospace; color: var(--ink); }
+</style>
+</head>
+<body>
+<header class="nav">
+  <div class="nl"><a class="home" href="index.html" title="Hauptmenü" aria-label="Zum Hauptmenü"><svg viewBox="0 0 24 24"><path d="M3.5 11 12 4l8.5 7"/><path d="M6 9.5V20h12V9.5"/><path d="M10 20v-5h4v5"/></svg></a><div class="pt"><span class="pk">Visualisierung der Tonspuren</span><h1>Animationsideen</h1></div></div>
+  <div class="facts"><span class="fact"><b>116,1</b> BPM</span><span class="fact"><b>4/4</b></span><span class="fact">1 Takt ≈ <b>2,07 s</b></span></div>
+  <button id="theme" title="Dark / Light" aria-label="Dark / Light umschalten"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/></svg></button>
+</header>
+
+<main class="wrap">
+  <h2 class="ttl">Wie könnte <span id="ttlName">Flute</span> aussehen?</h2>
+
+  <div class="panel pick">
+    <div class="row" role="group" aria-label="Tonspur auswählen"><span class="lb">Tonspur</span><span id="trks" style="display:contents"></span></div>
+    <div class="strip"><span class="lb" id="stripLb">Einsätze im Song</span><svg id="stripSvg" viewBox="0 0 1000 22" preserveAspectRatio="none" role="img" aria-label="Wo die Spur im Song vorkommt – klicken springt dorthin"></svg><span class="info" id="stripInfo"></span></div>
+  </div>
+
+  <div class="panel player">
+    <button class="playb" id="play" aria-label="Abspielen"><svg viewBox="0 0 24 24" id="playIco"><path d="M8 5.5v13l11-6.5z"/></svg></button>
+    <span class="tm cur" id="tCur">0:00,0</span>
+    <div class="prog" id="prog" role="slider" tabindex="0" aria-label="Position im Song" aria-valuemin="0"><div class="pfill" id="pfill"></div><div class="pknob" id="pknob"></div></div>
+    <span class="tm" id="tDur">1:06,1</span>
+    <label class="rate" title="Wiedergabegeschwindigkeit – Tonhöhe bleibt gleich"><span class="lb">Geschwindigkeit</span><span class="sel"><select id="rate" aria-label="Wiedergabegeschwindigkeit">
+      <option value="0.25">0,25×</option><option value="0.5">0,5×</option><option value="0.75">0,75×</option><option value="1" selected>1×</option><option value="1.25">1,25×</option><option value="1.5">1,5×</option><option value="1.75">1,75×</option><option value="2">2×</option>
+    </select></span></label>
+    <span class="beatnow" id="beatNow"></span>
+  </div>
+
+  <div class="grid" id="grid"></div>
+  <p class="note">Die Animationen laufen im Takt des Songs – auch ohne Ton. Beim Abspielen sind sie genau mit der Musik synchron. <b>Leertaste</b> = Play/Pause. Neue Ideen werden in <code>animationen.html</code> im Abschnitt „✎ HIER NEUE ANIMATIONEN EINTRAGEN“ ergänzt.</p>
+</main>
+<audio id="audio" src="song.m4a" preload="metadata"></audio>
+
+<script src="analysis.js"></script>
+<script src="data.js"></script>
+<script>
+'use strict';
+const SONG = window.SONG || { dur: 66.148, bpm: 116.1, beats: 4, offset: 0.036 };
+const DUR = SONG.dur, BEAT = 60 / SONG.bpm, BAR = BEAT * SONG.beats, OFFSET = SONG.offset || 0;
+const BOXES = 6;                          // Kästen pro Tonspur
+
+// Spuren: Schlüssel = Präfix der id in data.js; Namen wie in der Zeitleiste
+const TRACKS = [
+  { key: 'flute', name: 'Flute' }, { key: 'trumpet', name: 'Mosquito' }, { key: 'frog', name: 'Frog' }, { key: 'building', name: 'Building' },
+  { key: 'riser', name: 'Riser' }, { key: 'jagd', name: 'Hunting Horn' }, { key: 'drums', name: 'Drums' }, { key: 'ring', name: 'Ringtone' },
+];
+
+/* ═════════════════════════════════════════════════════════════════════════
+   ✎ HIER NEUE ANIMATIONEN EINTRAGEN
+   ─────────────────────────────────────────────────────────────────────────
+   Pro Spur eine Liste von Ideen. Jede Idee hat einen Titel, eine kurze
+   Beschreibung und eine Zeichenfunktion draw(c, s), die in jedem Bild neu
+   aufgerufen wird:
+     c        – Canvas-Zeichenfläche (2D)
+     s.t      – Zeit in Sekunden ab dem ersten Taktschlag (läuft mit dem Song)
+     s.bar    – Länge eines Takts in Sekunden, s.beat – Länge eines Schlags
+     s.phase  – Fortschritt im aktuellen Takt (0 … 1)
+     s.w, s.h – Breite und Höhe des Kastens in Pixeln
+     s.col    – Farbe der Spur, s.ink – Vordergrundfarbe, s.bg – Hintergrund
+   Leere Kästen werden automatisch als Platzhalter angezeigt.
+   ═════════════════════════════════════════════════════════════════════════ */
+const IDEAS = {
+  flute: [
+    {
+      title: 'Fallender Kreis mit Nachbildern',
+      text: 'Ein Kreis fällt pro Takt einmal von oben nach unten. 8 Kreise folgen ihm, jeder etwas blasser als der davor.',
+      tag: '1 Durchlauf = 1 Takt',
+      draw(c, s) {
+        const N = 8, lag = s.bar / 32;                  // Abstand der Nachbilder: 1/32 Takt
+        const r = Math.min(s.w, s.h) * .065, x = s.w / 2, top = r + 8, bottom = s.h - r - 8;
+        for (let j = N; j >= 0; j--) {                   // hinten anfangen, damit der Hauptkreis oben liegt
+          const ph = (((s.t - j * lag) / s.bar) % 1 + 1) % 1;
+          const y = top + (bottom - top) * ph * ph;      // fällt wie unter Schwerkraft: erst langsam, dann schneller
+          c.globalAlpha = 1 - j / (N + 1);
+          c.fillStyle = s.col;
+          c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
+        }
+        c.globalAlpha = 1;
+      },
+    },
+  ],
+  trumpet: [], frog: [], building: [], riser: [], jagd: [], drums: [], ring: [],
+};
+/* ═════════════════════════════ Ende Animationen ══════════════════════════ */
+
+const $ = id => document.getElementById(id);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const fmt = s => { const m = Math.floor(s / 60), r = s - m * 60; return `${m}:${r < 10 ? '0' : ''}${r.toFixed(1).replace('.', ',')}`; };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// Einsätze je Spur aus data.js (Länge = größter x-Wert der Zeichnung, wie in der Zeitleiste)
+const ELEMENTS = window.ELEMENTS || [];
+const widthOf = e => e.k === 'l' ? Math.max(...e.p.flatMap(p => p[1].map(q => q[0])))
+                   : e.k === 'f' ? Math.max(...e.p.flatMap(pl => pl.map(q => q[0])))
+                   : e.p[e.p.length - 1][0] + 0.15;
+for (const t of TRACKS) {
+  const els = ELEMENTS.filter(e => e.id.replace(/-\d+$/, '') === t.key);
+  t.row = els.length ? els[0].row : TRACKS.indexOf(t);
+  t.cssColor = `var(--c${t.row})`;
+  t.raw = els.map(e => [e.t0, Math.min(DUR, e.t0 + widthOf(e))]).sort((a, b) => a[0] - b[0]);
+}
+const TBY = Object.fromEntries(TRACKS.map(t => [t.key, t]));
+
+/* ---------- Auswahl der Tonspur ---------- */
+let cur = 'flute';
+try { const q = new URLSearchParams(location.search).get('spur') || localStorage.getItem('av-anim-track'); if (TBY[q]) cur = q; } catch (e) {}
+$('trks').innerHTML = TRACKS.map(t => `<button class="trk" data-k="${t.key}" style="--tc:${t.cssColor}" aria-pressed="false"><i></i>${esc(t.name)}</button>`).join('');
+$('trks').addEventListener('click', ev => { const b = ev.target.closest('.trk'); if (b) setTrack(b.dataset.k); });
+function setTrack(k) {
+  cur = k; try { localStorage.setItem('av-anim-track', k); } catch (e) {}
+  history.replaceState(null, '', '?spur=' + k);
+  document.querySelectorAll('.trk').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.k === k)));
+  const t = TBY[k]; $('ttlName').textContent = t.name;
+  $('stripLb').textContent = `Einsätze von ${t.name}`;
+  $('stripInfo').textContent = `${t.raw.length} ${t.raw.length === 1 ? 'Einsatz' : 'Einsätze'}`;
+  $('stripSvg').innerHTML = t.raw.map(([a, b]) => `<rect x="${a / DUR * 1000}" y="4" width="${Math.max(2, (b - a) / DUR * 1000 - 1)}" height="14" rx="2" style="fill:${t.cssColor}"/>`).join('')
+    + `<line id="stripPh" x1="0" x2="0" y1="0" y2="22" stroke="var(--accent)" stroke-width="3" vector-effect="non-scaling-stroke" style="stroke-width:2"/>`;
+  buildGrid();
+}
+
+/* ---------- Kästen ---------- */
+let boxes = [];
+function buildGrid() {
+  const ideas = IDEAS[cur] || [], t = TBY[cur];
+  let html = '';
+  for (let i = 0; i < Math.max(BOXES, ideas.length); i++) {
+    const it = ideas[i];
+    html += it
+      ? `<article class="box" data-i="${i}"><div class="stage"><canvas></canvas>${it.tag ? `<span class="tag">${esc(it.tag)}</span>` : ''}</div><div class="cap"><h3><span class="n">${i + 1}</span>${esc(it.title)}</h3><p>${esc(it.text || '')}</p></div></article>`
+      : `<article class="box empty" data-i="${i}"><div class="stage"><span class="plus" aria-hidden="true">+</span></div><div class="cap"><h3><span class="n">${i + 1}</span>Idee ${i + 1} – noch frei</h3><p>Hier kommt eine weitere Animation für ${esc(t.name)} hin.</p></div></article>`;
+  }
+  $('grid').innerHTML = html;
+  boxes = [...$('grid').querySelectorAll('.box:not(.empty)')].map(el => ({ el, idea: ideas[+el.dataset.i], cv: el.querySelector('canvas') }));
+  boxes.forEach(b => ro.observe(b.cv));
+  sizeAll(); readColors();
+}
+const ro = new ResizeObserver(() => sizeAll());
+function sizeAll() {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  for (const b of boxes) {
+    const r = b.cv.getBoundingClientRect(), W = Math.max(1, Math.round(r.width * dpr)), H = Math.max(1, Math.round(r.height * dpr));
+    if (b.cv.width !== W || b.cv.height !== H) { b.cv.width = W; b.cv.height = H; }
+    b.w = r.width; b.h = r.height; b.dpr = dpr;
+  }
+}
+// Farben aus den CSS-Variablen (ändern sich mit Hell/Dunkel)
+let COL = {};
+function readColors() {
+  const cs = getComputedStyle(document.documentElement), v = n => cs.getPropertyValue(n).trim();
+  COL = { col: v(`--c${TBY[cur].row}`), ink: v('--ink'), bg: v('--stage') };
+}
+
+/* ---------- Uhr: Song-Zeit beim Abspielen, sonst läuft die Vorschau im Songtempo weiter ---------- */
+const audio = $('audio');
+let free = { perf: performance.now(), t: 0 };
+const rate = () => +$('rate').value || 1;
+function now() {
+  if (!audio.paused) return audio.currentTime;
+  return free.t + (performance.now() - free.perf) / 1000 * rate();
+}
+const resync = t => { free = { perf: performance.now(), t }; };
+function frame() {
+  const t = now(), tt = t - OFFSET;
+  const s = { t: tt, bar: BAR, beat: BEAT, phase: ((tt / BAR) % 1 + 1) % 1, ...COL };
+  for (const b of boxes) {
+    const c = b.cv.getContext('2d');
+    c.setTransform(b.dpr, 0, 0, b.dpr, 0, 0);
+    c.clearRect(0, 0, b.w, b.h);
+    s.w = b.w; s.h = b.h;
+    c.save(); try { b.idea.draw(c, s); } catch (e) { console.error(e); } c.restore();
+    // dünner Taktbalken unten: wie weit der aktuelle Takt ist
+    c.globalAlpha = .5; c.fillStyle = COL.col; c.fillRect(0, b.h - 2, b.w * s.phase, 2); c.globalAlpha = 1;
+  }
+  ui(t);
+  requestAnimationFrame(frame);
+}
+
+/* ---------- Player ---------- */
+const playErr = () => {};
+function seek(t, play) { t = clamp(t, 0, DUR); try { audio.currentTime = t; } catch (e) {} resync(t); if (play && audio.paused) audio.play().catch(playErr); }
+const togglePlay = () => audio.paused ? audio.play().catch(playErr) : audio.pause();
+$('play').onclick = togglePlay;
+const setPlayUi = () => { const p = !audio.paused; $('playIco').innerHTML = p ? '<rect x="6.5" y="5" width="4" height="14" rx="1"/><rect x="13.5" y="5" width="4" height="14" rx="1"/>' : '<path d="M8 5.5v13l11-6.5z"/>'; $('play').setAttribute('aria-label', p ? 'Pause' : 'Abspielen'); };
+audio.addEventListener('play', setPlayUi);
+audio.addEventListener('pause', () => { setPlayUi(); resync(audio.currentTime); });
+audio.addEventListener('ended', () => { setPlayUi(); resync(0); });
+{ const p = $('prog'); let drag = false;
+  const at = ev => { const r = p.getBoundingClientRect(); return clamp((ev.clientX - r.left) / r.width, 0, 1) * DUR; };
+  p.addEventListener('pointerdown', ev => { drag = true; p.setPointerCapture(ev.pointerId); seek(at(ev)); });
+  p.addEventListener('pointermove', ev => { if (drag) seek(at(ev)); });
+  p.addEventListener('pointerup', () => { drag = false; });
+  p.addEventListener('keydown', ev => { const d = ev.key === 'ArrowRight' ? 1 : ev.key === 'ArrowLeft' ? -1 : 0; if (d) { ev.preventDefault(); seek(now() + d * (ev.shiftKey ? 5 : 1)); } });
+}
+$('stripSvg').addEventListener('click', ev => { const r = $('stripSvg').getBoundingClientRect(); seek((ev.clientX - r.left) / r.width * DUR, true); });
+{ // Wiedergabegeschwindigkeit – gemeinsam mit den anderen Seiten gespeichert (av-rate), Tonhöhe bleibt gleich
+  const r = $('rate'); let v = 1; try { v = +localStorage.getItem('av-rate') || 1; } catch (e) {}
+  r.value = String(v); if (r.value !== String(v)) r.value = '1';
+  const apply = () => { audio.preservesPitch = true; audio.playbackRate = +r.value; r.closest('.rate').classList.toggle('on', r.value !== '1'); };
+  apply(); audio.addEventListener('loadedmetadata', apply);
+  r.onchange = () => { resync(now()); apply(); try { localStorage.setItem('av-rate', r.value); } catch (e) {} };
+}
+// Leertaste = immer Play/Pause, nie scrollen
+window.addEventListener('keydown', ev => { if ((ev.code === 'Space' || ev.key === ' ') && !/^(INPUT|TEXTAREA)$/.test(ev.target.tagName)) { ev.preventDefault(); ev.stopPropagation(); if (!ev.repeat) togglePlay(); } }, true);
+window.addEventListener('keyup', ev => { if ((ev.code === 'Space' || ev.key === ' ') && !/^(INPUT|TEXTAREA)$/.test(ev.target.tagName)) { ev.preventDefault(); ev.stopPropagation(); } }, true);
+function ui(t) {
+  const playing = !audio.paused, shown = playing ? t : (audio.currentTime || 0);
+  $('tCur').textContent = fmt(shown);
+  const pct = shown / DUR * 100; $('pfill').style.width = pct + '%'; $('pknob').style.left = pct + '%';
+  const ph = $('stripPh'); if (ph) { const x = shown / DUR * 1000; ph.setAttribute('x1', x); ph.setAttribute('x2', x); }
+  const tt = t - OFFSET, k = Math.floor(tt / BEAT), bar = Math.floor(k / SONG.beats) + 1, beat = ((k % SONG.beats) + SONG.beats) % SONG.beats + 1;
+  const on = TBY[cur].raw.some(([a, b]) => shown >= a && shown < b);
+  $('beatNow').innerHTML = playing ? `<b>Takt ${bar}</b> · Schlag ${beat} · ${on ? TBY[cur].name + ' klingt' : 'Pause'}` : `Vorschau · Schlag ${beat}`;
+}
+
+/* ---------- Theme wie auf den anderen Seiten ---------- */
+const root = document.documentElement;
+$('theme').onclick = () => { const n = root.dataset.theme === 'dark' ? 'light' : 'dark'; root.dataset.theme = n; try { localStorage.setItem('av-theme', n); } catch (e) {} readColors(); };
+
+/* ---------- Start ---------- */
+$('tDur').textContent = fmt(DUR); $('prog').setAttribute('aria-valuemax', DUR.toFixed(1));
+setTrack(cur);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

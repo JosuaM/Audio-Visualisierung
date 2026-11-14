@@ -271,6 +271,12 @@ select.trg { height: 24px; width: 100%; font-size: 11px; padding: 0 20px 0 7px; 
 .prof #psave { margin-left: auto; height: 28px; border-color: var(--selc, var(--accent)); color: var(--selc, var(--accent)); }
 .prof #psave.ok { border-color: var(--line-2); color: var(--muted); }
 .prof #psave[hidden] { display: none; }
+.sinfo { position: relative; flex: none; width: 18px; height: 18px; border: 1px solid var(--faint); border-radius: 50%; display: inline-grid; place-items: center; font: italic 600 10.5px/1 Georgia, serif; color: var(--muted); cursor: help; }
+.sinfo[hidden] { display: none; }
+.sinfo:hover, .sinfo:focus-visible { color: var(--ink); border-color: var(--ink); outline: none; }
+.sinfo .tip { position: absolute; top: calc(100% + 8px); right: -6px; z-index: 60; width: 270px; padding: 9px 11px; border-radius: 8px; background: var(--ink); color: var(--bg); font: 400 12px/1.45 Inter, system-ui, sans-serif; box-shadow: 0 6px 24px rgba(0,0,0,.25); opacity: 0; pointer-events: none; transition: opacity .15s; }
+.sinfo .tip b { font-weight: 650; }
+.sinfo:hover .tip, .sinfo:focus-visible .tip { opacity: 1; }
 .tthumb { order: 10; flex-basis: 100%; display: grid; grid-template-columns: 36px minmax(0, 1fr); align-items: center; gap: 12px; padding: 8px; border-radius: 8px; background: var(--bg); border: 1px solid var(--line); }
 .tplay { width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; background: var(--ink); color: var(--bg); display: grid; place-items: center; }
 .tplay:hover { background: var(--accent); }
@@ -386,6 +392,7 @@ select.trg { height: 24px; width: 100%; font-size: 11px; padding: 0 20px 0 7px; 
         <svg id="tthSvg" height="40" preserveAspectRatio="none" aria-hidden="true"></svg>
       </div>
       <button id="psave" hidden><svg class="i" viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/></svg>Speichern</button>
+      <span class="sinfo" id="sinfo" hidden tabindex="0" role="note" aria-label="Wohin wird gespeichert?">i<span class="tip">Speichert in <b>kasten2.html</b> im Projektordner „Audio-Visualisierung“. Beim ersten Mal fragt der Browser nach der Datei – dann <b>kasten2.html</b> auswählen. Danach committen &amp; pushen, damit der andere deine Auswahl sieht.</span></span>
     </div>
     <div class="tabs" role="tablist">
       <button class="t on" data-go="look"><b>1</b>&nbsp;Erscheinung</button>
@@ -1793,7 +1800,7 @@ function profUI() {
   panel.classList.toggle('cmp', who.length === 2);
   const col = one ? (who[0] === PEOPLE[0] ? 'var(--pa)' : 'var(--pb)') : '';
   panel.style.setProperty('--selc', col || 'var(--accent)');
-  $('psave').hidden = !one;
+  $('psave').hidden = !one; $('sinfo').hidden = !one;
   const st = $('pstat');
   if (one) {
     const saved = codeFor(who[0], state.ptrack), same = !!saved && saved === encode(sel);

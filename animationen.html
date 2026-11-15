@@ -60,7 +60,8 @@ header.nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 30; 
 .lb { font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 
 /* Tonspur-Auswahl */
-.pick { display: grid; gap: 10px; padding: 12px 14px; }
+.pick { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 12px 14px; }
+.pick > * { min-width: 0; }
 .pick .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
 .trk { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px 0 10px; border: 1px solid var(--line-2); border-radius: 999px; background: var(--bg); font-size: 13px; font-weight: 600; cursor: pointer; color: var(--muted); }
 .trk i { width: 10px; height: 10px; border-radius: 50%; background: var(--tc); }
@@ -70,7 +71,7 @@ header.nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 30; 
 .trk:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .strip { display: flex; align-items: center; gap: 10px; }
 .strip .lb { flex: none; min-width: 120px; }
-#stripSvg { flex: 1; height: 22px; display: block; border-radius: 5px; background: var(--bg); border: 1px solid var(--line); cursor: pointer; min-width: 0; }
+#stripSvg { flex: 1 1 0; width: 0; height: 22px; display: block; border-radius: 5px; background: var(--bg); border: 1px solid var(--line); cursor: pointer; min-width: 0; }
 .strip .info { flex: none; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 
 /* Player */
@@ -101,7 +102,7 @@ header.nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 30; 
 .box { display: grid; grid-template-rows: auto auto; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); overflow: hidden; min-width: 0; }
 .stage { position: relative; aspect-ratio: 4 / 3; background: var(--stage); }
 .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-.stage .tag { position: absolute; right: 10px; bottom: 10px; font-size: 10.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); background: color-mix(in srgb, var(--panel) 85%, transparent); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; }
+.stage .tag { position: absolute; right: 8px; bottom: 8px; max-width: calc(100% - 16px); box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 9.5px; line-height: 1.5; font-weight: 600; letter-spacing: .02em; color: var(--muted); background: color-mix(in srgb, var(--panel) 85%, transparent); border: 1px solid var(--line); border-radius: 999px; padding: 0 7px; }
 .cap { padding: 10px 14px 13px; display: grid; gap: 2px; }
 .cap h3 { margin: 0; font-size: 14px; font-weight: 650; display: flex; align-items: center; gap: 8px; }
 .cap h3 .n { font-size: 11px; font-weight: 650; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: var(--ink); color: var(--bg); flex: none; }
@@ -175,12 +176,24 @@ const TRACKS = [
      s.bg     – Hintergrund des Kastens, s.col – Farbe der Spur (falls doch einmal gebraucht)
    Leere Kästen werden automatisch als Platzhalter angezeigt.
    ═════════════════════════════════════════════════════════════════════════ */
+// Zufall, der zu jedem Zeitpunkt immer gleich ausfällt – so bleibt es beim Abspielen und Zurückspulen synchron
+function hash32(x) { x = Math.imul(x ^ 0x9e3779b9, 0x85ebca6b); x ^= x >>> 13; x = Math.imul(x, 0xc2b2ae35); x ^= x >>> 16; return x >>> 0; }
+// k-te Zufallsposition aus 0 … total−1, die keiner der letzten „avoid“ Positionen gleicht (wird einmal berechnet und gemerkt)
+function noRepeat(store, k, total, avoid, seed) {
+  const a = store[total] || (store[total] = []);
+  while (a.length <= k) {
+    const i = a.length, recent = a.slice(Math.max(0, i - avoid), i); let v, tries = 0;
+    do { v = hash32(i * 7919 + tries * 104729 + seed) % total; tries++; } while (tries < 60 && recent.includes(v));
+    a.push(v);
+  }
+  return a[k];
+}
 const IDEAS = {
   flute: [
     {
       title: 'Fallender Kreis mit Nachbildern',
       text: '1. halber Takt: 8 Kugeln fallen nacheinander (im 16tel) von oben in die Mitte, die Kugel dort wird mit jeder kräftiger. 2. halber Takt: 8 Kugeln fliegen von der Mitte nach unten aus dem Bild, die Mitte verblasst. Dann beginnt es oben neu – 1 Durchlauf = 1 Takt.',
-      tag: '8 Kugeln pro ½ Takt',
+      tag: '8 Kugeln / ½ Takt',
       draw(c, s) {
         const N = 8, T = s.bar / 2, step = T / N;       // halber Takt, darin 8 Kugeln im Abstand einer 16tel
         const D = T * .3;                               // Flugzeit einer Kugel von Stufe zu Stufe
@@ -219,7 +232,7 @@ const IDEAS = {
     {
       title: 'Kreis zieht sich zusammen',
       text: '8 Kugeln im Kreis. 1. halber Takt: eine nach der anderen (im 16tel) wandert zur Mitte, dort entsteht mit jeder ein kräftigerer Punkt. 2. halber Takt: sie wandern wieder nach außen, der Punkt verblasst. 1 Durchlauf = 1 Takt.',
-      tag: '1 Durchlauf = 1 Takt',
+      tag: '1 Durchlauf / Takt',
       draw(c, s) {
         const N = 8, T = s.bar / 2, step = T / N;       // halber Takt, darin 8 Kugeln im Abstand einer 16tel
         const D = T * .3;                               // Weg zwischen Kreis und Mitte
@@ -257,28 +270,251 @@ const IDEAS = {
       },
     },
     {
-      title: 'Kreis dreht sich weiter',
-      text: '8 Kugeln im Kreis rücken gleichzeitig im Uhrzeigersinn einen Platz weiter, jede auf den Platz ihrer Vorgängerin – im Achtel, also eine volle Drehung pro Takt. Jede zieht 8 blasser werdende Nachbilder hinter sich her.',
-      tag: '1 Drehung = 1 Takt',
+      title: 'Kugel wandert im Kreis',
+      text: '8 Plätze im Kreis. Pro halben Takt wandert die Kugel einen Platz weiter im Uhrzeigersinn – wie bei Idee 1: 8 Nachbilder ziehen im 16tel hinüber, der neue Platz wird mit jedem kräftiger, der alte blasser. Eine Runde dauert 4 Takte.',
+      tag: '1 Platz / ½ Takt',
       draw(c, s) {
-        const N = 8, step = s.bar / N;                  // 8 Plätze, alle rücken pro Achtel einen weiter
-        const move = step * .6;                         // Dauer eines Schritts, danach kurze Ruhe auf dem Platz
-        const lag = move * .45 / N;                     // Abstand der Nachbilder: zusammen knapp ein halber Schritt
-        const m0 = Math.min(s.w, s.h), r = m0 * .055, R = m0 * .33, cx = s.w / 2, cy = s.h / 2;
-        const posAt = t => {                            // wie weit hat sich der Kreis bis zur Zeit t gedreht (in Plätzen)?
-          const k = Math.floor(t / step), into = t - k * step;
-          if (into <= step - move) return k;           // ruht – auf der Achtel angekommen
-          const p = (into - (step - move)) / move;
-          return k + p * p * (3 - 2 * p);               // weich anfahren und abbremsen
-        };
+        const N = 8, P = 8, T = s.bar / 2, step = T / N;   // 8 Nachbilder pro halben Takt (16tel), 8 Plätze im Kreis
+        const D = T * .3;                               // Flugzeit eines Nachbilds von Platz zu Platz
+        const m0 = Math.min(s.w, s.h), r = m0 * .048, R = m0 * .38, cx = s.w / 2, cy = s.h / 2;
+        const mod = (a, n) => ((a % n) + n) % n;
+        const at = pos => { const a = -Math.PI / 2 + pos * Math.PI * 2 / P; return [cx + Math.cos(a) * R, cy + Math.sin(a) * R]; };
+        const ball = (pos, al) => { const [x, y] = at(pos); c.globalAlpha = al; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); };
+        const t = s.t, n = Math.floor(t / T);
+        // wie bei Idee 1: Nachbild i des halben Takts m startet bei m·T + i·16tel − D und landet genau auf seiner 16tel
+        const landed = m => clamp(Math.floor((t - m * T) / step) + 1, 0, N);
+        const departed = m => clamp(Math.floor((t - m * T + D) / step) + 1, 0, N);
         c.fillStyle = s.fg;
-        for (let j = N; j >= 0; j--) {                   // erst die blassesten Nachbilder, die Kugeln selbst oben drauf
-          const rot = posAt(s.t - j * lag);
-          c.globalAlpha = j ? .6 * (1 - j / (N + 1)) : 1;
+        // Plätze: halber Takt m bringt die Kugel von Platz m nach Platz m+1 (alles im Kreis, modulo 8)
+        for (const m of [n - 1, n, n + 1]) {
+          const o = (landed(m) - departed(m + 1)) / N;  // Platz m+1: gefüllt in m, geleert in m+1
+          if (o > 0) ball(m + 1, Math.min(1, o));
+        }
+        // Nachbilder unterwegs, auf dem Kreisbogen
+        for (let m = n - 1; m <= n + 1; m++) {
           for (let i = 0; i < N; i++) {
-            const a = -Math.PI / 2 + (i + rot) * Math.PI * 2 / N;
-            c.beginPath(); c.arc(cx + Math.cos(a) * R, cy + Math.sin(a) * R, r, 0, Math.PI * 2); c.fill();
+            const t0 = m * T + i * step - D;
+            if (t < t0 || t >= t0 + D) continue;
+            const p = (t - t0) / D;
+            ball(m + p * p * (3 - 2 * p), .4);         // weich vom alten zum neuen Platz
           }
+        }
+        c.globalAlpha = 1;
+      },
+    },
+    {
+      title: '4 Kugeln wandern im Kreis',
+      text: 'Wie Idee 3, aber mit 4 Kugeln auf jedem zweiten Platz. Pro halben Takt wandern alle gleichzeitig einen Platz weiter im Uhrzeigersinn – jeweils 8 Nachbilder im 16tel, der neue Platz wird kräftiger, der alte blasser.',
+      tag: '1 Platz / ½ Takt',
+      draw(c, s) {
+        const N = 8, P = 8, T = s.bar / 2, step = T / N;   // 8 Nachbilder pro halben Takt (16tel), 8 Plätze im Kreis
+        const D = T * .3;                               // Flugzeit eines Nachbilds von Platz zu Platz
+        const m0 = Math.min(s.w, s.h), r = m0 * .048, R = m0 * .38, cx = s.w / 2, cy = s.h / 2;
+        const at = pos => { const a = -Math.PI / 2 + pos * Math.PI * 2 / P; return [cx + Math.cos(a) * R, cy + Math.sin(a) * R]; };
+        const ball = (pos, al) => { const [x, y] = at(pos); c.globalAlpha = al; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); };
+        const t = s.t, n = Math.floor(t / T);
+        const landed = m => clamp(Math.floor((t - m * T) / step) + 1, 0, N);
+        const departed = m => clamp(Math.floor((t - m * T + D) / step) + 1, 0, N);
+        c.fillStyle = s.fg;
+        const B = [0, 2, 4, 6];                        // Kugeln auf jedem zweiten Platz
+        // wie Idee 3, für jede der 4 Kugeln: halber Takt m bringt sie einen Platz weiter
+        for (const m of [n - 1, n, n + 1]) {
+          const o = (landed(m) - departed(m + 1)) / N;
+          if (o > 0) for (const b of B) ball(b + m + 1, Math.min(1, o));
+        }
+        // Nachbilder unterwegs – bei allen 4 Kugeln gleichzeitig
+        for (let m = n - 1; m <= n + 1; m++) {
+          for (let i = 0; i < N; i++) {
+            const t0 = m * T + i * step - D;
+            if (t < t0 || t >= t0 + D) continue;
+            const p = (t - t0) / D, d = p * p * (3 - 2 * p);
+            for (const b of B) ball(b + m + d, .4);
+          }
+        }
+        c.globalAlpha = 1;
+      },
+    },
+    {
+      title: 'Kreis in der Mitte wächst',
+      text: '16 kleine Kugeln im Kreis. Pro halben Takt wandert eine – in zufälliger Reihenfolge – mit 8 Nachbildern (im 16tel) zur Mitte. Die Nachbilder werden auf dem Weg immer größer, bis sie genau so groß sind wie der Kreis in der Mitte, der mit jeder Kugel wächst. Nach 8 Takten von vorn.',
+      tag: '16 Kugeln · 8 Takte',
+      draw(c, s) {
+        const N = 8, K = 16, T = s.bar / 2, step = T / N;  // 8 Nachbilder pro halben Takt, 16 Kugeln = 16 halbe Takte
+        const D = T * .3;                               // Flugzeit eines Nachbilds zur Mitte
+        const ORDER = [5, 12, 1, 9, 14, 3, 10, 7, 0, 13, 6, 2, 11, 15, 4, 8];   // Reihenfolge – bewusst durcheinander
+        const m0 = Math.min(s.w, s.h), r = m0 * .032, R = m0 * .4, cx = s.w / 2, cy = s.h / 2;
+        const t = s.t;
+        const at = (pos, k = 1) => { const a = -Math.PI / 2 + pos * Math.PI * 2 / K; return [cx + Math.cos(a) * R * k, cy + Math.sin(a) * R * k]; };
+        const dot = (x, y, rad, al) => { c.globalAlpha = al; c.beginPath(); c.arc(x, y, rad, 0, Math.PI * 2); c.fill(); };
+        const cyc = Math.floor(t / (K * T)), S0 = cyc * K * T;   // alter Durchlauf bleibt bis zum letzten Schlag stehen
+        const start = (m, i) => Math.max(S0, m * T + i * step - D);   // die ersten starten genau auf dem ersten Schlag
+        const landed = m => clamp(Math.floor((t - m * T) / step) + 1, 0, N);
+        let departed = m => { let k = 0; for (let i = 0; i < N; i++) if (start(m, i) <= t) k++; return k; };
+        const centerR = mass => r * 1.35 * Math.sqrt(Math.max(1, mass));   // Kreis in der Mitte: Fläche wächst mit jeder Kugel
+        c.fillStyle = s.fg;
+        let mass = 0;
+        for (let j = 0; j < K; j++) { const m = cyc * K + j; if (start(m, 0) <= t) mass += landed(m) / N; }
+        const Rc = centerR(mass);
+        for (let j = 0; j < K; j++) {
+          const m = cyc * K + j, pos = ORDER[j];
+          const live = start(m, 0) <= t;               // hat diese Kugel schon angefangen zu wandern?
+          const o = 1 - (live ? departed(m) : 0) / N;   // voll – mit jedem Nachbild blasser
+          const [x, y] = at(pos);
+          if (o > 0) dot(x, y, r, o);
+          if (live) for (let i = 0; i < N; i++) {      // Nachbilder: beschleunigen zur Mitte und weiten sich dabei wie ein Trichter
+            const t0 = start(m, i), land = m * T + i * step;
+            if (t < t0 || t >= land) continue;
+            const p = (t - t0) / (land - t0), e = p * p, [px, py] = at(pos, 1 - e);
+            dot(px, py, r + (Rc - r) * e, .4);
+          }
+        }
+        if (mass > 0) dot(cx, cy, Rc, 1);
+        c.globalAlpha = 1;
+      },
+    },
+    {
+      title: 'Tonleiter',
+      text: 'Wie Idee 1, aber als absteigende Tonleiter in 8 Spalten: Pro halben Takt fällt in der nächsten Spalte rechts eine Kugel herunter (8 Nachbilder im 16tel), jede eine Stufe tiefer als die davor. Sobald die nächste anfängt, fällt die vorige weiter nach unten raus. Nach der 8. Spalte (4 Takte) geht es links oben weiter.',
+      tag: '8 Stufen · 4 Takte',
+      draw(c, s) {
+        const N = 8, COLS = 8, T = s.bar / 2, step = T / N;   // 8 Nachbilder pro halben Takt, 8 Spalten = 8 halbe Takte
+        const D = T * .3;                               // Flugzeit eines Nachbilds
+        const t = s.t, n = Math.floor(t / T);
+        const gap = s.w / COLS, r = Math.min(gap * .32, s.h * .055);
+        const X = j => gap * (j + .5);
+        const hi = s.h * .22, lo = s.h * .78;           // oberste (links) und unterste (rechts) Stufe
+        const Y = j => hi + (lo - hi) * j / (COLS - 1); // jede Spalte eine Stufe tiefer (Tonleiter abwärts)
+        const out = s.h + r;                            // unten aus dem Bild
+        const dot = (x, y, al) => { c.globalAlpha = al; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); };
+        const mod = (a, k) => ((a % k) + k) % k;
+        // wie bei Idee 1: Nachbild i des halben Takts m startet bei m·T + i·16tel − D und landet genau auf seiner 16tel
+        const landed = m => clamp(Math.floor((t - m * T) / step) + 1, 0, N);
+        const departed = m => clamp(Math.floor((t - m * T + D) / step) + 1, 0, N);
+        c.fillStyle = s.fg;
+        for (let m = n - 2; m <= n + 1; m++) {          // halber Takt m gehört zu Spalte m mod 8
+          if (m < 0) continue;                          // vor Songbeginn gab es noch keine Kugel – beim Start nur oben links
+          const j = mod(m, COLS), x = X(j), y = Y(j);
+          const o = (landed(m) - departed(m + 1)) / N;  // gefüllt in m, im nächsten halben Takt fällt sie raus
+          if (o > 0) dot(x, y, Math.min(1, o));
+          for (let i = 0; i < N; i++) {
+            const tIn = m * T + i * step - D, tOut = (m + 1) * T + i * step - D;
+            if (t >= tIn && t < tIn + D) { const p = (t - tIn) / D; dot(x, -r + (y + r) * p * p, .4); }     // von oben herein
+            if (t >= tOut && t < tOut + D) { const p = (t - tOut) / D; dot(x, y + (out - y) * p * p, .4); } // weiter nach unten raus
+          }
+        }
+        c.globalAlpha = 1;
+      },
+    },
+    {
+      title: 'Punkte leuchten auf',
+      text: 'Pro halben Takt leuchten 8 zufällige Punkte nacheinander auf (im 16tel) und dunkeln langsam wieder ab. Eine Stelle, die noch nachleuchtet, wird nicht erneut gewählt.',
+      tag: '8 Punkte / ½ Takt',
+      picks: {},
+      draw(c, s) {
+        const step = s.bar / 16;                        // ein Punkt pro 16tel = 8 pro halben Takt
+        const glow = step * 14;                         // so lange dunkelt ein Punkt nach (knapp 2 halbe Takte)
+        const cols = 11, gap = s.w / cols, rows = Math.max(3, Math.round(s.h / gap));
+        const gy = s.h / rows, r = Math.min(gap, gy) * .27, total = cols * rows;
+        const pos = i => [gap * (i % cols + .5), gy * (Math.floor(i / cols) + .5)];
+        const avoid = Math.ceil(glow / step);           // solange ein Punkt noch zu sehen ist, wird er nicht wieder gewählt
+        c.fillStyle = s.fg;
+        const k0 = Math.floor(s.t / step);
+        for (let k = Math.max(0, k0 - avoid); k <= k0; k++) {     // vor Songbeginn leuchtet nichts
+          const age = s.t - k * step; if (age < 0 || age > glow) continue;
+          const f = 1 - age / glow, a = f * f;          // hell aufleuchten, dann langsam abdunkeln
+          const [x, y] = pos(noRepeat(this.picks, k, total, avoid, 7));
+          c.globalAlpha = a;
+          c.beginPath(); c.arc(x, y, r * (.85 + .25 * a), 0, Math.PI * 2); c.fill();
+        }
+        c.globalAlpha = 1;
+      },
+    },
+    {
+      title: 'Linien ziehen sich auf',
+      text: '1. halber Takt: 8 Linien ziehen sich nacheinander (im 16tel) an zufälligen Stellen von oben nach unten auf und bleiben stehen. 2. halber Takt: in derselben Reihenfolge verschwinden sie wieder von oben nach unten. Dann neue Linien.',
+      tag: '8 Linien / ½ Takt',
+      picks: {},
+      draw(c, s) {
+        const N = 8, T = s.bar / 2, step = T / N;       // 8 Linien pro halben Takt, eine pro 16tel
+        const D = step * 2.5;                           // so lange braucht eine Linie, um sich von oben bis unten aufzuziehen
+        const lanes = 18, lw = Math.max(2.5, s.w * .012);
+        const ease = p => 1 - (1 - p) * (1 - p);       // schießt los und bremst unten ab
+        const cyc = Math.floor(s.t / (2 * T));          // 1 Durchlauf = 1 Takt: aufziehen, dann wegziehen
+        c.strokeStyle = s.fg; c.lineWidth = lw; c.lineCap = 'butt'; c.globalAlpha = 1;
+        for (const k of [cyc - 1, cyc]) {
+          if (k < 0) continue;                          // vor Songbeginn keine Linien
+          const t0 = k * 2 * T;
+          for (let i = 0; i < N; i++) {
+            const tIn = t0 + i * step, tOut = t0 + T + i * step;
+            if (s.t < tIn || s.t >= tOut + D) continue;
+            const head = s.h * ease(clamp((s.t - tIn) / D, 0, 1));    // unteres Ende: wächst nach unten
+            const tail = s.h * ease(clamp((s.t - tOut) / D, 0, 1));   // oberes Ende: wandert hinterher und lässt sie verschwinden
+            if (head <= tail) continue;
+            const x = (noRepeat(this.picks, k * N + i, lanes, N, 3) + .5) * s.w / lanes;   // 8 verschiedene Stellen pro Durchlauf
+            c.beginPath(); c.moveTo(x, tail); c.lineTo(x, head); c.stroke();
+          }
+        }
+        c.globalAlpha = 1;
+      },
+    },
+    {
+      title: 'Kugeln sammeln sich',
+      text: '72 hellgraue Kugeln, zufällig verteilt. Pro halben Takt fliegen 8 zufällige Kugeln nacheinander (im 16tel) zu einer anderen Kugel, die mit jeder dunkler wird. Nach zwei Durchgängen (2 × 8 halbe Takte) fliegen die dunklen Kugeln schnell in die Mitte und von dort zieht sich das ganze Feld schwarz auf. Dann von vorn.',
+      tag: '2 × 4 Takte + Finale',
+      layouts: {},
+      draw(c, s) {
+        const N = 8, G = 8, T = s.bar / 2, step = T / N;   // 8 Kugeln pro halben Takt, 8 Gruppen = 8 halbe Takte
+        const TOTAL = G * (N + 1);                      // 72 Kugeln: 8 Ziele + 64, die hinfliegen
+        const ROUNDS = 2, FIN = 2;                      // 2 Durchgänge, danach 1 Takt Finale (2 halbe Takte)
+        const SUPER = (ROUNDS * G + FIN) * T;           // ein ganzer Ablauf: 9 Takte
+        const D = T * .3, GREY = .22;                   // Flugzeit · Helligkeit der grauen Kugeln
+        const t = s.t, r = Math.min(s.w, s.h) * .026, cx = s.w / 2, cy = s.h / 2;
+        if (t < 0) return;
+        const sup = Math.floor(t / SUPER), tt = t - sup * SUPER;
+        const layout = key => this.layouts[key] || (this.layouts[key] = (() => {   // zufällige, sich nicht überlappende Verteilung
+          const pts = [], seed = (key + 11) * 7717;
+          for (let tries = 0; pts.length < TOTAL && tries < 6000; tries++) {
+            const x = .05 + .9 * hash32(seed + tries * 2) / 4294967296, y = .06 + .88 * hash32(seed + tries * 2 + 1) / 4294967296;
+            if (pts.every(p => Math.hypot(p[0] - x, p[1] - y) > (tries < 4000 ? .085 : .06))) pts.push([x, y]);
+          }
+          for (let q = 0; pts.length < TOTAL; q++) pts.push([hash32(seed - q * 3) / 4294967296, hash32(seed - q * 3 - 1) / 4294967296]);
+          const ord = pts.map((_, i) => i);             // zufällige Reihenfolge: zuerst 8 Ziele, dann je 8 Kugeln pro Ziel
+          for (let i = ord.length - 1; i > 0; i--) { const j = hash32(seed + 999 + i) % (i + 1); [ord[i], ord[j]] = [ord[j], ord[i]]; }
+          return { pts, targets: ord.slice(0, G), movers: ord.slice(G) };
+        })());
+        const dot = (x, y, al) => { c.globalAlpha = al; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); };
+        c.fillStyle = s.fg;
+        const rd = Math.min(ROUNDS - 1, Math.floor(tt / (G * T)));   // aktueller Durchgang (im Finale: der letzte)
+        const L = layout(sup * ROUNDS + rd), P = i => [L.pts[i][0] * s.w, L.pts[i][1] * s.h];
+        if (tt >= ROUNDS * G * T) {                     // ---- Finale ----
+          const f = tt - ROUNDS * G * T;
+          const fly = T * .35;                          // die dunklen Kugeln schießen in die Mitte
+          if (f < fly) {
+            const e = (f / fly) ** 2;
+            for (const id of L.targets) { const [x, y] = P(id); dot(x + (cx - x) * e, y + (cy - y) * e, 1); }
+          } else {                                      // von der Mitte aus zieht sich das Feld zu
+            const p = clamp((f - fly) / (FIN * T * .85 - fly), 0, 1), Rmax = Math.hypot(cx, cy) + 2;
+            const rad = r + (Rmax - r) * p * p;
+            c.globalAlpha = 1; c.beginPath(); c.arc(cx, cy, rad, 0, Math.PI * 2); c.fill();
+          }
+          c.globalAlpha = 1;
+          return;
+        }
+        // ---- Durchgang: 8 halbe Takte, je 8 Kugeln fliegen zu einem Ziel, das mit jeder dunkler wird ----
+        const S0 = rd * G * T;
+        const gone = new Set(), hits = new Array(G).fill(0), flying = [];
+        for (let g = 0; g < G; g++) for (let i = 0; i < N; i++) {
+          const id = L.movers[g * N + i], land = S0 + g * T + i * step;   // landet genau auf seiner 16tel
+          const t0 = Math.max(S0, land - D);           // die ersten starten genau auf dem ersten Schlag
+          if (tt < t0) continue;
+          gone.add(id);
+          if (tt >= land) hits[g]++; else flying.push([id, g, (tt - t0) / (land - t0)]);
+        }
+        L.movers.forEach(id => { if (!gone.has(id)) { const [x, y] = P(id); dot(x, y, GREY); } });
+        L.targets.forEach((id, g) => { const [x, y] = P(id); dot(x, y, GREY + (1 - GREY) * hits[g] / N); });
+        for (const [id, g, p] of flying) {             // unterwegs: beschleunigen aufs Ziel zu
+          const [x0, y0] = P(id), [x1, y1] = P(L.targets[g]), e = p * p;
+          dot(x0 + (x1 - x0) * e, y0 + (y1 - y0) * e, GREY);
         }
         c.globalAlpha = 1;
       },
@@ -328,11 +564,11 @@ let boxes = [];
 function buildGrid() {
   const ideas = IDEAS[cur] || [], t = TBY[cur];
   let html = '';
-  for (let i = 0; i < Math.max(BOXES, ideas.length); i++) {
+  for (let i = 0; i < Math.max(BOXES, ideas.length + 1); i++) {   // immer mindestens ein freier Kasten
     const it = ideas[i];
     html += it
-      ? `<article class="box" data-i="${i}"><div class="stage"><canvas></canvas>${it.tag ? `<span class="tag">${esc(it.tag)}</span>` : ''}</div><div class="cap"><h3><span class="n">${i + 1}</span>${esc(it.title)}</h3><p>${esc(it.text || '')}</p></div></article>`
-      : `<article class="box empty" data-i="${i}"><div class="stage"><span class="plus" aria-hidden="true">+</span></div><div class="cap"><h3><span class="n">${i + 1}</span>Idee ${i + 1} – noch frei</h3><p>Hier kommt eine weitere Animation für ${esc(t.name)} hin.</p></div></article>`;
+      ? `<article class="box" data-i="${i}"><div class="stage"><canvas></canvas>${it.tag ? `<span class="tag">${esc(it.tag)}</span>` : ''}</div><div class="cap"><h3><span class="n">${i + 1}</span>${esc(it.title)}</h3></div></article>`
+      : `<article class="box empty" data-i="${i}"><div class="stage"><span class="plus" aria-hidden="true">+</span></div><div class="cap"><h3><span class="n">${i + 1}</span>Idee ${i + 1} – noch frei</h3></div></article>`;
   }
   $('grid').innerHTML = html;
   boxes = [...$('grid').querySelectorAll('.box:not(.empty)')].map(el => ({ el, idea: ideas[+el.dataset.i], cv: el.querySelector('canvas') }));

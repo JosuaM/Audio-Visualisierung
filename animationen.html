@@ -15,13 +15,13 @@ html { background: var(--bg); }
 /* Farben wie auf den anderen Seiten – Spurfarben --c0 … --c7 = Zeile 0 … 7 */
 :root {
   --bg: #f4f2ed; --panel: #fbfaf7; --ink: #1b1b22; --muted: #7b7a82; --faint: #a9a8ae;
-  --line: #e3e0d8; --line-2: #cfcbc0; --accent: #ff6a14; --accent-ink: #fff; --stage: #ebe8e0;
+  --line: #e3e0d8; --line-2: #cfcbc0; --accent: #ff6a14; --accent-ink: #fff; --stage: #ffffff; --stage-fg: #000000;
   --c0: #12985f; --c1: #2558e8; --c2: #d8304c; --c3: #d98400; --c4: #e5158f; --c5: #7a4cff; --c6: #0c95ad; --c7: #7ea000;
   --pill-ink: #fff;
 }
 :root[data-theme="dark"] {
   --bg: #0b0c10; --panel: #11131a; --ink: #eeeef2; --muted: #8b8d99; --faint: #5d5f6b;
-  --line: #1f222c; --line-2: #2d313e; --accent: #ff8a2a; --accent-ink: #15120e; --stage: #07080b;
+  --line: #1f222c; --line-2: #2d313e; --accent: #ff8a2a; --accent-ink: #15120e; --stage: #000000; --stage-fg: #ffffff;
   --c0: #3ddc97; --c1: #5ba3ff; --c2: #ff5f76; --c3: #ffb454; --c4: #ff3fa6; --c5: #b88cff; --c6: #46d9ee; --c7: #d6f45c;
   --pill-ink: #0b0c10;
 }
@@ -171,24 +171,114 @@ const TRACKS = [
      s.bar    – Länge eines Takts in Sekunden, s.beat – Länge eines Schlags
      s.phase  – Fortschritt im aktuellen Takt (0 … 1)
      s.w, s.h – Breite und Höhe des Kastens in Pixeln
-     s.col    – Farbe der Spur, s.ink – Vordergrundfarbe, s.bg – Hintergrund
+     s.fg     – Zeichenfarbe (weiß auf Schwarz im Dunkel-Modus, schwarz auf Weiß im Hell-Modus)
+     s.bg     – Hintergrund des Kastens, s.col – Farbe der Spur (falls doch einmal gebraucht)
    Leere Kästen werden automatisch als Platzhalter angezeigt.
    ═════════════════════════════════════════════════════════════════════════ */
 const IDEAS = {
   flute: [
     {
       title: 'Fallender Kreis mit Nachbildern',
-      text: 'Ein Kreis fällt pro Takt einmal von oben nach unten. 8 Kreise folgen ihm, jeder etwas blasser als der davor.',
+      text: '1. halber Takt: 8 Kugeln fallen nacheinander (im 16tel) von oben in die Mitte, die Kugel dort wird mit jeder kräftiger. 2. halber Takt: 8 Kugeln fliegen von der Mitte nach unten aus dem Bild, die Mitte verblasst. Dann beginnt es oben neu – 1 Durchlauf = 1 Takt.',
+      tag: '8 Kugeln pro ½ Takt',
+      draw(c, s) {
+        const N = 8, T = s.bar / 2, step = T / N;       // halber Takt, darin 8 Kugeln im Abstand einer 16tel
+        const D = T * .3;                               // Flugzeit einer Kugel von Stufe zu Stufe
+        const r = Math.min(s.w, s.h) * .065, x = s.w / 2;
+        const P = [-r, s.h * .5, s.h + r];              // oben (unsichtbar) → Mitte → unten raus
+        const L = P.length - 1;                          // Übergänge pro Durchlauf (= halbe Takte)
+        const mod = (a, n) => ((a % n) + n) % n;
+        const n = Math.floor(s.t / T);
+        // Kugel i des halben Takts m startet bei m·T + i·16tel − D und landet genau auf ihrer 16tel (die erste auf dem Schlag)
+        const landed = m => clamp(Math.floor((s.t - m * T) / step) + 1, 0, N);
+        const departed = m => clamp(Math.floor((s.t - m * T + D) / step) + 1, 0, N);
+        c.fillStyle = s.fg;
+        // Mitte: wie voll ist die Kugel dort gerade?
+        for (let st = 1; st < L; st++) {
+          let mf = n + 1 - mod(n + 1 - (st - 1), L);      // letzter halber Takt, der diese Stufe füllt
+          if (mf * T - D > s.t) mf -= L;
+          const o = (landed(mf) - departed(mf + 1)) / N;
+          if (o <= 0) continue;
+          c.globalAlpha = Math.min(1, o);
+          c.beginPath(); c.arc(x, P[st], r, 0, Math.PI * 2); c.fill();
+        }
+        // Kugeln im Flug
+        for (let m = n - 1; m <= n + 1; m++) {
+          const q = mod(m, L), y0 = P[q], y1 = P[q + 1];
+          for (let i = 0; i < N; i++) {
+            const t0 = m * T + i * step - D;
+            if (s.t < t0 || s.t >= t0 + D) continue;
+            const p = (s.t - t0) / D;
+            c.globalAlpha = .4;
+            c.beginPath(); c.arc(x, y0 + (y1 - y0) * p * p, r, 0, Math.PI * 2); c.fill();
+          }
+        }
+        c.globalAlpha = 1;
+      },
+    },
+    {
+      title: 'Kreis zieht sich zusammen',
+      text: '8 Kugeln im Kreis. 1. halber Takt: eine nach der anderen (im 16tel) wandert zur Mitte, dort entsteht mit jeder ein kräftigerer Punkt. 2. halber Takt: sie wandern wieder nach außen, der Punkt verblasst. 1 Durchlauf = 1 Takt.',
       tag: '1 Durchlauf = 1 Takt',
       draw(c, s) {
-        const N = 8, lag = s.bar / 32;                  // Abstand der Nachbilder: 1/32 Takt
-        const r = Math.min(s.w, s.h) * .065, x = s.w / 2, top = r + 8, bottom = s.h - r - 8;
-        for (let j = N; j >= 0; j--) {                   // hinten anfangen, damit der Hauptkreis oben liegt
-          const ph = (((s.t - j * lag) / s.bar) % 1 + 1) % 1;
-          const y = top + (bottom - top) * ph * ph;      // fällt wie unter Schwerkraft: erst langsam, dann schneller
-          c.globalAlpha = 1 - j / (N + 1);
-          c.fillStyle = s.col;
-          c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
+        const N = 8, T = s.bar / 2, step = T / N;       // halber Takt, darin 8 Kugeln im Abstand einer 16tel
+        const D = T * .3;                               // Weg zwischen Kreis und Mitte
+        const m0 = Math.min(s.w, s.h), r = m0 * .055, R = m0 * .33, cx = s.w / 2, cy = s.h / 2;
+        const ang = i => -Math.PI / 2 + i * Math.PI * 2 / N;        // im Uhrzeigersinn, oben beginnend
+        const ball = (x, y, a) => { c.globalAlpha = a; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); };
+        const t = s.t, n = Math.floor(t / T);
+        // rein: Kugel i kommt genau auf ihrer 16tel in der Mitte an · raus: Kugel i verlässt die Mitte genau auf ihrer 16tel
+        const at16 = m => clamp(Math.floor((t - m * T) / step) + 1, 0, N);
+        const arrived = at16, left = at16;
+        c.fillStyle = s.fg;
+        // Punkt in der Mitte: jede ankommende Kugel +1/8, jede abfliegende −1/8
+        let mi = n - ((n % 2) + 2) % 2 + 2;              // letzter „nach innen“-Halbtakt (gerade Nummern)
+        while (mi * T - D > t) mi -= 2;
+        const o = (arrived(mi) - left(mi + 1)) / N;
+        if (o > 0) ball(cx, cy, Math.min(1, o));
+        // Kugeln auf dem Kreis (fehlen, solange sie unterwegs oder in der Mitte sind)
+        const cyc = Math.floor((t + D) / (2 * T));
+        for (let i = 0; i < N; i++) {
+          const away = k => t >= 2 * k * T + i * step - D && t < (2 * k + 1) * T + i * step + D;
+          if (away(cyc) || away(cyc - 1)) continue;
+          ball(cx + Math.cos(ang(i)) * R, cy + Math.sin(ang(i)) * R, .45);
+        }
+        // Kugeln unterwegs
+        for (let m = n - 1; m <= n + 1; m++) {
+          const inward = ((m % 2) + 2) % 2 === 0;
+          for (let i = 0; i < N; i++) {
+            const t0 = m * T + i * step - (inward ? D : 0);
+            if (t < t0 || t >= t0 + D) continue;
+            const p = (t - t0) / D, k = inward ? 1 - p * p : 1 - (1 - p) * (1 - p);   // rein: beschleunigt, raus: bremst ab
+            ball(cx + Math.cos(ang(i)) * R * k, cy + Math.sin(ang(i)) * R * k, .45);
+          }
+        }
+        c.globalAlpha = 1;
+      },
+    },
+    {
+      title: 'Kreis dreht sich weiter',
+      text: '8 Kugeln im Kreis rücken gleichzeitig im Uhrzeigersinn einen Platz weiter, jede auf den Platz ihrer Vorgängerin – im Achtel, also eine volle Drehung pro Takt. Jede zieht 8 blasser werdende Nachbilder hinter sich her.',
+      tag: '1 Drehung = 1 Takt',
+      draw(c, s) {
+        const N = 8, step = s.bar / N;                  // 8 Plätze, alle rücken pro Achtel einen weiter
+        const move = step * .6;                         // Dauer eines Schritts, danach kurze Ruhe auf dem Platz
+        const lag = move * .45 / N;                     // Abstand der Nachbilder: zusammen knapp ein halber Schritt
+        const m0 = Math.min(s.w, s.h), r = m0 * .055, R = m0 * .33, cx = s.w / 2, cy = s.h / 2;
+        const posAt = t => {                            // wie weit hat sich der Kreis bis zur Zeit t gedreht (in Plätzen)?
+          const k = Math.floor(t / step), into = t - k * step;
+          if (into <= step - move) return k;           // ruht – auf der Achtel angekommen
+          const p = (into - (step - move)) / move;
+          return k + p * p * (3 - 2 * p);               // weich anfahren und abbremsen
+        };
+        c.fillStyle = s.fg;
+        for (let j = N; j >= 0; j--) {                   // erst die blassesten Nachbilder, die Kugeln selbst oben drauf
+          const rot = posAt(s.t - j * lag);
+          c.globalAlpha = j ? .6 * (1 - j / (N + 1)) : 1;
+          for (let i = 0; i < N; i++) {
+            const a = -Math.PI / 2 + (i + rot) * Math.PI * 2 / N;
+            c.beginPath(); c.arc(cx + Math.cos(a) * R, cy + Math.sin(a) * R, r, 0, Math.PI * 2); c.fill();
+          }
         }
         c.globalAlpha = 1;
       },
@@ -262,15 +352,20 @@ function sizeAll() {
 let COL = {};
 function readColors() {
   const cs = getComputedStyle(document.documentElement), v = n => cs.getPropertyValue(n).trim();
-  COL = { col: v(`--c${TBY[cur].row}`), ink: v('--ink'), bg: v('--stage') };
+  COL = { col: v(`--c${TBY[cur].row}`), fg: v('--stage-fg'), bg: v('--stage') };
 }
 
 /* ---------- Uhr: Song-Zeit beim Abspielen, sonst läuft die Vorschau im Songtempo weiter ---------- */
 const audio = $('audio');
 let free = { perf: performance.now(), t: 0 };
 const rate = () => +$('rate').value || 1;
+let lastCt = -1, lastP = 0;
 function now() {
-  if (!audio.paused) return audio.currentTime;
+  if (!audio.paused) {                   // Song-Zeit, zwischen den Updates des Players weitergezählt → ruckelfrei und synchron
+    const ct = audio.currentTime, p = performance.now();
+    if (ct !== lastCt) { lastCt = ct; lastP = p; }
+    return lastCt + Math.min(.25, (p - lastP) / 1000) * audio.playbackRate;
+  }
   return free.t + (performance.now() - free.perf) / 1000 * rate();
 }
 const resync = t => { free = { perf: performance.now(), t }; };
@@ -284,7 +379,7 @@ function frame() {
     s.w = b.w; s.h = b.h;
     c.save(); try { b.idea.draw(c, s); } catch (e) { console.error(e); } c.restore();
     // dünner Taktbalken unten: wie weit der aktuelle Takt ist
-    c.globalAlpha = .5; c.fillStyle = COL.col; c.fillRect(0, b.h - 2, b.w * s.phase, 2); c.globalAlpha = 1;
+    c.globalAlpha = .35; c.fillStyle = COL.fg; c.fillRect(0, b.h - 2, b.w * s.phase, 2); c.globalAlpha = 1;
   }
   ui(t);
   requestAnimationFrame(frame);

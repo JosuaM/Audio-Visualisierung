@@ -255,6 +255,38 @@ function metaballs(c, w, h, balls, cell) {
   }
   c.fill();
 }
+// Frog-Ablauf in Schlägen (¼-Takten), gedacht als 6 · 2 · 4 · 4 = 4 Takte, ab dem ersten Frog-Einsatz (Takt 9) immer wieder von vorn.
+// Die beiden 4er-Abschnitte beginnen etwas früher (nach 7½ und 11½ Schlägen) – so liegt der letzte Wechsel auf dem neuen Frog-Ton im Song.
+// Zum Feinjustieren nur diese Zahlen ändern (Summe muss 16 bleiben).
+const FROG_SEQ = [6, 1.5, 4, 4.5];
+const FROG_KEEP = .2;                    // bei Wechseln innerhalb der Sequenz bleibt so viel vom Erreichten stehen; zu Beginn jeder Sequenz ist nichts zu sehen
+const FROG_LVL = (() => {                 // Wachstum am Anfang / Ende jedes Abschnitts (eingeschwungen über mehrere Durchläufe)
+  const n = FROG_SEQ.length, S = [], E = []; let e = 0;
+  for (let r = 0; r < 6; r++) for (let j = 0; j < n; j++) { S[j] = j ? FROG_KEEP * e : 0; e = Math.min(1, S[j] + FROG_SEQ[j] / 6); E[j] = e; }   // S[0] = 0: jede Sequenz beginnt bei null
+  return { S, E };
+})();
+// p = Zeit im Abschnitt, len = Länge des Abschnitts, L = 6 Schläge (Bezug fürs Wachsen),
+// g = Wachstum 0 … 1: steigt im Abschnitt, fällt beim Wechsel weich (in knapp einem halben Schlag) auf einen Teil zurück
+function frogSeq(s) {
+  const B = s.beat, n = FROG_SEQ.length, [k, q] = loop(s.t, 16 * B, s.bar * 8);
+  let a = 0, i = 0;
+  while (i < n - 1 && q >= (a + FROG_SEQ[i]) * B) { a += FROG_SEQ[i]; i++; }
+  const p = q - a * B, L = 6 * B, prev = FROG_LVL.E[(i + n - 1) % n];
+  const raw = Math.min(1, FROG_LVL.S[i] + p / L);
+  return { p, len: FROG_SEQ[i] * B, L, k: k * n + i, g: prev + (raw - prev) * eIO(seg(p, 0, B * .45)) };
+}
+// Mosquito-Ablauf in Schlägen (¼-Takten), 16 Schläge = 4 Takte ab dem ersten Mosquito-Einsatz (Takt 9), dann von vorn:
+// 3 Ton · 3 Pause · 2 Ton (der nächste setzt kurz vor Ende ein) · 2 Ton · 2 Pause · 3 Ton · 1 Pause.  [Beginn, Länge] je Ton:
+const MOSQ_NOTES = [[0, 3], [6, 1.75], [7.75, 2.25], [12, 3]];
+// on = klingt gerade ein Ton? · p = Zeit seit Tonbeginn · len = Länge des Tons
+function mosqSeq(s) {
+  const B = s.beat, [k, q] = loop(s.t, 16 * B, s.bar * 8), qb = q / B;
+  for (let i = MOSQ_NOTES.length - 1; i >= 0; i--) {
+    const [a, l] = MOSQ_NOTES[i];
+    if (qb >= a) return { on: qb < a + l, p: q - a * B, len: l * B, k: k * MOSQ_NOTES.length + i };
+  }
+  return { on: false, p: 0, len: B, k: 0 };
+}
 // Linie aus Punkten zeichnen
 function polyline(c, pts) { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.stroke(); }
 const IDEAS = {
@@ -827,13 +859,14 @@ const IDEAS = {
   trumpet: [
     {
       title: 'Stern zieht sich zusammen',
-      text: 'Eine Raute mit nach innen gewölbten Seiten und spitzen Ecken – fast ein Stern. Auf der 1 springt sie groß herein und wächst in den ersten 2 Schlägen noch etwas, ab dem 3. Schlag wird sie kleiner, bis sie am Taktende verschwindet.',
-      tag: '1 Takt',
+      text: 'Eine Raute mit nach innen gewölbten Seiten und spitzen Ecken – fast ein Stern. Mit jedem Mosquito-Ton springt sie groß herein, schießt kurz minimal größer und zieht sich dann bis zum Ende des Tons zusammen. In den Pausen ist nichts zu sehen. Ablauf: 3 · Pause 3 · 2 + 2 · Pause 2 · 3 · Pause 1 Schläge.',
+      tag: '3 · – 3 · 2+2 · – 2 · 3 · – 1',
       draw(c, s) {
-        const [, p] = loop(s.t, s.bar), b = p / s.beat;
+        const M = mosqSeq(s); if (!M.on) return;
+        const b = M.p / s.beat, L = M.len / s.beat;
         const cx = s.w / 2, cy = s.h / 2, m0 = Math.min(s.w, s.h);
-        const sc = eBack(seg(b, 0, .3)) * (1 + .12 * eOut(seg(b, .3, 2))) * (1 - eIO(seg(b, 2, 4)));   // rein · etwas größer · ab Schlag 3 kleiner
-        const R = m0 * .36 * sc;
+        const sc = eBack(seg(b, 0, .3)) * (1 - eIO(seg(b, .3, L)));   // groß rein, kurz drüber, dann bis zum Tonende kleiner
+        const R = m0 * .38 * sc;
         if (R < .5) return;
         const ex = 2 / .72;                             // Superellipse mit n < 1 → Seiten nach innen gewölbt
         c.fillStyle = s.fg;
@@ -848,63 +881,41 @@ const IDEAS = {
     },
     {
       title: 'Balken',
-      text: 'Ein Balken wie bei einem Pegel: Er startet auf der 1 schon hoch, schießt noch ein kleines Stück nach oben und sinkt dann über den Takt immer weiter nach unten.',
-      tag: '1 Takt',
+      text: 'Ein Balken wie bei einem Pegel: Mit jedem Mosquito-Ton startet er schon hoch, schießt noch ein kleines Stück nach oben und sinkt dann bis zum Ende des Tons nach unten. In den Pausen ist nichts zu sehen. Ablauf: 3 · Pause 3 · 2 + 2 · Pause 2 · 3 · Pause 1 Schläge.',
+      tag: '3 · – 3 · 2+2 · – 2 · 3 · – 1',
       draw(c, s) {
-        const [, p] = loop(s.t, s.bar), b = p / s.beat;
+        const M = mosqSeq(s); if (!M.on) return;
+        const b = M.p / s.beat, L = M.len / s.beat;
         const base = s.h * .9, maxH = s.h * .78, bw = Math.min(s.w * .18, s.h * .3), x = (s.w - bw) / 2;
         const up = .3;                                  // so lange schießt er hoch
-        const hgt = b < up ? maxH * (.84 + .16 * eOut(b / up)) : maxH * Math.pow(1 - seg(b, up, 4), 1.4);
+        const hgt = b < up ? maxH * (.84 + .16 * eOut(b / up)) : maxH * Math.pow(1 - seg(b, up, L), 1.4);
+        if (hgt < .5) return;
         c.fillStyle = s.fg;
         c.beginPath();
         if (c.roundRect) c.roundRect(x, base - hgt, bw, hgt, [Math.min(bw * .2, hgt / 2), Math.min(bw * .2, hgt / 2), 0, 0]); else c.rect(x, base - hgt, bw, hgt);
         c.fill();
       },
     },
-    {
-      title: 'Schwirren',
-      text: 'Ein kleiner Punkt schwirrt wie eine Mücke mit Leuchtspur durchs Bild. Auf der 1 setzt er oben ein und zittert schnell und heftig, im Lauf des Takts wird er ruhiger und sinkt nach unten – wie der Ton, der hoch anfängt und dann abfällt.',
-      tag: '1 Takt',
-      draw(c, s) {
-        const B = s.beat, [k, p] = loop(s.t, s.bar), b = p / B, m0 = Math.min(s.w, s.h);
-        const pos = tb => {                             // Position zum Zeitpunkt tb (Schläge im Takt)
-          const u = cl01(tb / 4), buzz = 1 - .75 * u, ph = tb * B;   // zittert erst stark, dann schwächer
-          const x = s.w * (.5 + .28 * Math.sin(ph * 1.7 + k * 2.1) + .07 * buzz * Math.sin(ph * 31) + .04 * buzz * Math.sin(ph * 47 + 1));
-          const y = s.h * (.16 + .62 * u ** 1.5 + .08 * buzz * Math.sin(ph * 37 + 2) + .06 * Math.sin(ph * 2.3 + k));
-          return [x, y];
-        };
-        const fade = seg(b, 0, .1) * (1 - seg(b, 3.6, 4));
-        c.strokeStyle = s.fg; c.fillStyle = s.fg; c.lineCap = 'round';
-        const STEPS = 70, back = .7;                    // Leuchtspur: der Weg der letzten ¾ Schläge
-        let prev = pos(Math.max(0, b - back));
-        for (let i = 1; i <= STEPS; i++) {
-          const tb = Math.max(0, b - back + back * i / STEPS), cur = pos(tb), f = i / STEPS;
-          c.globalAlpha = fade * f * .9; c.lineWidth = Math.max(.8, m0 * .022 * f);
-          c.beginPath(); c.moveTo(prev[0], prev[1]); c.lineTo(cur[0], cur[1]); c.stroke();
-          prev = cur;
-        }
-        const [x, y] = pos(b);
-        c.globalAlpha = fade; c.beginPath(); c.arc(x, y, Math.max(2.5, m0 * .032), 0, Math.PI * 2); c.fill();
-        c.globalAlpha = 1;
-      },
-    },
   ],
   frog: [
     {
       title: 'Echo',
-      text: 'Aus der Mitte kommen auf jedem Schlag neue Kreise (nur Kontur) und wachsen nach außen – es werden immer mehr. Jeder neue Kreis in der Mitte hat eine dickere Kontur als der davor; nach außen werden sie dünner und blasser. Das Ganze wächst 6 halbe Takte lang, dann blendet es aus und beginnt von vorn.',
-      tag: '6 halbe Takte',
+      text: 'Aus der Mitte kommt alle halbe Schläge ein neuer Kreis (nur Kontur) und wächst nach außen – es füllt sich schnell. Der Kreis in der Mitte hat die dickste Kontur, nach außen werden sie dünner und blasser. Im Frog-Ablauf (6 · 2 · 4 · 4 Schläge) wächst das Echo, je länger ein Abschnitt dauert; beim Wechsel verschwinden weich die äußeren Kreise, die inneren bleiben.',
+      tag: '6 · 2 · 4 · 4 Schläge',
       draw(c, s) {
-        const L = s.bar * 3, B = s.beat;
-        const [, p] = loop(s.t, L, s.bar * 8);          // im 3-Takt-Raster ab dem ersten Frog-Einsatz (Takt 9)
+        const B = s.beat, F = frogSeq(s), L = F.L, g = F.g, step = B / 2;   // alle halben Schläge ein neuer Kreis
         const cx = s.w / 2, cy = s.h / 2, m0 = Math.min(s.w, s.h), Rmax = Math.hypot(cx, cy);
-        const out = 1 - seg(p, L - B * .5, L);          // im letzten halben Schlag ausblenden
+        const Amax = g * L, soft = B * .5;              // so alt (= so weit außen) dürfen Kreise gerade werden
         c.strokeStyle = s.fg;
-        for (let i = 0; i * B <= p; i++) {
-          const age = p - i * B, g = age / L;
-          const r = m0 * .02 + Rmax * Math.pow(g, .75);   // schnell los, dann langsamer – der erste erreicht am Ende die Ecken
-          c.globalAlpha = out * seg(age, 0, B * .15) * (1 - .7 * g);
-          c.lineWidth = Math.max(.8, m0 * (.01 + .07 * (i * B / L)) * (1 - .85 * g));   // jeder neue Kreis kommt dicker als der davor – nach außen werden sie dünner
+        const n0 = Math.floor(s.t / step);
+        for (let n = n0; n > n0 - 40; n--) {
+          const age = s.t - n * step, a = age / L;
+          if (age < 0) continue;
+          const vis = cl01((Amax - age) / soft);        // ältere Kreise blenden weich aus
+          if (vis <= 0) break;
+          const r = m0 * .02 + Rmax * Math.pow(a, .75);
+          c.globalAlpha = vis * seg(age, 0, B * .12) * (1 - .6 * Math.min(1, a));
+          c.lineWidth = Math.max(.8, m0 * (.012 + .065 * Math.min(1, g)) * (1 - .85 * Math.min(1, a)));   // innen dick, nach außen dünn
           c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.stroke();
         }
         c.globalAlpha = 1;
@@ -912,89 +923,101 @@ const IDEAS = {
     },
     {
       title: 'Verzerrter Kreis',
-      text: 'Ein Kreis (nur Kontur), dessen Rand zittert wie eine Frequenz. Über 6 halbe Takte wird er größer und die Verzerrung immer stärker; auf jedem Schlag zuckt er kurz. Dann von vorn.',
-      tag: '6 halbe Takte',
+      text: 'Ein Kreis mit dicker weißer Kontur, dessen Rand zittert wie eine Frequenz. Nach innen folgen immer kleinere, dünnere und blassere Abbilder, die dieselbe Bewegung leicht verzögert mitmachen. Je länger ein Abschnitt im Frog-Ablauf (6 · 2 · 4 · 4 Schläge) dauert, desto größer wird er und desto stärker reißt die Verzerrung aus; auf jedem Schlag zuckt er.',
+      tag: '6 · 2 · 4 · 4 Schläge',
       draw(c, s) {
-        const L = s.bar * 3, B = s.beat;
-        const [, p] = loop(s.t, L, s.bar * 8), g = p / L;
-        const cx = s.w / 2, cy = s.h / 2, m0 = Math.min(s.w, s.h), t = s.t;
-        const R = m0 * (.1 + .24 * eOut(g));
-        const kick = Math.exp(-(p % B) / B * 5);        // kurzes Zucken auf jedem Schlag
-        const A = R * (.03 + .34 * g * g) * (.75 + .5 * kick);   // Verzerrung wächst
-        c.strokeStyle = s.fg; c.lineJoin = 'round'; c.lineWidth = Math.max(1.5, m0 * .01);
-        c.globalAlpha = seg(p, 0, B * .25) * (1 - seg(p, L - B * .5, L));
-        c.beginPath();
-        for (let q = 0; q <= 360; q++) {
-          const a = q / 360 * Math.PI * 2;
-          const d = .5 * Math.sin(6 * a + t * 7) + .3 * Math.sin(11 * a - t * 11) + .2 * Math.sin(23 * a + t * 19);
-          const r = R + A * d;
-          q ? c.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r) : c.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+        const B = s.beat, F = frogSeq(s), g = F.g;
+        const cx = s.w / 2, cy = s.h / 2, m0 = Math.min(s.w, s.h);
+        const R = m0 * (.04 + .3 * eOut(g)), lw = m0 * (.014 + .03 * g);   // wächst aus der Mitte
+        const ring = (t, sc) => {
+          const kick = Math.exp(-(((t % B) + B) % B) / B * 5);   // Zucken auf jedem Schlag
+          const A = R * (.04 + .4 * g * g) * (.7 + .6 * kick) * sc;   // Verzerrung wächst
+          c.beginPath();
+          for (let q = 0; q <= 360; q++) {
+            const a = q / 360 * Math.PI * 2;
+            let d = .45 * Math.sin(6 * a + t * 7) + .3 * Math.sin(11 * a - t * 11) + .25 * Math.sin(23 * a + t * 19);
+            d = d > 0 ? d * (1 + d) : d;                // Ausschläge nach außen etwas spitzer
+            const r = Math.max(.5, R * sc + A * d);
+            q ? c.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r) : c.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+          }
+          c.closePath(); c.stroke();
+        };
+        c.strokeStyle = s.fg; c.lineJoin = 'round';
+        const K = 7;
+        for (let i = K - 1; i >= 0; i--) {              // i = 0: der Kreis selbst, nach innen die Abbilder
+          const f = i / (K - 1);
+          c.globalAlpha = cl01(g / .12) * (i ? .7 * (1 - f) ** 1.3 + .08 : 1);   // zu Beginn der Sequenz erst unsichtbar
+          c.lineWidth = Math.max(.6, lw * (1 - .85 * f));
+          ring(s.t - i * .045, 1 - .8 * f);             // jedes Abbild etwas später und kleiner
         }
-        c.closePath(); c.stroke();
         c.globalAlpha = 1;
       },
     },
     {
       title: 'Spirale wächst',
-      text: 'Ein Streifen windet sich aus der Mitte als Spirale nach außen und wird dabei immer länger – wie ein Trichter innen dünn und nach außen immer breiter, 6 halbe Takte lang, während sich das Ganze langsam dreht. Dann blendet er aus und beginnt neu.',
-      tag: '6 halbe Takte',
+      text: 'Ein Streifen windet sich aus der Mitte als Spirale nach außen und wird dabei immer länger – je weiter er läuft, desto dicker wird er, wie ein Trichter. Bei jedem Wechsel im Frog-Ablauf (6 · 2 · 4 · 4 Schläge) zieht er sich zügig und sauber ganz in die Mitte zurück und wächst von dort neu.',
+      tag: '6 · 2 · 4 · 4 Schläge',
       draw(c, s) {
-        const L = s.bar * 3, B = s.beat;
-        const [, p] = loop(s.t, L, s.bar * 8), g = p / L;
+        const B = s.beat, F = frogSeq(s), n = FROG_SEQ.length;
+        const back = B * .35;                           // so lange dauert das Zurückziehen in die Mitte
+        const prevLen = Math.min(1, FROG_SEQ[(F.k % n + n - 1) % n] / 6);   // so weit war er im Abschnitt davor
+        const g = F.p < back ? prevLen * (1 - eIO(F.p / back)) : Math.min(1, (F.p - back) / F.L);
         const cx = s.w / 2, cy = s.h / 2, m0 = Math.min(s.w, s.h);
         const turns = 4.5, Rend = m0 * .47, a0 = Rend / (turns * Math.PI * 2);   // archimedische Spirale r = a0 · θ
-        const th = turns * Math.PI * 2 * Math.sqrt(g);   // Länge des Streifens wächst gleichmäßig
+        const full = turns * Math.PI * 2, th = full * Math.sqrt(g);   // Länge des Streifens wächst gleichmäßig
         const rot = -s.t * .35;
-        const full = turns * Math.PI * 2, wid = q => m0 * (.003 + .07 * q / full);   // Trichter: innen dünn, außen breit
+        const wid = q => m0 * (.004 + .085 * q / full);   // Dicke hängt nur davon ab, wie weit der Streifen schon gelaufen ist
         const P = q => [cx + Math.cos(q + rot) * a0 * q, cy + Math.sin(q + rot) * a0 * q];
+        if (th <= .02) return;
         c.fillStyle = s.fg;
-        c.globalAlpha = 1 - seg(p, L - B * .5, L);
         const qs = [];
         for (let q = 0; q < th; q += .04) qs.push(q);
         qs.push(th);
-        if (qs.length > 1) {                            // Streifen als Fläche: an jeder Stelle so breit wie wid(q)
-          const left = [], right = [];
-          qs.forEach((q, j) => {
-            const [x, y] = P(q), [x2, y2] = P(qs[Math.min(qs.length - 1, j + 1)]), [x0, y0] = P(qs[Math.max(0, j - 1)]);
-            let nx = -(y2 - y0), ny = x2 - x0; const l = Math.hypot(nx, ny) || 1; nx /= l; ny /= l;
-            const w = wid(q) / 2; left.push([x + nx * w, y + ny * w]); right.push([x - nx * w, y - ny * w]);
-          });
-          c.beginPath(); left.forEach(([x, y], j) => j ? c.lineTo(x, y) : c.moveTo(x, y));
-          for (let j = right.length - 1; j >= 0; j--) c.lineTo(right[j][0], right[j][1]);
-          c.closePath(); c.fill();
-        }
+        const left = [], right = [];                    // Streifen als Fläche: an jeder Stelle so breit wie wid(q)
+        qs.forEach((q, j) => {
+          const [x, y] = P(q), [x2, y2] = P(qs[Math.min(qs.length - 1, j + 1)]), [x0, y0] = P(qs[Math.max(0, j - 1)]);
+          let nx = -(y2 - y0), ny = x2 - x0; const l = Math.hypot(nx, ny) || 1; nx /= l; ny /= l;
+          const w = wid(q) / 2; left.push([x + nx * w, y + ny * w]); right.push([x - nx * w, y - ny * w]);
+        });
+        c.beginPath(); left.forEach(([x, y], j) => j ? c.lineTo(x, y) : c.moveTo(x, y));
+        for (let j = right.length - 1; j >= 0; j--) c.lineTo(right[j][0], right[j][1]);
+        c.closePath(); c.fill();
         const [hx, hy] = P(th); c.beginPath(); c.arc(hx, hy, wid(th) / 2, 0, Math.PI * 2); c.fill();   // runder Kopf des Streifens
-        c.globalAlpha = 1;
       },
     },
     {
-      title: 'Kehlblase',
-      text: 'Wie die Schallblase eines Froschs: Pro halben Takt bläst sich eine Blase auf und fällt wieder zusammen – jedes Mal etwas größer. Beim Zusammenfallen löst sich ein Ring, der nach außen wegläuft. Nach 6 halben Takten von vorn.',
-      tag: '1 Blase / ½ Takt · 6 halbe Takte',
+      title: 'Glitch-Kugel',
+      text: 'Eine Kugel nur aus waagrechten Streifen in wechselnder Dicke, wie ein gestörtes Bildsignal. Je länger der Frog-Abschnitt (6 · 2 · 4 · 4 Schläge) dauert, desto mehr zerfällt sie: Streifen brechen in Stücke, verrutschen, verschmieren weit nach links und rechts, einzelne fallen aus oder blitzen hell auf – auf jeder 16tel flackernd. Beim Wechsel setzt sie sich weich ein Stück zurück.',
+      tag: '6 · 2 · 4 · 4 Schläge',
       draw(c, s) {
-        const L = s.bar * 3, T = s.bar / 2;
-        const [, p] = loop(s.t, L, s.bar * 8);
-        const j = Math.min(5, Math.floor(p / T)), q = (p - j * T) / T;
-        const cx = s.w / 2, cy = s.h * .55, m0 = Math.min(s.w, s.h), t = s.t;
-        const big = m0 * (.13 + .045 * j);             // jede Blase etwas größer
-        const inflate = q < .65 ? eOut(q / .65) : 1 - .75 * eIn((q - .65) / .35);
-        const R = big * (.25 + .75 * inflate);
-        const out = 1 - seg(p, L - s.beat * .5, L);
-        c.strokeStyle = s.fg; c.fillStyle = s.fg;
-        c.beginPath();
-        for (let i = 0; i <= 120; i++) {
-          const a = i / 120 * Math.PI * 2, r = R * (1 + .04 * Math.sin(5 * a + t * 6) + .03 * Math.sin(3 * a - t * 4)) * (1 - .12 * Math.max(0, Math.sin(a)));   // unten etwas flacher
-          i ? c.lineTo(cx + Math.cos(a) * r * 1.15, cy + Math.sin(a) * r) : c.moveTo(cx + Math.cos(a) * r * 1.15, cy + Math.sin(a) * r);
+        const B = s.beat, F = frogSeq(s), g = cl01(F.g), m0 = Math.min(s.w, s.h);
+        const R = m0 * .42, cx = s.w / 2, cy = s.h / 2, unit = R * 2 / 24;
+        const rows = [];                                 // Streifen in wechselnder Dicke – mal hauchdünn, mal breit
+        for (let y = cy - R, i = 0; y < cy + R && i < 200; i++) {
+          const h = unit * [.25, .45, .7, 1.1, 1.7, 2.6][Math.floor(rnd(0, i, 37) * 6)];
+          rows.push([y, Math.min(h, cy + R - y)]); y += h + unit * (.12 + .3 * rnd(0, i, 38));
         }
-        c.closePath();
-        c.globalAlpha = out * .18; c.fill();
-        c.globalAlpha = out; c.lineWidth = Math.max(1.5, m0 * .012); c.stroke();
-        for (let jj = j - 1; jj <= j; jj++) {           // Ring, der sich beim Zusammenfallen löst
-          if (jj < 0) continue;
-          const a = (p - (jj + .65) * T) / (T * 1.1); if (a < 0 || a > 1) continue;
-          const rr = m0 * (.13 + .045 * jj) * (1 + 1.6 * eOut(a));
-          c.globalAlpha = out * (1 - a) * .7; c.lineWidth = Math.max(1, m0 * .008 * (1 - a));
-          c.beginPath(); c.ellipse(cx, cy, rr * 1.15, rr, 0, 0, Math.PI * 2); c.stroke();
+        const N = rows.length;
+        const tick = Math.floor(F.p / (B / 4)), seed = F.k * 50 + tick;   // flackert auf jeder 16tel neu
+        const gl = g ** 1.2;
+        c.fillStyle = s.fg;
+        for (let i = 0; i < N; i++) {
+          const [y0, hgt] = rows[i], dy = y0 + hgt / 2 - cy;
+          const hw = Math.sqrt(Math.max(0, R * R - dy * dy)); if (hw <= 0) continue;
+          const r = k => rnd(seed, i * 7 + k, 36);
+          if (rnd(0, i, 39) > g * 4) continue;           // zu Beginn der Sequenz baut sich die Kugel Streifen für Streifen auf
+          if (r(0) < gl * .3) continue;                 // Zeile fällt aus
+          const hit = r(1) < .08 + .92 * gl;
+          const shift = hit ? (r(2) - .5) * R * 1.1 * gl : 0;
+          const pieces = hit ? 1 + Math.floor(r(3) * (1 + 3 * gl)) : 1;   // bricht in bis zu 4 Stücke
+          let x = cx - hw + shift;
+          const total = 2 * hw + (hit ? R * 1.4 * gl * r(4) ** 2 : 0);    // verschmiert
+          for (let j = 0; j < pieces; j++) {
+            const part = total / pieces, gap = j ? part * .25 * r(10 + j) * gl : 0, jit = hit ? (r(20 + j) - .5) * R * .5 * gl : 0;
+            c.globalAlpha = hit && r(30 + j) < .2 * gl ? 1 : .35 + .65 * (1 - Math.abs(dy) / R) * (hit ? .5 + .5 * r(40 + j) : 1);   // manche blitzen hell
+            c.fillRect(x + gap + jit, y0, part - gap, hgt);
+            x += part;
+          }
         }
         c.globalAlpha = 1;
       },

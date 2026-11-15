@@ -1151,36 +1151,6 @@ const IDEAS = {
       },
     },
     {
-      title: 'Bogen zwischen zwei Strichen',
-      text: 'Auf Schlag 1 fährt von oben ein Strich bis knapp vor die Mitte, auf Schlag 2 von unten einer. Auf Schlag 3 wächst vom inneren Ende des oberen Strichs ein welliger Halbkreis hinüber zum unteren – und auf der anderen Seite ein zweiter. Zusammen schwingen sie in Schlag 4 aus.',
-      tag: '1 · 2 · Bogen · schwingen',
-      draw(c, s) {
-        const B = s.beat, [, p] = loop(s.t, s.bar, s.bar * 18 + s.beat), b = p / B;
-        const m0 = Math.min(s.w, s.h), cx = s.w / 2, cy = s.h / 2, R = m0 * .26, t = p - 2 * B;
-        const lw = Math.max(2, m0 * .018);
-        c.strokeStyle = s.fg; c.lineWidth = lw; c.lineCap = 'round'; c.lineJoin = 'round';
-        c.globalAlpha = 1 - seg(b, 3.55, 4);
-        const out = eIn(seg(b, 3.2, 3.95)) * (cy - R + 10);   // am Ende ziehen sich die Striche raus
-        polyline(c, [[cx, -out - 2], [cx, -out + (cy - R + 2) * eOut(seg(b, 0, .4))]]);
-        if (b >= 1) polyline(c, [[cx, s.h + out + 2], [cx, s.h + out - (cy - R + 2) * eOut(seg(b, 1, 1.4))]]);
-        if (b < 2) return;
-        const env = Math.exp(-t / B * 1.6);             // Wellen: auf Schlag 3 kräftig, klingen dann ab
-        const shrink = 1 - .35 * eIO(seg(b, 3, 4));
-        const arc = (side, delay) => {                  // side +1 = rechts herum, −1 = links herum
-          const f = eOut(seg(b, 2 + delay, 2.6 + delay)); if (f <= 0) return;
-          const pts = [];
-          for (let i = 0; i <= 120 * f; i++) {
-            const u = i / 120, a = -Math.PI / 2 + side * Math.PI * u;   // von oben nach unten
-            const rr = R * shrink + m0 * .045 * env * Math.sin(Math.PI * u) * Math.sin(u * Math.PI * 7 - t * Math.PI * 6 / B + side);
-            pts.push([cx + Math.cos(a) * rr * side * side, cy + Math.sin(a) * rr]);
-          }
-          if (pts.length > 1) polyline(c, pts);
-        };
-        arc(1, 0); arc(-1, .2);
-        c.globalAlpha = 1;
-      },
-    },
-    {
       title: 'Punkte und Wellenlinie',
       text: 'Nach dem Bild aus der Zeitleiste: Auf Schlag 1 erscheint unten links ein Punkt, auf Schlag 2 ein Punkt weiter oben in der Mitte. Auf Schlag 3 springt ein dritter Punkt nach oben und zeichnet in Schlag 3 und 4 mit seiner ganzen Dicke eine sanfte, lang gezogene Welle nach rechts.',
       tag: '1 · 2 · Wellenlinie',
@@ -1206,26 +1176,104 @@ const IDEAS = {
       },
     },
     {
-      title: 'Turm kippt',
-      text: 'Auf Schlag 1 fällt ein Block auf den Boden, auf Schlag 2 landet ein zweiter obendrauf (beide federn kurz). In Schlag 3 fängt der Turm an zu wackeln, in Schlag 4 kippt er zur Seite um und verschwindet.',
-      tag: '1 · 2 · wackeln · kippen',
+      title: 'Moiré',
+      text: 'Zwei Kreise aus feinen Linien: Auf Schlag 1 gleitet der erste von links herein, auf Schlag 2 der zweite – leicht verdreht – von rechts. Wo sie sich überlagern, entstehen Moiré-Muster. In Schlag 3 und 4 schieben sie sich ganz übereinander und der obere zittert in seiner Drehung – die Muster flimmern und wandern.',
+      tag: '1 · 2 · Moiré flimmert',
       draw(c, s) {
         const B = s.beat, [k, p] = loop(s.t, s.bar, s.bar * 18 + s.beat), b = p / B, t = p - 2 * B;
-        const m0 = Math.min(s.w, s.h), bw = m0 * .34, bh = m0 * .17, floor = s.h * .9;
-        const x1 = s.w / 2 - bw / 2 + (rnd(k, 1, 51) - .5) * s.w * .1, x2 = x1 + (rnd(k, 2, 51) - .5) * bw * .35;
-        const LAND = [.4, 1.4];
-        const blockY = (j, rest) => { const l = LAND[j]; return b < l ? -bh + (rest + bh) * eIn(seg(b, l - .4, l)) : rest; };
-        const squash = j => { const a = b - LAND[j]; return a < 0 || a > .25 ? 1 : 1 - .18 * Math.sin(a / .25 * Math.PI); };
-        // wackeln (Schlag 3), dann um die rechte untere Ecke kippen (Schlag 4)
-        const wob = b >= 2 ? .07 * Math.sin(t * Math.PI * 5 / B) * seg(b, 2, 2.2) * (1 - seg(b, 2.8, 3)) : 0;
-        const tip = eIn(seg(b, 3, 3.75)) * 1.75;
-        const ang = wob + tip, px = wob < 0 && !tip ? x1 : x1 + bw;   // beim Wackeln abwechselnd über die linke/rechte Ecke
-        c.fillStyle = s.fg; c.globalAlpha = 1 - seg(b, 3.55, 3.95);
-        c.save(); c.translate(px, floor); c.rotate(ang); c.translate(-px, -floor);
-        const draw = (x, yTop, j) => { const sq = squash(j), h = bh * sq; c.beginPath(); c.rect(x - (bw / sq - bw) / 2, yTop + (bh - h), bw / sq, h); c.fill(); };
-        draw(x1, blockY(0, floor - bh), 0);
-        if (b >= 1) draw(x2, blockY(1, floor - 2 * bh - 2), 1);
-        c.restore();
+        const m0 = Math.min(s.w, s.h), R = m0 * .4, cy = s.h / 2, gap = m0 * .028;
+        const join = eIO(seg(b, 2, 2.8));               // in Schlag 3 schieben sie sich übereinander
+        const xa = s.w / 2 - R * .45 * (1 - join) - (s.w / 2 + R) * (1 - eOut(seg(b, 0, .4)));
+        const xb = s.w / 2 + R * .45 * (1 - join) + (s.w / 2 + R) * (1 - eOut(seg(b, 1, 1.4)));
+        const env = b >= 2 ? seg(b, 2, 2.15) * (1 - .6 * seg(b, 3, 4)) : 0;
+        const angB = .12 + (rnd(k, 1, 61) - .5) * .1 + .07 * env * Math.sin(t * Math.PI * 6 / B) + .03 * env * Math.sin(t * Math.PI * 17 / B);
+        const grating = (x, ang, sc) => {               // Kreis voller paralleler Linien
+          c.save(); c.beginPath(); c.arc(x, cy, R, 0, Math.PI * 2); c.clip();
+          c.translate(x, cy); c.rotate(ang); c.beginPath();
+          for (let u = -R * 1.5; u <= R * 1.5; u += gap * sc) { c.moveTo(u, -R * 1.5); c.lineTo(u, R * 1.5); }
+          c.stroke(); c.restore();
+        };
+        c.strokeStyle = s.fg; c.lineWidth = Math.max(1, gap * .38);
+        c.globalAlpha = 1 - seg(b, 3.6, 4);
+        grating(xa, 0, 1);
+        if (b >= 1) grating(xb, angB, 1 + .04 * env * Math.sin(t * Math.PI * 4 / B));
+        c.globalAlpha = 1;
+      },
+    },
+    {
+      title: 'Klangfigur aus Sand',
+      text: 'Wie Sand auf einer schwingenden Platte (Chladni-Figur): Auf Schlag 1 rieselt die erste Hälfte der Körner zufällig ins Bild, auf Schlag 2 die zweite. In Schlag 3 und 4 fängt die Platte an zu vibrieren – die Körner zittern und wandern zu den ruhigen Linien, bis eine Klangfigur entsteht. Jeder Durchlauf zeigt eine andere Figur.',
+      tag: '1 · 2 · Sand ordnet sich',
+      cache: {},
+      draw(c, s) {
+        const B = s.beat, [k, p] = loop(s.t, s.bar, s.bar * 18 + s.beat), b = p / B, t = p - 2 * B;
+        const m0 = Math.min(s.w, s.h), N = 900;
+        const MODES = [[1, 4], [2, 3], [1, 3], [3, 5], [2, 5], [1, 2], [3, 4], [2, 7]];
+        const [n, m] = MODES[((k % MODES.length) + MODES.length) % MODES.length];
+        const PI = Math.PI;
+        const f = (x, y) => Math.cos(n * PI * x) * Math.cos(m * PI * y) - Math.cos(m * PI * x) * Math.cos(n * PI * y);
+        const key = k + '|' + Math.round(s.w) + '|' + Math.round(s.h);
+        let P = this.cache[key];
+        if (!P) {                                       // Startpunkte und Ziel auf der Knotenlinie (Newton-Schritte zu f = 0)
+          P = [];
+          for (let i = 0; i < N; i++) {
+            const x0 = rnd(k, i, 71), y0 = rnd(k, i + N, 71);
+            let x = x0, y = y0;
+            for (let it = 0; it < 8; it++) {
+              const v = f(x, y);
+              const gx = -n * PI * Math.sin(n * PI * x) * Math.cos(m * PI * y) + m * PI * Math.sin(m * PI * x) * Math.cos(n * PI * y);
+              const gy = -m * PI * Math.cos(n * PI * x) * Math.sin(m * PI * y) + n * PI * Math.cos(m * PI * x) * Math.sin(n * PI * y);
+              const g2 = gx * gx + gy * gy + 1e-6;
+              x = cl01(x - v * gx / g2); y = cl01(y - v * gy / g2);
+            }
+            P.push([x0, y0, x, y, Math.abs(f(x0, y0))]);
+          }
+          this.cache = { [key]: P };                    // nur den aktuellen Durchlauf merken
+        }
+        const settle = eIO(seg(b, 2.1, 3.5)), vib = b >= 2 ? seg(b, 2, 2.1) * (1 - .7 * seg(b, 3.4, 4)) : 0;
+        const fade = 1 - seg(b, 3.65, 4), sz = Math.max(1.2, m0 * .009);
+        c.fillStyle = s.fg;
+        for (let i = 0; i < N; i++) {
+          const [x0, y0, x1, y1, amp] = P[i];
+          const tIn = i < N / 2 ? rnd(k, i + 2 * N, 72) * .45 : 1 + rnd(k, i + 2 * N, 72) * .45;   // rieseln: Hälfte auf 1, Hälfte auf 2
+          if (b < tIn) continue;
+          const drop = 1 - eOut(seg(b, tIn, tIn + .2));
+          const jit = vib * m0 * .012 * (amp * (1 - settle) + .15) ;   // auf den Bäuchen springen sie mehr
+          const x = (x0 + (x1 - x0) * settle) * s.w + jit * Math.sin(t * 90 + i * 1.7);
+          const y = (y0 + (y1 - y0) * settle) * s.h + jit * Math.cos(t * 83 + i * 2.3) - drop * m0 * .08;
+          c.globalAlpha = fade * (1 - drop) * (.75 + .25 * settle);
+          c.fillRect(x - sz / 2, y - sz / 2, sz, sz);
+        }
+        c.globalAlpha = 1;
+      },
+    },
+    {
+      title: 'Interferenz',
+      text: 'Ein Raster aus Punkten wie eine Wasseroberfläche. Auf Schlag 1 tropft es an einer Stelle und Wellenringe laufen durchs Raster, auf Schlag 2 an einer zweiten. Wo sich die Wellen treffen, entsteht ein Interferenzmuster. In Schlag 3 und 4 schwingen beide Quellen schneller und kräftiger – das Muster flirrt –, dann beruhigt sich die Oberfläche.',
+      tag: '1 · 2 · Wellen überlagern sich',
+      draw(c, s) {
+        const B = s.beat, [k, p] = loop(s.t, s.bar, s.bar * 18 + s.beat), b = p / B;
+        const m0 = Math.min(s.w, s.h), cols = 34, gap = s.w / cols, rows = Math.max(4, Math.round(s.h / gap)), gy = s.h / rows;
+        const S = [[s.w * (.22 + .2 * rnd(k, 1, 81)), s.h * (.25 + .5 * rnd(k, 2, 81)), 0], [s.w * (.58 + .2 * rnd(k, 3, 81)), s.h * (.25 + .5 * rnd(k, 4, 81)), 1]];
+        const lam = m0 * .14, speed = m0 * 1.1 / B;     // Wellenlänge · Ausbreitung (Bildbreite in gut einem Schlag)
+        const drive = 1 + 1.6 * seg(b, 2, 2.5) * (1 - seg(b, 3.4, 4));   // in Schlag 3 und 4 schneller und kräftiger
+        const calm = 1 - eIn(seg(b, 3.5, 4));
+        c.fillStyle = s.fg;
+        for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+          const x = gap * (i + .5), y = gy * (j + .5);
+          let v = 0;
+          for (const [sx, sy, tb] of S) {
+            const age = p - tb * B; if (age <= 0) continue;
+            const d = Math.hypot(x - sx, y - sy), front = age * speed;
+            if (d > front) continue;
+            v += Math.sin((d - front) / lam * Math.PI * 2 * drive) * Math.exp(-d / (m0 * 1.2)) * Math.min(1, (front - d) / lam);
+          }
+          v *= calm;
+          const a = Math.min(1, Math.abs(v) * (.7 + .3 * drive));
+          const r = Math.min(gap, gy) * (.07 + .3 * a);
+          c.globalAlpha = .2 + .8 * a;
+          c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
+        }
         c.globalAlpha = 1;
       },
     },
@@ -1233,20 +1281,20 @@ const IDEAS = {
   riser: [
     {
       title: 'Luft holen',
-      text: 'Wie ein Einatmen: In den ersten 3 Schlägen ziehen sich Striche vom Bildrand lang bis in die Mitte; dann wandert ihr äußeres Ende unterschiedlich schnell hinterher, bis alle in der Mitte einen kleinen Punkt bilden. Danach wandern sie 2 Schläge lang langsam wieder nach außen und verblassen dabei von außen nach innen. Startet mit dem Riser in Takt 24.2.',
-      tag: '3 Schläge rein · 2 Schläge raus',
+      text: 'Wie ein Einatmen: In den ersten 2¾ Schlägen ziehen sich Striche vom Bildrand lang bis in die Mitte; dann wandert ihr äußeres Ende unterschiedlich schnell hinterher, bis alle in der Mitte einen kleinen Punkt bilden. Danach ziehen sie sich – immer noch mit der Mitte verbunden – sanft wieder nach außen lang und verblassen dabei von der Mitte aus nach außen, während sie weiter nach außen laufen. Startet mit dem Riser in Takt 24.2.',
+      tag: '2¾ Schläge rein · 2¼ Schläge raus',
       draw(c, s) {
-        const B = s.beat, IN = 3, OUT = 2;              // Schläge (¼-Takte): einatmen · ausatmen
+        const B = s.beat, IN = 2.75, OUT = 2.25;          // Schläge (¼-Takte): einatmen · ausatmen
         const [k, p] = loop(s.t, (IN + OUT) * B, s.bar * 23 + B), b = p / B;   // Durchlauf beginnt mit dem Riser in der Klanghierarchie (Takt 24.2)
         const cx = s.w / 2, cy = s.h / 2, m0 = Math.min(s.w, s.h), Rout = Math.hypot(cx, cy) + m0 * .15;
-        const N = 36, q = eIO(seg(b, IN, IN + OUT));    // ausatmen: sanft anlaufen, sanft auslaufen
+        const N = 36, q = eIO(seg(b, IN, IN + OUT));    // ausatmen: Striche ziehen sich sanft aus der Mitte lang, bis über den Bildrand
         const rIn = m0 * .006;                          // ganz in die Mitte → kleiner Punkt
-        const soft = m0 * .3, front = (Math.hypot(cx, cy) + soft) * (1 - seg(b, IN, IN + OUT));   // Verblassen wandert von außerhalb des Bildes nach innen
-        const fadeAt = r => b < IN ? 1 : cl01((front - r) / soft);
+        const soft = m0 * .25, front = (Math.hypot(cx, cy) + soft) * eIn(seg(b, IN + .3, IN + OUT));   // Verblassen wandert von der Mitte nach außen
+        const fadeAt = r => b < IN ? 1 : cl01((r - (front - soft)) / soft);
         c.strokeStyle = s.fg; c.fillStyle = s.fg; c.lineCap = 'round';
         for (let i = 0; i < N; i++) {
-          const t0 = rnd(k, i + 100, 61) * .9, tm = t0 + .5 + .4 * rnd(k, i + 200, 61);   // Spitze erreicht die Mitte bei tm
-          const t1 = Math.min(IN - .15, tm + .45 + .9 * rnd(k, i + 400, 61));   // Ende folgt unterschiedlich schnell
+          const t0 = rnd(k, i + 100, 61) * .6, tm = t0 + .7 + .5 * rnd(k, i + 200, 61);   // Spitze erreicht die Mitte bei tm
+          const t1 = IN - .03 - .3 * rnd(k, i + 400, 61);   // Ende folgt unterschiedlich schnell – kommt erst kurz vor dem Rausgehen in der Mitte an
           if (b < t0) continue;
           const a = i / N * Math.PI * 2 + (rnd(k, i, 61) - .5) * .3;
           const co = Math.cos(a), si = Math.sin(a);
@@ -1255,39 +1303,75 @@ const IDEAS = {
           if (b < IN) {                                 // 1) Strich zieht sich vom Rand bis in die Mitte lang · 2) das äußere Ende wandert nach
             r0 = rs + (rIn - rs) * seg(b, t0, tm) ** 1.3;
             r1 = rIn + (rs + m0 * .04 - rIn) * (1 - seg(b, tm, t1) ** 1.25);
-          } else {                                      // raus: kurze Striche gleiten sanft nach außen
-            r0 = rIn + m0 * (.1 + .25 * rnd(k, i + 500, 61)) * q;
-            r1 = r0 + m0 * (.34 + .18 * rnd(k, i + 300, 61)) * Math.max(.025, r0 / rs) * .55;
+          } else {                                      // raus: bleibt mit der Mitte verbunden und zieht sich nach außen lang
+            r0 = rIn;
+            r1 = rIn + (rs * (1 + .3 * rnd(k, i + 500, 61)) - rIn) * q;
           }
-          c.globalAlpha = seg(b, t0, t0 + .15) * fadeAt((r0 + r1) / 2);
           c.lineWidth = Math.max(.7, m0 * .011 * Math.max(.25, Math.min(1, (r1 - r0) / rs * 1.6)));
+          if (b < IN) { c.globalAlpha = seg(b, t0, t0 + .15); c.strokeStyle = s.fg; }
+          else {                                        // Verblassen von außen nach innen – entlang des Strichs
+            const st = Math.max(r0, front - soft); if (r1 <= st) continue;   // innen schon verblasst
+            const gr = c.createLinearGradient(cx + co * st, cy + si * st, cx + co * r1, cy + si * r1);
+            const full = cl01((front - st) / (r1 - st));
+            gr.addColorStop(0, rgba(s.fg, fadeAt(st))); gr.addColorStop(full, rgba(s.fg, fadeAt(st + (r1 - st) * full))); gr.addColorStop(1, rgba(s.fg, fadeAt(r1)));
+            c.globalAlpha = 1; c.strokeStyle = gr; r0 = st;
+          }
           c.beginPath(); c.moveTo(cx + co * r0, cy + si * r0); c.lineTo(cx + co * r1, cy + si * r1); c.stroke();
         }
-        // der Punkt in der Mitte: entsteht, wenn alle angekommen sind, und verblasst als Letztes
-        const dot = seg(b, IN - .8, IN - .2) * fadeAt(0) * (1 - q * .4);
+        // der Punkt in der Mitte: entsteht, wenn alle angekommen sind, und verblasst beim Rausgehen als Erstes
+        const dot = seg(b, IN - .5, IN - .05) * fadeAt(0);
         if (dot > 0) { c.globalAlpha = dot; c.beginPath(); c.arc(cx, cy, Math.max(1.5, m0 * .018), 0, Math.PI * 2); c.fill(); }
         c.globalAlpha = 1;
       },
     },
     {
-      title: 'Frequenz steigt',
-      text: 'Eine Wellenlinie quer durchs Bild, die wie der Riser immer höher wird: 4 Schläge lang werden die Wellen immer enger und höher, die Linie läuft immer schneller. Auf dem 5. Schlag fällt sie in sich zusammen zur flachen Linie und verblasst. Startet mit dem Riser in Takt 24.2.',
-      tag: '4 Schläge steigen · 1 fallen',
+      title: 'Wirbel zum Kreis',
+      text: 'Wie bei „Luft holen“ kommen Striche vom Rand nach innen – und das ganze Gebilde dreht sich dabei immer schneller. Die Striche hängen der Drehung etwas hinterher und biegen sich. In der Mitte wickeln sie sich Stück für Stück auf einen Kreis – die Kontur entsteht erst dort, wo die Striche ankommen. Danach drehen sie sich als Spirale heraus, bleiben dabei mit dem Kreis verbunden, und alles verblasst gemeinsam. Startet mit dem Riser in Takt 24.2.',
+      tag: '2¾ Schläge rein · 2¼ Schläge raus',
       draw(c, s) {
-        const B = s.beat, [, p] = loop(s.t, 5 * B, s.bar * 23 + B), b = p / B;
-        const m0 = Math.min(s.w, s.h), cy = s.h / 2, u = seg(b, 0, 4);
-        const cycles = 1 + 15 * u ** 1.6, drop = eOut(seg(b, 4, 4.6));
-        const amp = s.h * (.04 + .3 * u ** 1.3) * (1 - drop);
-        const phase = -(p * (2 + 22 * u)) ;             // läuft immer schneller
-        c.strokeStyle = s.fg; c.lineJoin = 'round'; c.lineCap = 'round';
-        c.lineWidth = Math.max(1.5, m0 * (.008 + .01 * u));
-        c.globalAlpha = seg(b, 0, .2) * (1 - seg(b, 4.3, 5));
-        const pts = [];
-        for (let i = 0; i <= 300; i++) {
-          const v = i / 300, x = s.w * v;
-          pts.push([x, cy + amp * Math.sin(v * Math.PI) ** .6 * Math.sin(v * Math.PI * 2 * cycles + phase)]);
+        const B = s.beat, IN = 2.75, OUT = 2.25;
+        const [k, p] = loop(s.t, (IN + OUT) * B, s.bar * 23 + B), b = p / B;   // wie Idee 1: ab Takt 24.2
+        const cx = s.w / 2, cy = s.h / 2, m0 = Math.min(s.w, s.h), Rc = m0 * .15, N = 28;
+        const rot = .5 * b + .32 * b * b;               // das ganze Gebilde dreht sich, immer schneller
+        const spin = .5 + .64 * b;                      // aktuelle Drehgeschwindigkeit → so stark biegen sich die Striche
+        const arcW = Math.PI * 2 / N;                   // so breit wird jeder Strich, wenn er auf dem Kreis liegt
+        const q = b < IN ? 0 : seg(b, IN, IN + OUT), out = eOut(q);
+        const fade = 1 - eIn(seg(b, IN + .4, IN + OUT));
+        const edge = a => { const co = Math.cos(a), si = Math.sin(a); return Math.min(Math.abs(cx / (co || 1e-6)), Math.abs(cy / (si || 1e-6))) + m0 * .05; };
+        c.strokeStyle = s.fg; c.lineCap = 'round'; c.lineJoin = 'round';
+        c.lineWidth = Math.max(1.2, m0 * .012);
+
+        for (let i = 0; i < N; i++) {
+          const a0 = i / N * Math.PI * 2 + (rnd(k, i, 91) - .5) * arcW * .6, base = a0 + rot;
+          const t0 = rnd(k, i + 100, 91) * .7, t1 = IN - .02 - .15 * rnd(k, i + 200, 91);   // alle liegen erst ganz kurz vor Schlag 2¾ auf dem Kreis
+          if (b < t0) continue;
+          const len = m0 * (.42 + .16 * rnd(k, i + 300, 91));
+          // Der Strich fährt auf einer Bahn: erst gerade vom Rand bis zum Kreis, dann wickelt er sich auf dem Kreis weiter –
+          // so legt er sich Stück für Stück auf die Kontur, ohne zu springen. sh = wie weit die Spitze auf der Bahn ist.
+          const R0 = edge(a0), D = R0 - Rc;
+          const sh = (D + len) * eIO(seg(b, t0, t1));
+          const at = sp => sp < D
+            ? [R0 - sp, base - spin * .25 * (R0 - sp - Rc) / (m0 * .45)]   // gerades Stück: hängt der Drehung hinterher, je weiter außen, desto mehr
+            : [Rc, base + (sp - D) / Rc];                                  // auf dem Kreis
+          const wrap = len / Rc;                        // so weit reicht der Strich, wenn er ganz auf dem Kreis liegt
+          const pts = [];
+          for (let j = 0; j <= 24; j++) {
+            const u = j / 24;                           // 0 = Spitze (innen), 1 = Ende (außen)
+            let r, th;
+            if (b < IN) [r, th] = at(sh - len * u);
+            else {                                      // raus: vom Kreis als kurze Spirale abwickeln
+              const d = m0 * .3 * out;
+              r = Rc + d * u ** 1.2;                    // Spitze bleibt auf dem Kreis – die Spirale hängt an der Kontur
+              th = base + wrap + .5 * out - wrap * u * (1 - out) ** 3 - .9 * out * u;   // Spitze dreht weiter in Drehrichtung, der Bogen zieht sich zu ihr hin zusammen, das äußere Ende hängt nach
+            }
+            pts.push([cx + Math.cos(th) * r, cy + Math.sin(th) * r]);
+          }
+          c.globalAlpha = seg(b, t0, t0 + .15) * fade;
+          polyline(c, pts);
         }
-        polyline(c, pts);
+        if (b >= IN) {                                 // ab dem Rausgehen: die fertige Kontur bleibt und verschwindet zusammen mit den Spiralarmen
+          c.globalAlpha = fade; c.beginPath(); c.arc(cx, cy, Rc, 0, Math.PI * 2); c.stroke();
+        }
         c.globalAlpha = 1;
       },
     },

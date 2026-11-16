@@ -1025,35 +1025,74 @@ const IDEAS = {
   ],
   building: [
     {
-      title: 'Kugeln verschmelzen',
-      text: 'Auf Schlag 1 kommt die 1. Kugel irgendwo herein, auf Schlag 2 die 2. Sie ziehen sich an, verschmelzen auf Schlag 3 und teilen sich in Schlag 3 und 4 langsam in ein paar kleinere Kugeln auf. Durchlauf = 1 Takt (ab Takt 19.2).',
-      tag: '1 · 2 · verschmelzen · teilen',
+      title: 'Teilen und wieder verschmelzen',
+      text: 'Auf Schlag 1 und 2 kommt je eine Kugel herein, auf Schlag 3 verschmelzen sie und teilen sich in 4 Kugeln. Dann geht es weiter statt von vorn – und jedes Mal entstehen 2 Kugeln mehr: Im nächsten Takt fließt auf Schlag 1 eine zufällige Hälfte der Kugeln zusammen, auf Schlag 2 die andere Hälfte, auf Schlag 3 beide zu einer, die sich jetzt in 6 teilt – dann in 8, 10, 12, 14. Beim 4. Mal wandern die Kugeln beim Auseinandergehen nach unten, beim 5. Mal wieder nach oben, beim 6. Mal bleiben sie an der gewohnten Stelle. Schon beim Auseinandergehen wackeln die Kugeln leicht, bis sie wieder zusammenfließen. Beim 6. Mal fliegen alle gemächlich und leicht zitternd aus dem Bild, dann beginnt es neu.',
+      tag: '4 → 6 → 8 → … Kugeln · 6 Takte',
       draw(c, s) {
-        const [k, p] = loop(s.t, s.bar, s.bar * 18 + s.beat), b = p / s.beat;   // 1 Takt, beginnt mit dem Building-Einsatz (Takt 19.2)
-        const m0 = Math.min(s.w, s.h), r = m0 * .085, R = i => rnd(k, i, 21);
+        const B = s.beat, ROUNDS = 6;
+        const [kk, pp] = loop(s.t, s.bar * ROUNDS, s.bar * 18 + s.beat);   // 6 Takte, beginnt mit dem Building-Einsatz (Takt 19.2)
+        const r0 = Math.min(ROUNDS - 1, Math.floor(pp / s.bar)), b = (pp - r0 * s.bar) / B;
+        const m0 = Math.min(s.w, s.h), r = m0 * .085;
+        const rad = n => r * Math.sqrt(2 / n);          // alle Kugeln zusammen haben immer gleich viel Fläche wie 2 große
+        const count = rd => 4 + 2 * rd;                 // Runde 0 → 4 Kugeln, dann 6, 8, 10 …
+        const lerp = (A, Z, e) => [A[0] + (Z[0] - A[0]) * e, A[1] + (Z[1] - A[1]) * e];
+        const mid = (A, Z) => lerp(A, Z, .5);
+        const centroid = L => [L.reduce((v, P) => v + P[0], 0) / L.length, L.reduce((v, P) => v + P[1], 0) / L.length];
+        const keepIn = P => [Math.min(s.w * .65, Math.max(s.w * .35, P[0])), Math.min(s.h * .62, Math.max(s.h * .38, P[1]))];
+        const R = (rd, i) => rnd(kk * 10 + rd, i, 23);
+        const split = (M, rd) => {                      // wohin sich die Kugeln verteilen: ein lockerer Ring, je mehr Kugeln, desto weiter
+          const n = count(rd), a0 = R(rd, 50) * Math.PI * 2, rr = rad(n);
+          const cy0 = rd === 3 ? s.h * .66 : rd === 4 ? s.h * .36 : M[1];   // 4. Mal: Kugeln wandern nach unten · 5. Mal: wieder nach oben · 6. Mal: wie gewohnt
+          const vf = rd === 3 || rd === 4 ? .6 : 1;      // dabei etwas flacher, damit der Ring ins Bild passt
+          return Array.from({ length: n }, (_, j) => {
+            const a = a0 + j * Math.PI * 2 / n + (R(rd, 60 + j) - .5) * (Math.PI / n), d = m0 * (.16 + .018 * n) * (.8 + .4 * R(rd, 90 + j));
+            if (rd === ROUNDS - 1) { const D = Math.hypot(s.w, s.h) * (.56 + .12 * R(rd, 90 + j)); return [M[0] + Math.cos(a) * D, M[1] + Math.sin(a) * D]; }   // zum Schluss fliegen alle aus dem Bild
+            return [Math.min(s.w - rr, Math.max(rr, M[0] + Math.cos(a) * d * 1.25)), Math.min(s.h - rr, Math.max(rr, cy0 + Math.sin(a) * d * vf))];
+          });
+        };
+        // Runde 0: zwei Kugeln kommen herein (wie Idee 1)
         let P1, P2;
-        for (let q = 0; q < 20; q++) {                  // zwei zufällige Stellen, nicht zu nah beieinander
-          P1 = [s.w * (.2 + .6 * R(q * 4)), s.h * (.25 + .5 * R(q * 4 + 1))];
-          P2 = [s.w * (.2 + .6 * R(q * 4 + 2)), s.h * (.25 + .5 * R(q * 4 + 3))];
+        for (let q = 0; q < 20; q++) {
+          P1 = [s.w * (.2 + .6 * R(0, q * 4)), s.h * (.25 + .5 * R(0, q * 4 + 1))];
+          P2 = [s.w * (.2 + .6 * R(0, q * 4 + 2)), s.h * (.25 + .5 * R(0, q * 4 + 3))];
           if (Math.hypot(P1[0] - P2[0], P1[1] - P2[1]) > m0 * .4) break;
         }
-        const far = Math.hypot(s.w, s.h) * .75;
-        const from = (P, i) => { const a = R(100 + i) * Math.PI * 2; return [P[0] + Math.cos(a) * far, P[1] + Math.sin(a) * far]; };
-        const lerp = (A, Z, e) => [A[0] + (Z[0] - A[0]) * e, A[1] + (Z[1] - A[1]) * e];
-        const M = lerp(P1, P2, .5), balls = [];
-        if (b < 2.15) {
-          const j = eIn(seg(b, 1.5, 2));                // ziehen sich an – berühren sich genau auf Schlag 3
-          balls.push([...lerp(lerp(from(P1, 0), P1, eOut(seg(b, 0, .4))), M, j), r]);
-          if (b >= 1) balls.push([...lerp(lerp(from(P2, 1), P2, eOut(seg(b, 1, 1.4))), M, j), r]);
-        } else {                                        // langsam in 4–6 Kugeln aufteilen (zusammen gleich viel Fläche)
-          const n = 4 + Math.floor(R(50) * 3), e = eOut(seg(b, 2.15, 3.9));
-          for (let i = 0; i < n; i++) {
-            const a = (i / n + R(60)) * Math.PI * 2 + (R(70 + i) - .5) * .7, d = m0 * (.2 + .14 * R(80 + i)) * e;
-            balls.push([M[0] + Math.cos(a) * d, M[1] + Math.sin(a) * d, r * Math.sqrt(2 / n) * (.85 + .3 * R(90 + i))]);
-          }
+        // Verlauf bis zur aktuellen Runde: Mitte M und die Kugeln Q nach dem Teilen
+        let M = mid(P1, P2), Q = split(M, 0), prevQ = null, grpA = null, grpB = null;
+        for (let rd = 1; rd <= r0; rd++) {
+          const o = Q.map((_, i) => i);                 // zufällig in zwei Hälften aufteilen
+          for (let i = o.length - 1; i > 0; i--) { const j = Math.floor(R(rd, i) * (i + 1)); [o[i], o[j]] = [o[j], o[i]]; }
+          prevQ = Q; grpA = o.slice(0, o.length / 2); grpB = o.slice(o.length / 2);
+          M = keepIn(mid(centroid(grpA.map(i => Q[i])), centroid(grpB.map(i => Q[i]))));
+          Q = split(M, rd);
         }
-        c.fillStyle = s.fg; c.globalAlpha = 1 - seg(b, 3.5, 4);
-        metaballs(c, s.w, s.h, balls, Math.max(3, s.w / 110));
+        const balls = [];
+        const wob = (P, i, amp) => amp <= 0 ? P : [P[0] + amp * Math.sin(s.t * 38 + i * 2.1) * (.7 + .3 * Math.sin(s.t * 11 + i)), P[1] + amp * Math.cos(s.t * 45 + i * 1.3) * (.7 + .3 * Math.cos(s.t * 13 + i))];
+        const A = m0 * .008;                            // wie stark sie wackeln – ab dem Auseinandergehen bis zum nächsten Zusammenfließen
+        if (b < 2.15) {
+          if (r0 === 0) {
+            const far = Math.hypot(s.w, s.h) * .75, from = (P, i) => { const a = R(0, 100 + i) * Math.PI * 2; return [P[0] + Math.cos(a) * far, P[1] + Math.sin(a) * far]; };
+            const j = eIn(seg(b, 1.5, 2));
+            balls.push([...lerp(lerp(from(P1, 0), P1, eOut(seg(b, 0, .4))), M, j), r]);
+            if (b >= 1) balls.push([...lerp(lerp(from(P2, 1), P2, eOut(seg(b, 1, 1.4))), M, j), r]);
+          } else {
+            const rr = rad(prevQ.length), j = eIn(seg(b, 1.6, 2.05));   // Hälfte A auf Schlag 1, Hälfte B auf Schlag 2, dann alles zusammen
+            const mA = centroid(grpA.map(i => prevQ[i])), mB = centroid(grpB.map(i => prevQ[i]));
+            const go = (grp, m, t0, t1) => grp.forEach((i, n) => {
+              const st = t0 + (t1 - t0) * .25 * rnd(kk * 10 + r0, 200 + i, 24);   // nicht alle ganz gleichzeitig – wirkt lebendiger
+              const e = eIn(seg(b, st, t1));
+              balls.push([...lerp(lerp(wob(prevQ[i], i, A * (1 - seg(b, st, st + .2))), m, e), M, j), rr]);   // wackeln, bis sie losfliegen
+            });
+            go(grpA, mA, 0, .85); go(grpB, mB, .85, 1.6);
+          }
+        } else {
+          const last = r0 === ROUNDS - 1, rr = rad(Q.length);
+          const e = last ? seg(b, 2.15, 4) ** 1.4 : eOut(seg(b, 2.15, 3.85));   // in mehr Kugeln teilen · zum Schluss gemächlich aus dem Bild
+          const amp = A * seg(b, 2.15, 2.5);            // schon auf dem Weg nach außen leicht wackeln
+          Q.forEach((P, i) => balls.push([...wob(lerp(M, P, e), i, amp), rr]));
+        }
+        c.fillStyle = s.fg;
+        metaballs(c, s.w, s.h, balls, Math.max(3, s.w / 120));
         c.globalAlpha = 1;
       },
     },
@@ -1093,41 +1132,26 @@ const IDEAS = {
       },
     },
     {
-      title: 'Oben und unten',
-      text: 'Auf Schlag 1 fährt von oben ein Strich bis zur Bildmitte, auf Schlag 2 von unten einer – etwas versetzt (oben links, unten rechts). Auf Schlag 3 fangen beide an zu vibrieren und wandern in 2 Schlägen wieder aus dem Bild. Durchlauf = 1 Takt.',
-      tag: '1 · 2 · vibrieren · raus',
-      draw(c, s) {
-        const B = s.beat, [, p] = loop(s.t, s.bar, s.bar * 18 + s.beat), b = p / B;
-        const m0 = Math.min(s.w, s.h), xT = s.w * .4, xB = s.w * .6, half = s.h / 2;
-        const t = p - 2 * B, vib = b >= 2;
-        const env = vib ? seg(t, 0, B * .1) * (1 - .5 * seg(b, 2, 4)) : 0;
-        const leave = eIn(seg(b, 2.3, 4)) * (half + 10);   // langsam raus
-        const A = m0 * .045 * env, w = Math.PI * 5 / B;
-        const line = (x, yEdge, len, dir, ph) => {      // dir: +1 = von oben nach unten, −1 = von unten nach oben
-          const pts = [];
-          for (let i = 0; i <= 80; i++) {
-            const v = i / 80;                           // 0 = am Bildrand (fest), 1 = freies Ende
-            pts.push([x + A * v * Math.sin(v * Math.PI * 3 - t * w + ph), yEdge + dir * (len * v)]);
-          }
-          polyline(c, pts);
-        };
-        c.strokeStyle = s.fg; c.lineWidth = Math.max(2, m0 * .018); c.lineCap = 'round'; c.lineJoin = 'round';
-        line(xT, -leave, half * eOut(seg(b, 0, .4)), 1, 0);
-        if (b >= 1) line(xB, s.h + leave, half * eOut(seg(b, 1, 1.4)), -1, 1.7);
-      },
-    },
-    {
       title: 'Wasser am Boden',
-      text: 'Zwei Kugeln fallen von oben herein (Schlag 1 und Schlag 2) und tauchen unten ins Wasser ein. Der Wasserspiegel steigt mit jeder gleichmäßig über die ganze Breite, vom Aufprall laufen kleine Wellen nach links und rechts. In Schlag 3 und 4 schwappt das Wasser leicht, dann sinkt es wieder ab. Durchlauf = 1 Takt.',
-      tag: '1 · 2 · Wasser schwappt',
+      text: 'Auf Schlag 1 und 2 fällt je eine Kugel von oben ins Wasser, der Wasserspiegel steigt dabei gleichmäßig über die ganze Breite und vom Aufprall laufen kleine Wellen nach außen. In Schlag 3 und 4 vibriert das Wasser – und bleibt auf seiner Höhe stehen. Im nächsten Takt kommen wieder zwei Kugeln und es steigt weiter. Beim 4. Mal sinkt der Spiegel dagegen ein kleines Stück, danach steigt er wieder. Nach 6 Takten läuft das Wasser ab und es beginnt von vorn.',
+      tag: '1 · 2 · vibrieren · 6 Takte',
       draw(c, s) {
-        const B = s.beat, [k, p] = loop(s.t, s.bar, s.bar * 18 + s.beat), b = p / B;
-        const m0 = Math.min(s.w, s.h), r = m0 * .07, floor = s.h + 2, t = p - 2 * B;
-        const X0 = [s.w * (.22 + .18 * rnd(k, 1, 41)), s.w * (.6 + .18 * rnd(k, 2, 41))], LAND = [.4, 1.4];
-        const Hl = m0 * .075;                           // so viel steigt der Spiegel pro Kugel
-        const drain = 1 - eIO(seg(b, 3.2, 3.95));       // am Ende läuft das Wasser ab
-        const level = LAND.reduce((v, l) => v + Hl * eOut(seg(b, l, l + .5)), 0) * drain;
-        const env = b >= 2 ? seg(t, 0, B * .15) * (1 - eIn(seg(b, 2, 4))) : 0;   // leichtes Schwappen
+        const B = s.beat, ROUNDS = 6;
+        const [kk, pp] = loop(s.t, s.bar * ROUNDS, s.bar * 18 + s.beat);   // 6 Takte, beginnt mit dem Building-Einsatz (Takt 19.2)
+        const r0 = Math.min(ROUNDS - 1, Math.floor(pp / s.bar)), b = (pp - r0 * s.bar) / B;
+        const m0 = Math.min(s.w, s.h), r = m0 * .065, floor = s.h + 2;
+        const LAND = [.4, 1.4];
+        const Hl = m0 * .068, Dn = m0 * .04;           // pro Kugel: so viel steigt der Spiegel · beim 4. Mal sinkt er pro Kugel so viel
+        const step = rd => rd === 3 ? -Dn : Hl;
+        let level = m0 * .03;                           // ein wenig Wasser liegt von Anfang an
+        for (let rd = 0; rd < r0; rd++) level += 2 * step(rd);
+        LAND.forEach(l => { level += step(r0) * eOut(seg(b, l, l + .5)); });
+        const drain = r0 === ROUNDS - 1 ? 1 - eIO(seg(b, 3.1, 3.95)) : 1;   // nach dem 6. Mal läuft es ab
+        level *= drain;
+        const X0 = [0, 1].map(j => s.w * (j ? .58 + .2 * rnd(kk * 10 + r0, 2, 41) : .22 + .2 * rnd(kk * 10 + r0, 1, 41)));
+        const tt = s.t;
+        // vibrieren: kräftig in Schlag 3 und 4, klingt bis zu den nächsten Kugeln nur leicht nach
+        const env = .12 + .88 * seg(b, 1.85, 2.1) * (1 - seg(b, 3.7, 4));   // beim Reinfallen nur ein ganz leichtes Bewegen, in Schlag 3 und 4 vibriert es
         const pts = [];
         for (let i = 0; i <= 160; i++) {
           const x = s.w * i / 160;
@@ -1135,9 +1159,9 @@ const IDEAS = {
           for (let j = 0; j < 2; j++) {                 // Wellen vom Aufprall: laufen nach außen und werden schwächer
             const a = (b - LAND[j]) * B; if (a <= 0) continue;
             const d = Math.abs(x - X0[j]), front = a * m0 * 1.6;
-            wv += Hl * .55 * Math.exp(-a / B * 2.2) * Math.cos((d - front) / (m0 * .05)) * Math.exp(-Math.max(0, d - front) / (m0 * .06));
+            wv += m0 * .01 * Math.exp(-a / B * 2.5) * Math.cos((d - front) / (m0 * .05)) * Math.exp(-Math.max(0, d - front) / (m0 * .06));   // nur feine Kräuselung
           }
-          wv += level * .16 * env * (.6 * Math.sin(x / (m0 * .09) - t * Math.PI * 5 / B) + .4 * Math.sin(x / (m0 * .05) + t * Math.PI * 7 / B));
+          wv += m0 * .014 * env * (.6 * Math.sin(x / (m0 * .09) - tt * Math.PI * 5 / B) + .4 * Math.sin(x / (m0 * .05) + tt * Math.PI * 7 / B));
           pts.push([x, Math.min(floor, floor - level - wv * drain)]);
         }
         c.fillStyle = s.fg;
@@ -1148,31 +1172,6 @@ const IDEAS = {
           const y = b < l ? -r + (yl + r) * eIn(seg(b, l - .4, l)) : yl + (floor + r - yl) * seg(b, l, l + .3);
           c.beginPath(); c.arc(X0[j], y, r, 0, Math.PI * 2); c.fill();
         }
-      },
-    },
-    {
-      title: 'Punkte und Wellenlinie',
-      text: 'Nach dem Bild aus der Zeitleiste: Auf Schlag 1 erscheint unten links ein Punkt, auf Schlag 2 ein Punkt weiter oben in der Mitte. Auf Schlag 3 springt ein dritter Punkt nach oben und zeichnet in Schlag 3 und 4 mit seiner ganzen Dicke eine sanfte, lang gezogene Welle nach rechts.',
-      tag: '1 · 2 · Wellenlinie',
-      draw(c, s) {
-        const B = s.beat, [, p] = loop(s.t, s.bar, s.bar * 18 + s.beat), b = p / B;
-        const m0 = Math.min(s.w, s.h), r = m0 * .045, lw = Math.max(2, m0 * .016);
-        const fade = 1 - seg(b, 3.6, 4);
-        const P1 = [s.w * .14, s.h * .8], P2 = [s.w * .3, s.h * .52], P3 = [s.w * .42, s.h * .24], xEnd = s.w * .9;
-        c.fillStyle = s.fg; c.strokeStyle = s.fg; c.lineWidth = lw; c.lineCap = 'round'; c.lineJoin = 'round';
-        const dot = (P, t0) => { const e = eBack(seg(b, t0, t0 + .25)); if (b < t0) return; c.globalAlpha = fade * (b < 2 ? 1 : .55); c.beginPath(); c.arc(P[0], P[1], r * e, 0, Math.PI * 2); c.fill(); };
-        dot(P1, 0); dot(P2, 1);
-        if (b < 2) { c.globalAlpha = 1; return; }
-        const pop = eBack(seg(b, 2, 2.2));
-        const u = eIO(seg(b, 2.15, 3.85));              // wie weit die Linie schon ist
-        const Y = x => P3[1] + m0 * .045 * Math.sin((x - P3[0]) / (xEnd - P3[0]) * Math.PI * 3);   // sanfte, lang gezogene Welle
-        const hx = P3[0] + (xEnd - P3[0]) * u, pts = [];
-        for (let x = P3[0]; x <= hx; x += 2) pts.push([x, Y(x)]);
-        pts.push([hx, Y(hx)]);
-        c.globalAlpha = fade; c.lineWidth = 2 * r * pop;   // die Linie ist so dick wie der Punkt, der sie zeichnet
-        if (pts.length > 1) polyline(c, pts);
-        c.beginPath(); c.arc(hx, Y(hx), r * pop, 0, Math.PI * 2); c.fill();   // der Punkt zeichnet die Linie
-        c.globalAlpha = 1;
       },
     },
     {
@@ -1428,24 +1427,6 @@ const IDEAS = {
         c.globalAlpha = 1;
       },
     },
-    {
-      title: 'Ruf',
-      text: 'Wie der Schall aus einem Horn: Vom linken Rand laufen auf jeder Achtel gebogene Wellenfronten nach rechts durchs Bild, werden dabei breiter, dünner und blasser. 3 Schläge lang, danach 1 Schlag Pause.',
-      tag: '3 Schläge',
-      draw(c, s) {
-        const B = s.beat, [, p] = loop(s.t, s.bar), b = p / B;
-        const m0 = Math.min(s.w, s.h), sx = -m0 * .1, sy = s.h / 2, D = s.w * 1.25;
-        c.strokeStyle = s.fg; c.lineCap = 'round';
-        for (let i = 0; i < 6; i++) {                   // eine Welle pro Achtel in den ersten 3 Schlägen
-          const a = (b - i * .5) / 1.5; if (a < 0 || a > 1) continue;
-          const r = m0 * .1 + D * eOut(a), spread = .45 + .25 * a;   // Öffnungswinkel wird größer
-          c.globalAlpha = (1 - a) ** 1.3 * (i ? .85 : 1);
-          c.lineWidth = Math.max(1, m0 * .03 * (1 - a * .85));
-          c.beginPath(); c.arc(sx, sy, r, -spread, spread); c.stroke();
-        }
-        c.globalAlpha = 1;
-      },
-    },
   ],
   drums: [
     {
@@ -1550,27 +1531,6 @@ const IDEAS = {
         };
         cycle(k - 1, b + 4);                            // die letzten vom Takt davor sind evtl. noch unterwegs
         cycle(k, b);
-      },
-    },
-    {
-      title: 'Es klingelt',
-      text: 'Ein Punkt in der Mitte zittert wie ein klingelndes Telefon. Auf jeder Achtel schlagen links und rechts Bögen aus, die nach außen wandern und verblassen. 3 Schläge klingeln, im 4. Schlag ist Ruhe.',
-      tag: '3 Schläge klingeln · 1 Ruhe',
-      draw(c, s) {
-        const B = s.beat, [, p] = loop(s.t, s.bar), b = p / B;
-        const cx = s.w / 2, cy = s.h / 2, m0 = Math.min(s.w, s.h), r = m0 * .07;
-        const ring = b < 3 ? 1 : 1 - seg(b, 3, 3.3);
-        const shake = m0 * .025 * ring * Math.sin(p * Math.PI * 2 * 14) * (.6 + .4 * Math.abs(Math.sin(p / B * Math.PI * 2)));
-        c.fillStyle = s.fg; c.strokeStyle = s.fg; c.lineCap = 'round';
-        c.beginPath(); c.arc(cx + shake, cy, r, 0, Math.PI * 2); c.fill();
-        for (let i = 0; i < 6; i++) {                   // pro Achtel ein Paar Bögen
-          const a = (b - i * .5) / 1.1; if (a < 0 || a > 1) continue;
-          const rr = r * 1.6 + m0 * .34 * eOut(a), span = .55;
-          c.globalAlpha = (1 - a) ** 1.2; c.lineWidth = Math.max(1.2, m0 * .018 * (1 - .6 * a));
-          c.beginPath(); c.arc(cx, cy, rr, -span, span); c.stroke();
-          c.beginPath(); c.arc(cx, cy, rr, Math.PI - span, Math.PI + span); c.stroke();
-        }
-        c.globalAlpha = 1;
       },
     },
   ],

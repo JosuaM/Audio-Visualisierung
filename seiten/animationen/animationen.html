@@ -45,13 +45,20 @@ header.nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 30; 
 .home:hover { color: var(--ink); border-color: var(--muted); }
 .home:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .home svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-.facts { display: flex; flex-wrap: wrap; gap: 6px; justify-self: center; }
-.fact { font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; background: var(--panel); white-space: nowrap; }
-.fact b { color: var(--ink); font-weight: 600; }
+/* Punkte-Navigation wie bei den morphologischen Kästen: ein Punkt pro Seite dieser Kategorie, der aktuelle ist groß und farbig */
+header.nav .nc { justify-self: center; display: flex; align-items: center; }
+.steps { display: flex; align-items: center; height: 30px; }
+.steps .ln { width: 38px; height: 2px; background: var(--line-2); }
+.steps .dot { position: relative; display: block; width: 10px; height: 10px; border-radius: 50%; background: var(--line-2); transition: transform .15s, background .15s; }
+.steps a.dot::before { content: ""; position: absolute; inset: -10px; }
+.steps a.dot:hover, .steps a.dot:focus-visible { background: var(--muted); transform: scale(1.3); outline: none; }
+.steps .dot.cur { width: 14px; height: 14px; background: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent); }
+.steps .dot::after { content: attr(data-l); position: absolute; top: 22px; left: 50%; transform: translateX(-50%); font-size: 11px; font-weight: 500; color: var(--bg); background: var(--ink); border-radius: 5px; padding: 2px 7px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .15s; }
+.steps .dot:hover::after, .steps .dot:focus-visible::after { opacity: 1; }
 #theme { justify-self: end; flex: none; width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--panel); color: inherit; display: grid; place-items: center; cursor: pointer; }
 #theme:hover { border-color: var(--muted); }
 #theme svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
-@media (max-width: 760px) { header.nav { grid-template-columns: minmax(0, 1fr) auto; } header.nav .facts { display: none; } }
+@media (max-width: 760px) { header.nav { grid-template-columns: minmax(0, 1fr) auto auto; } }
 
 .wrap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 22px 4px 0; }
 .wrap > * { min-width: 0; }
@@ -111,9 +118,7 @@ header.nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 30; 
 .eye:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .eye[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
 .eye svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-.beatnow { flex: none; font-size: 12px; color: var(--muted); min-width: 150px; text-align: right; font-variant-numeric: tabular-nums; }
-.beatnow b { color: var(--ink); font-weight: 600; }
-@media (max-width: 760px) { .rate .lb, .beatnow { display: none; } }
+@media (max-width: 760px) { .rate .lb { display: none; } }
 
 /* Kästen mit Animationen */
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 12px; }
@@ -180,12 +185,12 @@ header.nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 30; 
 <body>
 <header class="nav">
   <div class="nl"><a class="home" href="../../index.html" title="Hauptmenü" aria-label="Zum Hauptmenü"><svg viewBox="0 0 24 24"><path d="M3.5 11 12 4l8.5 7"/><path d="M6 9.5V20h12V9.5"/><path d="M10 20v-5h4v5"/></svg></a><div class="pt"><span class="pk">Visualisierung der Tonspuren</span><h1>Animationsideen</h1></div></div>
-  <div class="facts"><span class="fact"><b>116,1</b> BPM</span><span class="fact"><b>4/4</b></span><span class="fact">1 Takt ≈ <b>2,07 s</b></span></div>
+  <div class="nc"><nav class="steps" aria-label="Seiten in dieser Kategorie"><span class="dot cur" aria-current="page" data-l="Animationsideen" title="Animationsideen"></span><span class="ln" aria-hidden="true"></span><a class="dot" href="zuordnung.html" data-l="Animations-Zuordnung" title="Animations-Zuordnung" aria-label="Zu Animations-Zuordnung"></a><span class="ln" aria-hidden="true"></span><a class="dot" href="labor.html" data-l="Labor" title="Labor" aria-label="Zu Labor"></a></nav></div>
   <button id="theme" title="Dark / Light" aria-label="Dark / Light umschalten"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/></svg></button>
 </header>
 
 <main class="wrap">
-  <h2 class="ttl">Wie könnte <span id="ttlName">Flute</span> aussehen? <a href="zuordnung.html" style="font-size:12.5px;font-weight:600;color:var(--accent);margin-left:10px;text-decoration:none">Zur Zuordnung aller Spuren →</a><a href="labor.html" style="font-size:12.5px;font-weight:600;color:var(--accent);margin-left:14px;text-decoration:none">Labor →</a></h2>
+  <h2 class="ttl">Wie könnte <span id="ttlName">Flute</span> aussehen?</h2>
 
   <div class="panel pick">
     <div class="row" role="group" aria-label="Tonspur auswählen"><span class="lb">Tonspur</span><span id="trks" style="display:contents"></span></div>
@@ -205,7 +210,7 @@ header.nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 30; 
     <label class="rate" title="Wiedergabegeschwindigkeit – Tonhöhe bleibt gleich"><span class="lb">Geschwindigkeit</span><span class="sel"><select id="rate" aria-label="Wiedergabegeschwindigkeit">
       <option value="0.25">0,25×</option><option value="0.5">0,5×</option><option value="0.75">0,75×</option><option value="1" selected>1×</option><option value="1.25">1,25×</option><option value="1.5">1,5×</option><option value="1.75">1,75×</option><option value="2">2×</option>
     </select></span></label>
-    <span class="beatnow" id="beatNow"></span>
+    <button class="eye" id="eye" type="button" aria-pressed="true" aria-label="Animationen anzeigen" title="Animationen anzeigen / ausblenden"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path class="slash" d="M4 4l16 16" style="display:none"/></svg></button>
   </div>
 
   <div class="grid" id="grid"></div>
@@ -358,18 +363,28 @@ function readColors() {
 const audio = $('audio');
 let free = { perf: performance.now(), t: 0 };
 const rate = () => { const el = $('rate'); return (el && +el.value) || 1; };
-let lastCt = -1, lastP = 0;
+let lastCt = -1, lastP = 0, sT = 0, sP = 0, sOk = false;
 function now() {
   if (!audio.paused) {                   // Song-Zeit, zwischen den Updates des Players weitergezählt → ruckelfrei und synchron
     const ct = audio.currentTime, p = performance.now();
     if (ct !== lastCt) { lastCt = ct; lastP = p; }
-    return lastCt + Math.min(.25, (p - lastP) / 1000) * audio.playbackRate;
+    const raw = lastCt + Math.min(.25, (p - lastP) / 1000) * audio.playbackRate;
+    // Glätten: die Uhr des Players springt in Stufen und kann leicht zurückfallen – das ließ die Animationen zucken
+    const pred = sOk ? sT + (p - sP) / 1000 * audio.playbackRate : raw;
+    sT = (!sOk || Math.abs(raw - pred) > .2) ? raw : pred + (raw - pred) * .08; sP = p; sOk = true;
+    return sT;
   }
+  sOk = false;
   return free.t + (performance.now() - free.perf) / 1000 * rate();
 }
 const resync = t => { free = { perf: performance.now(), t }; };
 /* ---------- Auge: Animationen an/aus (aus = Kästen bleiben leer; Play schaltet automatisch ein) ---------- */
-const eyeOn = true;   // Animationen laufen immer – auch bei Pause (im Songtempo weiter)
+let eyeOn = true;   // Animationen laufen immer – auch bei Pause (im Songtempo weiter); Auge zu = Kästen bleiben leer
+try { eyeOn = localStorage.getItem('av-eye') !== '0'; } catch (e) {}
+const eyeBtn = $('eye');
+const setEye = on => { eyeOn = on; eyeBtn.setAttribute('aria-pressed', String(on)); eyeBtn.querySelector('.slash').style.display = on ? 'none' : ''; try { localStorage.setItem('av-eye', on ? '1' : '0'); } catch (e) {} };
+setEye(eyeOn);
+eyeBtn.onclick = () => setEye(!eyeOn);
 function frame() {
   const t = now(), tt = t - OFFSET;
   const s = { t: tt, bar: BAR, beat: BEAT, phase: ((tt / BAR) % 1 + 1) % 1, ...COL };
@@ -420,9 +435,6 @@ function ui(t) {
   $('tCur').textContent = fmt(shown);
   const pct = shown / DUR * 100; $('pfill').style.width = pct + '%'; $('pknob').style.left = pct + '%';
   const ph = $('stripPh'); if (ph) { const x = shown / DUR * HIER.w; ph.setAttribute('x1', x); ph.setAttribute('x2', x); }
-  const tt = t - OFFSET, k = Math.floor(tt / BEAT), bar = Math.floor(k / SONG.beats) + 1, beat = ((k % SONG.beats) + SONG.beats) % SONG.beats + 1;
-  const on = TBY[cur].raw.some(([a, b]) => shown >= a && shown < b);
-  $('beatNow').innerHTML = playing ? `<b>Takt ${bar}</b> · Schlag ${beat} · ${on ? TBY[cur].name + ' klingt' : 'Pause'}` : `Vorschau · Schlag ${beat}`;
 }
 
 /* ---------- Theme wie auf den anderen Seiten ---------- */

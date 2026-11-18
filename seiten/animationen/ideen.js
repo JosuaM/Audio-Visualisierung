@@ -93,9 +93,9 @@ function frogSeq(s) {
   const B = s.beat, n = FROG_SEQ.length, [k, q] = loop(s.t, 16 * B, s.bar * 8);
   let a = 0, i = 0;
   while (i < n - 1 && q >= (a + FROG_SEQ[i]) * B) { a += FROG_SEQ[i]; i++; }
-  const p = q - a * B, L = 6 * B, prev = FROG_LVL.E[(i + n - 1) % n];
+  const p = q - a * B, L = 6 * B, prev = (window.IDEEN_GATE && i === 0 && k <= 0) ? 0 : FROG_LVL.E[(i + n - 1) % n];   // der allererste Einsatz startet bei null (nicht mit dem Ende des Durchlaufs davor)
   const raw = Math.min(1, FROG_LVL.S[i] + p / L);
-  return { p, len: FROG_SEQ[i] * B, L, k: k * n + i, g: prev + (raw - prev) * eIO(seg(p, 0, B * .45)) };
+  return { p, len: FROG_SEQ[i] * B, L, k: k * n + i, g: (window.IDEEN_GATE && k < 0) ? 0 : prev + (raw - prev) * eIO(seg(p, 0, B * .45)), gn: raw, rs: (i === 0 && k > 0) ? seg(p, 0, B * 1.2) : 1 };   // gn = Wachstum ohne Rückfall, rs < 1 = Neustart der Sequenz (altes Bild blendet aus)   // vor dem ersten Frog-Einsatz (k < 0): nichts
 }
 // Mosquito-Ablauf in Schlägen (¼-Takten), 16 Schläge = 4 Takte ab dem ersten Mosquito-Einsatz (Takt 9), dann von vorn:
 // 3 Ton · 3 Pause · 2 Ton (der nächste setzt kurz vor Ende ein) · 2 Ton · 2 Pause · 3 Ton · 1 Pause.  [Beginn, Länge] je Ton:
@@ -108,6 +108,23 @@ function mosqSeq(s) {
     if (qb >= a) return { on: qb < a + l, p: q - a * B, len: l * B, k: k * MOSQ_NOTES.length + i };
   }
   return { on: false, p: 0, len: B, k: 0 };
+}
+// Ablauf der Mosquito-Ideen „Stern“ und „Balken“: ein einziges, stetiges Kleinerwerden vom Tonanfang bis es nach dem Ton ganz weg ist (soweit die Pause reicht),
+// ohne Halten und ohne Ausblenden. Beim 2. der 2 + 2 wächst die Form kurz vor dem Ton wieder auf 70 % und schrumpft von dort erneut.
+// v = Größe 0 … 1 · pop = Aufspringen am Tonanfang · null = nichts zu sehen
+function mosqRun(s) {
+  const B = s.beat, N = MOSQ_NOTES.length, [, q] = loop(s.t, 16 * B, s.bar * 8), qb = q / B;
+  let i = N - 1; while (i > 0 && qb < MOSQ_NOTES[i][0]) i--;
+  const L = MOSQ_NOTES[i][1], b = qb - MOSQ_NOTES[i][0];
+  const gap = (i === N - 1 ? 16 : MOSQ_NOTES[i + 1][0]) - MOSQ_NOTES[i][0] - L, tot = Math.min(1.7, gap);
+  const span = L + (i === 1 ? .6 : tot), curve = (x, sp) => Math.pow(1 - cl01(x / sp), 1.3);   // stetig kleiner, kein Anhalten
+  if (b >= span) return null;
+  const RB = .15, S1 = MOSQ_NOTES[1][1] + .6, v1 = curve(MOSQ_NOTES[1][1] - RB, S1), AGAIN = .7;
+  let v;
+  if (i === 1 && b - L > -RB) v = v1 + (AGAIN - v1) * eIO(seg(b - L, -RB, RB));              // kurz vor dem 2. Ton: wieder größer
+  else if (i === 2) v = b < RB ? v1 + (AGAIN - v1) * eIO(seg(b, -RB, RB)) : AGAIN * curve(b - RB, span - RB);
+  else v = curve(b, span);
+  return { i, b, v, pop: i === 2 ? 1 : eBack(seg(b, 0, .3)), pop2: i === 2 ? 1 : eBack(seg(b, 0, .18)) };   // Balken schießt in einem Wimpernschlag von unten hoch und schwingt kurz über
 }
 // Linie aus Punkten zeichnen
 function polyline(c, pts) { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.stroke(); }
@@ -699,13 +716,12 @@ const IDEAS = {
   trumpet: [
     {
       title: 'Stern zieht sich zusammen',
-      text: 'Eine Raute mit nach innen gewölbten Seiten und spitzen Ecken – fast ein Stern. Mit jedem Mosquito-Ton springt sie groß herein, schießt kurz minimal größer und zieht sich dann bis zum Ende des Tons zusammen. In den Pausen ist nichts zu sehen. Ablauf: 3 · Pause 3 · 2 + 2 · Pause 2 · 3 · Pause 1 Schläge.',
+      text: 'Eine Raute mit nach innen gewölbten Seiten und spitzen Ecken – fast ein Stern. Mit jedem Mosquito-Ton springt sie groß herein, schießt kurz minimal größer und zieht sich dann bis zum Ende des Tons zusammen. Beim zweiten der 2 + 2 springt er kurz zurück und läuft von dort weiter. Er wird dabei stetig kleiner – auch nach dem Ton noch, ohne anzuhalten – bis er ganz weg ist. In den Pausen ist nichts zu sehen. Ablauf: 3 · Pause 3 · 2 + 2 · Pause 2 · 3 · Pause 1 Schläge.',
       tag: '3 · – 3 · 2+2 · – 2 · 3 · – 1',
       draw(c, s) {
-        const M = mosqSeq(s); if (!M.on) return;
-        const b = M.p / s.beat, L = M.len / s.beat;
+        const M = mosqRun(s); if (!M) return;
         const cx = s.w / 2, cy = s.h / 2, m0 = Math.min(s.w, s.h);
-        const sc = eBack(seg(b, 0, .3)) * (1 - eIO(seg(b, .3, L)));   // groß rein, kurz drüber, dann bis zum Tonende kleiner
+        const sc = M.pop * M.v;                          // groß rein, kurz drüber, dann stetig kleiner bis ganz weg – beim 2. der 2 + 2 wächst er kurz zurück
         const R = m0 * .38 * sc;
         if (R < .5) return;
         const ex = 2 / .72;                             // Superellipse mit n < 1 → Seiten nach innen gewölbt
@@ -721,19 +737,96 @@ const IDEAS = {
     },
     {
       title: 'Balken',
-      text: 'Ein Balken wie bei einem Pegel: Mit jedem Mosquito-Ton startet er schon hoch, schießt noch ein kleines Stück nach oben und sinkt dann bis zum Ende des Tons nach unten. In den Pausen ist nichts zu sehen. Ablauf: 3 · Pause 3 · 2 + 2 · Pause 2 · 3 · Pause 1 Schläge.',
+      text: 'Ein Balken wie bei einem Pegel: Mit jedem Mosquito-Ton schießt er ganz schnell von unten nach oben, schwingt kurz über und sinkt dann bis zum Ende des Tons nach unten. Beim zweiten der 2 + 2 springt er kurz zurück und läuft von dort weiter. Er wird dabei stetig kleiner – auch nach dem Ton noch, ohne anzuhalten – bis er ganz weg ist. In den Pausen ist nichts zu sehen. Ablauf: 3 · Pause 3 · 2 + 2 · Pause 2 · 3 · Pause 1 Schläge.',
       tag: '3 · – 3 · 2+2 · – 2 · 3 · – 1',
       draw(c, s) {
-        const M = mosqSeq(s); if (!M.on) return;
-        const b = M.p / s.beat, L = M.len / s.beat;
-        const base = s.h * .9, maxH = s.h * .78, bw = Math.min(s.w * .18, s.h * .3), x = (s.w - bw) / 2;
-        const up = .3;                                  // so lange schießt er hoch
-        const hgt = b < up ? maxH * (.84 + .16 * eOut(b / up)) : maxH * Math.pow(1 - seg(b, up, L), 1.4);
+        const M = mosqRun(s); if (!M) return;
+        const base = s.h, maxH = s.h * .86, bw = Math.min(s.w * .18, s.h * .3), x = (s.w - bw) / 2;
+        const hgt = maxH * M.pop2 * M.v;                                // startet hoch, schießt kurz nach oben, dann stetig kleiner bis ganz weg – beim 2. der 2 + 2 springt er kurz zurück hoch
         if (hgt < .5) return;
         c.fillStyle = s.fg;
         c.beginPath();
         if (c.roundRect) c.roundRect(x, base - hgt, bw, hgt, [Math.min(bw * .2, hgt / 2), Math.min(bw * .2, hgt / 2), 0, 0]); else c.rect(x, base - hgt, bw, hgt);
         c.fill();
+      },
+    },
+    {
+      title: 'Punkt auf der Zickzack-Welle',
+      text: 'Eine abgerundete Zickzack-Welle zieht sich von links nach rechts durchs Bild: links mit starken Ausschlägen und dicker Kontur, nach rechts werden die Ausschläge kleiner und die Kontur immer dünner. Mit jedem Mosquito-Ton startet links ein Punkt und zeichnet die Welle beim Laufen selbst: Vor ihm ist nichts, hinter ihm bleibt die Spur stehen. Er erreicht das rechte Ende genau mit dem Tonende und ist als Tropfen mit der Linie verbunden (Metaballs). Nach dem Ton läuft er weiter, während die Spur von links nach rechts ausblendet. In den Pausen ist nichts zu sehen. Ablauf: 3 · Pause 3 · 2 + 2 · Pause 2 · 3 · Pause 1 Schläge.',
+      tag: '3 · – 3 · 2+2 · – 2 · 3 · – 1',
+      draw(c, s) {
+        const B = s.beat, m0 = Math.min(s.w, s.h), N = MOSQ_NOTES.length;
+        const [, q] = loop(s.t, 16 * B, s.bar * 8); let qb = q / B, i = N - 1;
+        while (i > 0 && qb < MOSQ_NOTES[i][0]) i--;
+        if (qb < MOSQ_NOTES[0][0]) { qb += 16; i = N - 1; }              // vor dem ersten Ton: Ausklang des letzten Tons vom Durchlauf davor
+        const L = MOSQ_NOTES[i][1], b = qb - MOSQ_NOTES[i][0], since = b - L;
+        const gap = (i === N - 1 ? 16 : MOSQ_NOTES[i + 1][0]) - MOSQ_NOTES[i][0] - L, tot = Math.min(1.7, gap), HOLD = tot * .22;   // erst noch ein Stück stehen lassen, dann ausblenden – soweit die Pause reicht
+        if (since >= tot) return;                                           // Pause
+        const fading = since > HOLD;                                         // nach dem Ton blendet die Spur von links nach rechts aus, der Punkt läuft weiter
+        // Fortschritt des Punkts: normal von links nach rechts; beim zweiten der 2 + 2 läuft er erst auf die Hälfte zurück und von dort wieder nach vorn
+        const RB = .15, retr = r => r < RB ? 1 - .65 * eIO(seg(r, -RB, RB)) : .35 + .65 * seg(r, RB, MOSQ_NOTES[2][1]);   // Zurücksetzen beim 2. der 2 + 2: beginnt schon kurz vor dem Ton und ist kurz danach unten
+        const E = 120, prog = since > 0 ? Math.min(1 + E / 180, 1 + since / L) :   // nach dem Ton läuft der Punkt in gleichem Tempo weiter
+           i === 2 ? retr(b) : (i === 1 && b - L > -.15) ? retr(b - L) : seg(b, 0, L);
+        const target = c;                                                    // beim Ausblenden erst opak auf eine Hilfsfläche zeichnen und dann mit Deckkraft aufs Bild legen – so verschmelzen Punkt und Linie zu einer Form
+        if (fading) {
+          const cv = IDEAS.trumpet.__cv || (IDEAS.trumpet.__cv = document.createElement('canvas'));
+          if (cv.width !== c.canvas.width || cv.height !== c.canvas.height) { cv.width = c.canvas.width; cv.height = c.canvas.height; }
+          c = cv.getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cv.width, cv.height); c.setTransform(target.getTransform());
+        }
+        const S = 180, SE = S + E, pad = s.w * .08, cy = s.h / 2, amp0 = s.h * .36;
+        const X = i => pad + i / S * (s.w - 2 * pad);
+        const Y = i => { const f = i / S; return cy - amp0 * Math.pow(Math.max(0, 1 - f), 1.5) * (Math.cos(f * Math.PI * 16) + Math.cos(f * Math.PI * 48) / 18); };   // abgerundeter Zickzack, Ausschlag nimmt nach rechts ab
+        const H = i => (m0 * .008 + m0 * .045 * Math.pow(Math.max(0, 1 - i / S), 1.2)) / 2;   // halbe Kontur: links dick, rechts dünn
+        const u = prog * S, k = Math.min(SE - 1, Math.floor(u)), fr = u - k;   // Punkt läuft über die Länge des Tons nach rechts
+        const dx = X(k) + (X(k + 1) - X(k)) * fr, dy = Y(k) + (Y(k + 1) - Y(k)) * fr;
+        const ribbon = (to, al) => {                    // Band mit wechselnder Breite als eine Fläche
+          const l = [], r = [];
+          for (let i = 0; i <= to; i++) {
+            const i0 = Math.max(0, i - 1), i1 = Math.min(SE, i + 1);
+            let nx = -(Y(i1) - Y(i0)), ny = X(i1) - X(i0); const q = Math.hypot(nx, ny) || 1; nx /= q; ny /= q;
+            l.push([X(i) + nx * H(i), Y(i) + ny * H(i)]); r.push([X(i) - nx * H(i), Y(i) - ny * H(i)]);
+          }
+          c.globalAlpha = al; c.beginPath();
+          l.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y));
+          for (let i = r.length - 1; i >= 0; i--) c.lineTo(r[i][0], r[i][1]);
+          c.closePath(); c.fill();
+          c.beginPath(); c.arc(X(0), Y(0), H(0), 0, Math.PI * 2); c.fill();   // rundes Anfangsende
+        };
+        c.fillStyle = s.fg;
+        ribbon(k, 1);                                    // die Welle ist nur dort, wo der Punkt schon war – er zeichnet sie
+        c.globalAlpha = 1;
+        // Tropfen: der Kopf ist rund, nach links (zur Linie) läuft er spitz aus – dazu Kugeln mit nach hinten abnehmendem Radius als Metaballs
+        const Rb = m0 * .34, Rh = m0 * (.012 + .022 * Math.pow(1 - Math.min(1, u / S), 1.2)), D = Rh * 6.5, balls = [[Rb, Rb, Rh]];   // der Punkt wird zum Ende hin kleiner, wie die Linie
+        for (let i = Math.max(0, k - 80); i <= k; i++) {
+          const x = X(i) - dx, y = Y(i) - dy, d = Math.hypot(x, y);
+          if (d > D || Math.abs(x) > Rb * .9 || Math.abs(y) > Rb * .9) continue;
+          const tp = Math.pow(1 - d / D, 1.6);                             // 1 am Kopf, 0 am Ende des Schwanzes
+          balls.push([Rb + x, Rb + y, Math.max(H(i) * 1.1, Rh * .6 * tp)]);
+        }
+        c.save(); c.translate(dx - Rb, dy - Rb); metaballs(c, Rb * 2, Rb * 2, balls, 2); c.restore();
+        if (c !== target) {                              // Ausblenden von links nach rechts: ein weicher Rand wandert über das Bild, links ist die Spur schon weg
+          const edge = s.w * .45, xf = -edge + (s.w + 2 * edge) * eIO(seg(since, HOLD, tot));
+          const g = c.createLinearGradient(xf, 0, xf + edge, 0); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,1)');
+          c.globalCompositeOperation = 'destination-in'; c.fillStyle = g; c.fillRect(-edge, -edge, s.w + 2 * edge, s.h + 2 * edge); c.globalCompositeOperation = 'source-over';
+          target.save(); target.setTransform(1, 0, 0, 1, 0, 0); target.drawImage(c.canvas, 0, 0); target.restore();
+        }
+      },
+    },
+    {
+      title: 'Welle wölbt sich nach oben',
+      text: 'Wie der Balken, nur als große, organische Welle: Über die volle Bildbreite liegt immer eine flache, weich wogende Welle am unteren Rand. Mit jedem Mosquito-Ton wölbt sich daraus ganz schnell eine breite Kuppel nach oben, wie ein Halbkreis mit wenigen sehr großen Wellenbäuchen, die weich hin und her wandern. Sie schwingt kurz über und wird dann stetig kleiner, auch nach dem Ton noch, bis nur noch die flache Welle übrig ist. Beim zweiten der 2 + 2 springt sie kurz zurück hoch und läuft von dort weiter. In den Pausen bleibt die flache Welle stehen. Ablauf: 3 · Pause 3 · 2 + 2 · Pause 2 · 3 · Pause 1 Schläge.',
+      tag: '3 · – 3 · 2+2 · – 2 · 3 · – 1',
+      draw(c, s) {
+        const M = mosqRun(s), t = s.t, rest = s.h * .045;                     // ein kleiner Rest der Welle bleibt immer stehen, auch in den Pausen
+        const hgt = M ? (s.h * .82) * M.pop2 * M.v : 0;
+        const x0 = 0, x1 = s.w, N = 140;                                       // volle Breite
+        c.fillStyle = s.fg; c.beginPath(); c.moveTo(x0 - 1, s.h + 1);
+        for (let i = 0; i <= N; i++) {
+          const u = i / N, dome = Math.pow(Math.sin(Math.PI * u), .7);          // Kuppel: sanft wie ein Halbkreis, an den Rändern flach
+          const bulge = 1 + .2 * Math.sin(u * Math.PI * 3 - t * 4.2) + .1 * Math.sin(u * Math.PI * 5 + t * 5.6);   // wenige große Bäuche, die weich wandern
+          c.lineTo(x0 + (x1 - x0) * u, s.h - Math.min(s.h, rest * (.65 + .35 * bulge) + hgt * dome * bulge * (.85 + .15 * Math.sin(u * 7 - t * 3))));
+        }
+        c.lineTo(x1 + 1, s.h + 1); c.closePath(); c.fill();
       },
     },
   ],
@@ -745,17 +838,19 @@ const IDEAS = {
       draw(c, s) {
         const B = s.beat, F = frogSeq(s), L = F.L, g = F.g, step = B / 2;   // alle halben Schläge ein neuer Kreis
         const cx = s.w / 2, cy = s.h / 2, m0 = Math.min(s.w, s.h), Rmax = Math.hypot(cx, cy);
-        const Amax = g * L, soft = B * .5;              // so alt (= so weit außen) dürfen Kreise gerade werden
+        const rst = F.rs < 1, gN = rst ? F.gn : g;          // beim Neustart der Sequenz: neues Echo beginnt bei null, das alte läuft weiter nach außen und blendet nur aus
+        const Amax = gN * L, soft = B * .5;             // so alt (= so weit außen) dürfen Kreise gerade werden
         c.strokeStyle = s.fg;
         const n0 = Math.floor(s.t / step);
         for (let n = n0; n > n0 - 40; n--) {
           const age = s.t - n * step, a = age / L;
           if (age < 0) continue;
-          const vis = cl01((Amax - age) / soft);        // ältere Kreise blenden weich aus
+          const vN = cl01((Amax - age) / soft), vO = rst ? cl01((L - age) / soft) * (1 - eIO(F.rs)) : 0, vis = Math.max(vN, vO);   // ältere Kreise blenden weich aus
           if (vis <= 0) break;
+          const gW = vN >= vO ? gN : 1;
           const r = m0 * .02 + Rmax * Math.pow(a, .75);
           c.globalAlpha = vis * seg(age, 0, B * .12) * (1 - .6 * Math.min(1, a));
-          c.lineWidth = Math.max(.8, m0 * (.012 + .065 * Math.min(1, g)) * (1 - .85 * Math.min(1, a)));   // innen dick, nach außen dünn
+          c.lineWidth = Math.max(.8, m0 * (.012 + .065 * Math.min(1, gW)) * (1 - .85 * Math.min(1, a)));   // innen dick, nach außen dünn
           c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.stroke();
         }
         c.globalAlpha = 1;
@@ -801,7 +896,9 @@ const IDEAS = {
         const B = s.beat, F = frogSeq(s), n = FROG_SEQ.length;
         const back = B * .35;                           // so lange dauert das Zurückziehen in die Mitte
         const prevLen = Math.min(1, FROG_SEQ[(F.k % n + n - 1) % n] / 6);   // so weit war er im Abschnitt davor
-        const g = F.p < back ? prevLen * (1 - eIO(F.p / back)) : Math.min(1, (F.p - back) / F.L);
+        const gate = window.IDEEN_GATE, g = (gate && F.k < 0) ? 0                          // vor dem ersten Frog-Einsatz: nichts
+          : (gate && F.k === 0) ? Math.min(1, F.p / F.L)          // erster Einsatz: wächst direkt aus der Mitte, ohne vorheriges Zurückziehen
+          : F.p < back ? prevLen * (1 - eIO(F.p / back)) : Math.min(1, (F.p - back) / F.L);
         const cx = s.w / 2, cy = s.h / 2, m0 = Math.min(s.w, s.h);
         const turns = 4.5, Rend = m0 * .47, a0 = Rend / (turns * Math.PI * 2);   // archimedische Spirale r = a0 · θ
         const full = turns * Math.PI * 2, th = full * Math.sqrt(g);   // Länge des Streifens wächst gleichmäßig
@@ -1122,9 +1219,11 @@ const IDEAS = {
       title: 'Luft holen',
       text: 'Wie ein Einatmen: In den ersten 2¾ Schlägen ziehen sich Striche vom Bildrand lang bis in die Mitte; dann wandert ihr äußeres Ende unterschiedlich schnell hinterher, bis alle in der Mitte einen kleinen Punkt bilden. Danach ziehen sie sich – immer noch mit der Mitte verbunden – sanft wieder nach außen lang und verblassen dabei von der Mitte aus nach außen, während sie weiter nach außen laufen. Startet mit dem Riser in Takt 24.2.',
       tag: '2¾ Schläge rein · 2¼ Schläge raus',
+      tail: 3,                                          // läuft nach dem Riser-Klang noch bis zu 3 Schläge aus (wichtig bei „nur animieren, wenn die Spur klingt“)
       draw(c, s) {
         const B = s.beat, IN = 2.75, OUT = 2.25;          // Schläge (¼-Takte): einatmen · ausatmen
         const [k, p] = loop(s.t, (IN + OUT) * B, s.bar * 23 + B), b = p / B;   // Durchlauf beginnt mit dem Riser in der Klanghierarchie (Takt 24.2)
+        if (k < 0 && window.IDEEN_GATE) return;                              // vor dem Riser-Einsatz ist nichts zu sehen
         const cx = s.w / 2, cy = s.h / 2, m0 = Math.min(s.w, s.h), Rout = Math.hypot(cx, cy) + m0 * .15;
         const N = 36, q = eIO(seg(b, IN, IN + OUT));    // ausatmen: Striche ziehen sich sanft aus der Mitte lang, bis über den Bildrand
         const rIn = m0 * .006;                          // ganz in die Mitte → kleiner Punkt
@@ -1167,9 +1266,11 @@ const IDEAS = {
       title: 'Wirbel zum Kreis',
       text: 'Wie bei „Luft holen“ kommen Striche vom Rand nach innen – und das ganze Gebilde dreht sich dabei immer schneller. Die Striche hängen der Drehung etwas hinterher und biegen sich. In der Mitte wickeln sie sich Stück für Stück auf einen Kreis – die Kontur entsteht erst dort, wo die Striche ankommen. Danach drehen sie sich als Spirale heraus, bleiben dabei mit dem Kreis verbunden, und alles verblasst gemeinsam. Startet mit dem Riser in Takt 24.2.',
       tag: '2¾ Schläge rein · 2¼ Schläge raus',
+      tail: 3,                                          // läuft nach dem Riser-Klang noch bis zu 3 Schläge aus (wichtig bei „nur animieren, wenn die Spur klingt“)
       draw(c, s) {
         const B = s.beat, IN = 2.75, OUT = 2.25;
         const [k, p] = loop(s.t, (IN + OUT) * B, s.bar * 23 + B), b = p / B;   // wie Idee 1: ab Takt 24.2
+        if (k < 0 && window.IDEEN_GATE) return;                              // vor dem Riser-Einsatz ist nichts zu sehen
         const cx = s.w / 2, cy = s.h / 2, m0 = Math.min(s.w, s.h), Rc = m0 * .15, N = 28;
         const rot = .5 * b + .32 * b * b;               // das ganze Gebilde dreht sich, immer schneller
         const spin = .5 + .64 * b;                      // aktuelle Drehgeschwindigkeit → so stark biegen sich die Striche
@@ -1220,8 +1321,10 @@ const IDEAS = {
       title: 'Striche stapeln sich',
       text: 'Von unten nach oben stapeln sich schnell Striche: der unterste am längsten, nach oben immer kürzer und enger beieinander. Ab der Mitte des 2. Schlags verblassen sie von oben nach unten, bis Schlag 3 vorbei ist. Danach 1 Schlag Pause.',
       tag: '3 Schläge',
+      tail: 3,                                          // läuft nach dem Hornklang noch kurz aus (bei „nur animieren, wenn die Spur klingt“)
       draw(c, s) {
-        const B = s.beat, [, p] = loop(s.t, s.bar), b = p / B;
+        const B = s.beat, [k, p] = loop(s.t, s.bar, s.bar * 24), b = p / B;   // Durchlauf beginnt mit dem Jagdhorn (Takt 25, Schlag 1 – ca. 49,7 s)
+        if (k < 0 && window.IDEEN_GATE) return;                              // vor dem Einsatz ist nichts zu sehen
         if (b >= 3.05) return;
         const N = 12, cx = s.w / 2, y0 = s.h * .88, top = s.h * .12;
         const q = .86, g0 = (y0 - top) * (1 - q) / (1 - q ** (N - 1));   // Abstände werden nach oben immer kleiner
@@ -1247,8 +1350,10 @@ const IDEAS = {
       title: 'Kreis zieht sich zusammen',
       text: 'Ein großer Kreis (nur Kontur) startet außerhalb des Bildes und zieht sich in 3 Schlägen bis zu einem Punkt in der Mitte zusammen. Dabei zieht er eine Spur weiterer Kreise hinter sich her und verliert immer mehr an Deckkraft. Danach 1 Schlag Pause.',
       tag: '3 Schläge',
+      tail: 3,                                          // läuft nach dem Hornklang noch kurz aus (bei „nur animieren, wenn die Spur klingt“)
       draw(c, s) {
-        const B = s.beat, [, p] = loop(s.t, s.bar), b = p / B;
+        const B = s.beat, [k, p] = loop(s.t, s.bar, s.bar * 24), b = p / B;   // Durchlauf beginnt mit dem Jagdhorn (Takt 25, Schlag 1 – ca. 49,7 s)
+        if (k < 0 && window.IDEEN_GATE) return;                              // vor dem Einsatz ist nichts zu sehen
         if (b > 3.5) return;
         const cx = s.w / 2, cy = s.h / 2, m0 = Math.min(s.w, s.h);
         const R0 = Math.hypot(cx, cy) * 1.02;           // Start knapp außerhalb (an den Ecken) → am Ende nur noch ein Punkt
@@ -1553,6 +1658,12 @@ const IDEAS = {
     },
   ],
 };
+// Gilt nur auf der Zuordnungs-Seite (window.IDEEN_GATE): Einsatz von Drums und Ringtone: laut „Rangfolge der Spuren pro Abschnitt“ in der Klanghierarchie erst mit Takt 25 (zusammen mit dem Jagdhorn) –
+// davor ist nichts zu sehen. Die 8 Takte der Ringtone-Ideen beginnen genau dort und reichen bis zum Songende.
+{
+  const RF = Math.round((DUR - 8 * BAR) / BAR), START = RF * BAR;   // Takt 25 = 24 Takte nach dem ersten Taktschlag
+  for (const idea of IDEAS.drums.concat(IDEAS.ring)) { const d = idea.draw; idea.draw = (c, s) => { if (!window.IDEEN_GATE || s.t >= START) d.call(idea, c, s); }; }
+}
 /* ═════════════════════════════ Ende Animationen ══════════════════════════ */
 
 /* ---------- Zuordnung zum morphologischen Kasten (i-Button) + „Andere Parameter ausprobieren“ ---------- */

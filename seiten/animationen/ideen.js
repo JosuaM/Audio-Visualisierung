@@ -111,6 +111,24 @@ function mosqSeq(s) {
 }
 // Linie aus Punkten zeichnen
 function polyline(c, pts) { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.stroke(); }
+// Ringtone: Punkte laufen wie bei „Spalten“ (6 neue pro Takt, die 4 ältesten gehen) an einer Spirale entlang – nach innen oder nach außen
+function ringSpiral(c, s, inward) {
+  const CYC = 8, TOT = CYC * 6, m0 = Math.min(s.w, s.h), Rmax = m0 * .46, Q = .949, turn = Math.PI * 2 / 14;
+  const first = Math.round((DUR - CYC * s.bar) / s.bar);                         // die Spur umfasst die letzten 8 Takte des Songs
+  const bt = ((((s.t / s.bar - first) % CYC) + CYC) % CYC) * 4;                  // Schläge ab Beginn des ersten Takts (davor/danach als Schleife)
+  const T = [.5, .75, 1.5, 1.75, 2.5, 2.75];
+  c.fillStyle = s.fg;
+  for (let g = 0; g < TOT; g++) {
+    const cy = Math.floor(g / 6), tA = cy * 4 + T[g % 6];                        // taucht einfach auf: Mitte des Schlags, der zweite eine 16tel später
+    if (bt < tA) continue;
+    const tO = Math.floor(g / 4) * 4 + 3 + (g % 4) / 4, f = eIn(seg(bt, tO, tO + .3));   // die vier ältesten gehen im 4. Schlag auf je einer 16tel
+    if (f >= 1) continue;
+    // Platz u auf der Spirale: nach innen läuft die Reihe von außen zur Mitte, nach außen von der Mitte zum Rand
+    const u = (inward ? g : TOT - 1 - g) + (inward ? -1 : 1) * 5 * f;           // beim Gehen rutscht der Punkt an der Spirale zurück (nach außen bzw. in die Mitte)
+    const R = Rmax * Math.pow(Q, u), a = -Math.PI / 2 + u * turn, rr = Math.max(m0 * .007, R * .085);
+    c.beginPath(); c.arc(s.w / 2 + Math.cos(a) * R, s.h / 2 + Math.sin(a) * R, rr, 0, Math.PI * 2); c.fill();
+  }
+}
 const IDEAS = {
   flute: [
     {
@@ -1326,7 +1344,7 @@ const IDEAS = {
   ring: [
     {
       title: 'Kugeln sammeln sich und fliegen weg',
-      text: 'In Schlag 1, 2 und 3 kommen jeweils zwei Kugeln nacheinander von außen herein (auf dem Schlag und eine Achtel später) und bleiben stehen. Im 4. Schlag fliegen sie in vier Gruppen raus – auf jeder 16tel ein Viertel davon (2 · 1 · 2 · 1), in zufälliger Reihenfolge.',
+      text: 'In Schlag 1, 2 und 3 kommen jeweils zwei Kugeln nacheinander von außen herein und sind in der Mitte des Schlags und eine 16tel später an ihrem Platz – sie bleiben dann stehen. Im 4. Schlag fliegen sie in vier Gruppen raus – auf jeder 16tel ein Viertel davon (2 · 1 · 2 · 1), in zufälliger Reihenfolge.',
       tag: '2 Kugeln / Schlag · raus in 16teln',
       draw(c, s) {
         const B = s.beat, [k, p] = loop(s.t, s.bar), b = p / B;
@@ -1341,7 +1359,7 @@ const IDEAS = {
             const cl = cells[j], gx = s.w / 3, gy = s.h / 2;
             const P = [gx * (cl % 3 + .25 + .5 * rnd(kk, j + 40, 81)), gy * (Math.floor(cl / 3) + .3 + .4 * rnd(kk, j + 50, 81))];
             const aIn = rnd(kk, Math.floor(j / 2) + 60, 81) * Math.PI * 2 + (j % 2) * Math.PI;   // die zwei eines Schlags kommen von gegenüber
-            const tIn = Math.floor(j / 2) + (j % 2) * .5, e = eOut(seg(bb, tIn, tIn + .35));   // die zwei eines Schlags nacheinander: auf dem Schlag und eine Achtel später
+            const tAn = Math.floor(j / 2) + .5 + (j % 2) * .25, tIn = tAn - .35, e = eOut(seg(bb, tIn, tAn));   // angekommen in der Mitte des Schlags, die zweite eine 16tel später
             if (bb < tIn) continue;
             const tOut = 3 + [0, 0, 1, 2, 2, 3][out.indexOf(j)] / 4, f = eIn(seg(bb, tOut, tOut + .3));   // 4. Schlag: auf jeder 16tel ein Viertel raus
             if (f >= 1) continue;
@@ -1353,6 +1371,184 @@ const IDEAS = {
         };
         cycle(k - 1, b + 4);                            // die letzten vom Takt davor sind evtl. noch unterwegs
         cycle(k, b);
+      },
+    },
+    {
+      title: 'Kugeln erscheinen zeilenweise',
+      text: 'Die Kugeln tauchen zeilenweise von oben nach unten einfach plötzlich auf. In der Mitte von Schlag 1 erscheinen oben mittig zwei Kugeln kurz nacheinander, in der Mitte von Schlag 2 zwei in der Zeile darunter, in der Mitte von Schlag 3 zwei in der dritten Zeile. Im 4. Schlag folgt eine vierte Zeile mit vier Kugeln, jeweils auf einer 16tel (1 · 2 · 3 · 4). Mit dem nächsten Takt ist wieder alles leer.',
+      tag: '3 × 2 Kugeln + 4 · Aufblitzen',
+      draw(c, s) {
+        const B = s.beat, [k, p] = loop(s.t, s.bar), b = p / B;
+        const m0 = Math.min(s.w, s.h), r = m0 * .06;
+        c.fillStyle = s.fg;
+        const dot = (x, y) => { c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); };
+        for (let row = 0; row < 4; row++) {
+          const n = row < 3 ? 2 : 4, y = s.h * (.17 + .22 * row);
+          for (let i = 0; i < n; i++) {
+            const tIn = row < 3 ? row + .5 + i * .25 : 3 + i * .25;   // Mitte des Schlags + eine 16tel später; 4. Zeile auf jeder 16tel
+            if (b < tIn) continue;
+            dot(s.w / 2 + (i - (n - 1) / 2) * m0 * .2, y);            // taucht einfach auf
+          }
+        }
+      },
+    },
+    {
+      title: 'Zehn Kugeln als Dreieck',
+      text: 'Dieselben 10 Kugeln (2 · 2 · 2 · 4) wie in Idee 2, aber so verteilt, dass am Ende ein symmetrisches Dreieck (1 · 2 · 3 · 4) steht. Schlag 1: die zwei Kugeln der zweiten Reihe, Schlag 2: die äußeren der dritten Reihe, Schlag 3: die äußeren der vierten Reihe – jeweils in der Mitte des Schlags, die zweite eine 16tel später. Schlag 4: Spitze, Mitte der dritten Reihe und die zwei mittleren der vierten Reihe auf je einer 16tel. Mit dem nächsten Takt ist wieder alles leer.',
+      tag: '10 Kugeln · Dreieck',
+      draw(c, s) {
+        const B = s.beat, [k, p] = loop(s.t, s.bar), b = p / B;
+        const m0 = Math.min(s.w, s.h), r = m0 * .06;
+        c.fillStyle = s.fg;
+        // [Reihe, Platz in der Reihe, Zeitpunkt in Schlägen]
+        const balls = [[1, 0, .5], [1, 1, .75], [2, 0, 1.5], [2, 2, 1.75], [3, 0, 2.5], [3, 3, 2.75], [0, 0, 3], [2, 1, 3.25], [3, 1, 3.5], [3, 2, 3.75]];
+        for (const [row, i, t] of balls) {
+          if (b < t) continue;
+          c.beginPath(); c.arc(s.w / 2 + (i - row / 2) * m0 * .2, s.h * (.17 + .22 * row), r, 0, Math.PI * 2); c.fill();
+        }
+      },
+    },
+    {
+      title: 'Spalten wandern von links nach rechts',
+      text: 'Über die ganze Ringtone-Spur (8 Takte, davor als Schleife) wandert das Bild von links nach rechts. In jedem Takt entstehen drei neue Spalten mit je zwei Kugeln – von oben nach unten, jeweils in der Mitte des Schlags 1, 2 und 3 (die untere Kugel eine 16tel nach der oberen). Im 4. Schlag verlassen die vier ältesten Kugeln (die zwei ältesten Spalten) nacheinander, in der Reihenfolge ihres Erscheinens, auf je einer 16tel das Bild nach oben bzw. unten. So bauen sich pro Takt 6 Kugeln auf und 4 verschwinden – am Ende stehen 8 Spalten.',
+      tag: '8 Takte · 3 Spalten rein, 2 raus',
+      draw(c, s) {
+        const CYC = 8, COLS = CYC * 3;
+        const first = Math.round((DUR - CYC * s.bar) / s.bar);        // erster der 8 Takte (die Spur umfasst die letzten 8 Takte des Songs)
+        const bt = ((((s.t / s.bar - first) % CYC) + CYC) % CYC) * 4;   // Zeit in Schlägen ab Beginn des ersten Takts – davor und danach läuft sie als Schleife weiter, damit man sie überall im Song sieht
+        const colW = s.w / COLS, r = Math.min(colW * .32, Math.min(s.w, s.h) * .06);
+        c.fillStyle = s.fg;
+        for (let g = 0; g < COLS; g++) {
+          const cy = Math.floor(g / 3), j = g % 3, x = (g + .5) * colW;
+          const lc = Math.floor(g / 2), odd = g % 2;                   // Spalte g geht im Takt floor(g/2) raus: erst die ältere, dann die jüngere
+          for (let n = 0; n < 2; n++) {                                // n = 0 oben, 1 unten
+            const tA = cy * 4 + j + .5 + n * .25;                      // taucht einfach auf: Mitte des Schlags, unten eine 16tel später
+            if (bt < tA) continue;
+            const tO = lc * 4 + 3 + (odd * 2 + n) / 4;                 // Reihenfolge des Erscheinens: oben, unten, oben, unten
+            const f = eIn(seg(bt, tO, tO + .3));
+            if (f >= 1) continue;
+            const y = s.h * (n ? .62 : .38) + (n ? 1 : -1) * s.h * f;  // oben nach oben raus, unten nach unten raus
+            c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
+          }
+        }
+      },
+    },
+    {
+      title: 'Linien wachsen von links nach rechts',
+      text: 'Zehn senkrechte Linien in gleichen Abständen. Im Rhythmus der Ideen oben wächst von links nach rechts eine nach der anderen aus der Mitte nach oben und unten: zwei in der Mitte von Schlag 1, zwei in Schlag 2, zwei in Schlag 3 und vier in Schlag 4 auf je einer 16tel. Mit dem nächsten Takt ist wieder alles leer.',
+      tag: '10 Linien · Wachsen · links → rechts',
+      draw(c, s) {
+        const b = loop(s.t, s.bar)[1] / s.beat, cell = s.w / 10;
+        const HIT = [.5, .75, 1.5, 1.75, 2.5, 2.75, 3, 3.25, 3.5, 3.75];
+        c.strokeStyle = s.fg; c.lineCap = 'round'; c.lineWidth = Math.max(1.5, cell * .16);
+        for (let n = 0; n < 10; n++) {
+          if (b < HIT[n]) continue;
+          const half = s.h * .38 * eOut(seg(b, HIT[n], HIT[n] + .4)), x = (n + .5) * cell;
+          c.beginPath(); c.moveTo(x, s.h / 2 - half); c.lineTo(x, s.h / 2 + half); c.stroke();
+        }
+      },
+    },
+    {
+      title: 'Kranz aus Punkt-Dreiecken',
+      text: 'Acht Dreiecke bilden einen Kranz um die Bildmitte, mit der Spitze nach außen. Sie werden einzeln im Uhrzeigersinn gezeichnet, oben beginnend – und jedes Dreieck baut sich genau wie in Idee 3 aus 10 Punkten auf: in einem Takt zwei Punkte in der Mitte von Schlag 1, 2 und 3 (der zweite eine 16tel später) und vier Punkte im 4. Schlag auf je einer 16tel. Ein Dreieck dauert also einen Takt, der ganze Kranz acht Takte (die Länge der Spur). Fertige Dreiecke bleiben stehen; nach dem achten fängt es von vorn an.',
+      tag: '8 Dreiecke · je 1 Takt wie Idee 3 · Uhrzeigersinn',
+      draw(c, s) {
+        const m0 = Math.min(s.w, s.h), R = m0 * .36, d = m0 * .05, r = d * .32, N = 8;
+        const first = Math.round((DUR - 8 * s.bar) / s.bar);            // Beginn der Ringtone-Spur (Takt 24): dort fängt der Kranz von vorn an
+        const k = ((Math.floor(s.t / s.bar) - first) % N + N) % N, b = loop(s.t, s.bar)[1] / s.beat;   // k = Nummer des Dreiecks, das gerade entsteht
+        // Punkte wie in Idee 3: [Reihe, Platz, Zeitpunkt in Schlägen]; Spitze oben, Reihen 1 · 2 · 3 · 4
+        const BALLS = [[1, 0, .5], [1, 1, .75], [2, 0, 1.5], [2, 2, 1.75], [3, 0, 2.5], [3, 3, 2.75], [0, 0, 3], [2, 1, 3.25], [3, 1, 3.5], [3, 2, 3.75]];
+        c.fillStyle = s.fg;
+        for (let n = 0; n <= k; n++) {
+          const a = (22.5 + 45 * n) * Math.PI / 180;                              // im Uhrzeigersinn, oben beginnend
+          c.save(); c.translate(s.w / 2 + Math.sin(a) * R, s.h / 2 - Math.cos(a) * R); c.rotate(a);
+          for (const [row, i, t] of BALLS) {
+            if (n === k && b < t) continue;                                     // das aktuelle Dreieck baut sich auf, die früheren sind fertig
+            c.beginPath(); c.arc((i - row / 2) * d, (row - 1.5) * d, r, 0, Math.PI * 2); c.fill();
+          }
+          c.restore();
+        }
+      },
+    },
+    {
+      title: 'Kreis aus 60 Punkten',
+      text: 'Ein großer Kreis aus 60 Punkten füllt sich in 10 Takten. In jedem Takt tauchen sechs Punkte an zufälligen Stellen des Kreises auf: zwei in der Mitte von Schlag 1, zwei in der Mitte von Schlag 2 und zwei in der Mitte von Schlag 3 (der zweite jeweils eine 16tel später). Im 4. Schlag fliegen vier weitere, große Punkte von außerhalb des Bildes in die Mitte, jeweils so, dass sie auf einer 16tel ankommen. Dabei werden sie immer kleiner und verschwinden dort, als würden sie in ein Loch fallen. Nach dem zehnten Takt ist der Kreis voll; dann fängt es von vorn an.',
+      tag: '6 Punkte auf dem Kreis · 4 fliegen in die Mitte',
+      draw(c, s) {
+        const N = 10, PER = 6, TOT = N * PER, m0 = Math.min(s.w, s.h), R = m0 * .38, r = m0 * .016;
+        const first = Math.round((DUR - 8 * s.bar) / s.bar);            // Beginn der Ringtone-Spur (Takt 24): dort fängt der Kreis von vorn an
+        const [kk, p] = loop(s.t, s.bar), k = (((kk - first) % N) + N) % N, b = p / s.beat;
+        const slot = [...Array(TOT).keys()].sort((a, z) => hash32(a * 31 + 7) - hash32(z * 31 + 7));   // zufällige, aber feste Reihenfolge der 60 Plätze
+        const T = [.5, .75, 1.5, 1.75, 2.5, 2.75];
+        c.fillStyle = s.fg;
+        const dot = (x, y) => { c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); };
+        for (let i = 0; i < (k + 1) * PER; i++) {
+          if (i >= k * PER && b < T[i - k * PER]) continue;       // in diesem Takt tauchen sie zu ihrem Zeitpunkt auf
+          const a = slot[i] / TOT * Math.PI * 2;
+          dot(s.w / 2 + Math.sin(a) * R, s.h / 2 - Math.cos(a) * R);
+        }
+        const far = Math.hypot(s.w, s.h) * .6, sec = [0, 1, 2, 3].sort((a, z) => hash32(a * 17 + k * 101 + 5) - hash32(z * 17 + k * 101 + 5));   // jeder der vier Punkte kommt aus einem anderen Viertel – in zufälliger Reihenfolge
+        for (let j = 0; j < 4; j++) {                              // vier Punkte von außen in die Mitte, angekommen auf 3 · 3,25 · 3,5 · 3,75
+          const tA = 3 + j * .25, e = seg(b, tA - .35, tA);
+          if (e <= 0 || b >= tA) continue;
+          const a = (sec[j] + .15 + .7 * rnd(k, j, 83)) * Math.PI / 2, q = eIn(e), d = far * (1 - q), rad = r * 6 * (1 - q);   // groß von außen, wird zur Mitte hin kleiner – fällt wie in ein Loch
+          c.beginPath(); c.arc(s.w / 2 + Math.sin(a) * d, s.h / 2 - Math.cos(a) * d, rad, 0, Math.PI * 2); c.fill();
+        }
+      },
+    },
+    {
+      title: 'Punkte wandern die Spirale nach innen',
+      text: 'Eine Spirale aus 48 Punkten, die sich über die 8 Takte der Spur von außen nach innen füllt. Wie bei „Spalten wandern“: In jedem Takt tauchen sechs neue Punkte auf (zwei in der Mitte von Schlag 1, 2 und 3, der zweite eine 16tel später), im 4. Schlag verschwinden die vier ältesten auf je einer 16tel – sie rutschen dabei an der Spirale nach außen aus dem Bild. So wandert ein Band aus Punkten die Spirale entlang nach innen, und jeden Takt bleiben zwei mehr stehen. Die Punkte werden nach innen kleiner.',
+      tag: '8 Takte · 6 rein, 4 raus · Spirale nach innen',
+      draw(c, s) { ringSpiral(c, s, true); },
+    },
+    {
+      title: 'Punkte wandern die Spirale nach außen',
+      text: 'Dasselbe wie die Spirale nach innen, nur umgekehrt: Das Band aus Punkten beginnt in der Mitte und wandert die Spirale nach außen. Sechs neue Punkte pro Takt (Mitte von Schlag 1, 2 und 3, je zwei), im 4. Schlag verschwinden die vier ältesten auf je einer 16tel – sie rutschen dabei an der Spirale zurück in die Mitte und werden dort klein. Die Punkte werden nach außen größer.',
+      tag: '8 Takte · 6 rein, 4 raus · Spirale nach außen',
+      draw(c, s) { ringSpiral(c, s, false); },
+    },
+    {
+      title: 'Snake',
+      text: 'Eine Schlange aus Punkten schlängelt sich in Bahnen hin und her durch ein Raster aus 8 × 6 Feldern: die erste Reihe von links nach rechts, die nächste zurück, und so weiter. Wie bei „Spalten wandern“ wächst sie im Rhythmus: In jedem Takt kommen am Kopf sechs Punkte dazu (zwei in der Mitte von Schlag 1, 2 und 3, der zweite eine 16tel später), im 4. Schlag schrumpfen die vier hintersten Punkte am Schwanz auf je einer 16tel weg. So kriecht die Schlange über die 8 Takte der Spur durchs Raster und wird dabei jeden Takt zwei Punkte länger. Der Kopf ist etwas größer.',
+      tag: '8 Takte · 6 am Kopf rein, 4 am Schwanz raus',
+      draw(c, s) {
+        const CYC = 8, TOT = CYC * 6, COLS = 8, ROWS = 6, cell = Math.min(s.w / COLS, s.h / ROWS), r = cell * .42;
+        const first = Math.round((DUR - CYC * s.bar) / s.bar);                    // die Spur umfasst die letzten 8 Takte des Songs
+        const bt = ((((s.t / s.bar - first) % CYC) + CYC) % CYC) * 4;             // Schläge ab Beginn des ersten Takts (davor/danach als Schleife)
+        const T = [.5, .75, 1.5, 1.75, 2.5, 2.75], x0 = (s.w - cell * COLS) / 2, y0 = (s.h - cell * ROWS) / 2;
+        let head = -1;
+        for (let g = 0; g < TOT; g++) if (bt >= Math.floor(g / 6) * 4 + T[g % 6]) head = g;   // der zuletzt aufgetauchte Punkt ist der Kopf
+        c.fillStyle = s.fg;
+        for (let g = 0; g <= head; g++) {
+          const tO = Math.floor(g / 4) * 4 + 3 + (g % 4) / 4, f = eIO(seg(bt, tO, tO + .3));   // Schwanz: die vier hintersten schrumpfen im 4. Schlag weg
+          if (f >= 1) continue;
+          const row = Math.floor(g / COLS), ci = g % COLS, col = row % 2 ? COLS - 1 - ci : ci;   // Bahn für Bahn hin und her
+          c.beginPath(); c.arc(x0 + (col + .5) * cell, y0 + (row + .5) * cell, r * (g === head ? 1.15 : 1) * (1 - f), 0, Math.PI * 2); c.fill();
+        }
+      },
+    },
+    {
+      title: 'Kreis-Schlange wechselt die Richtung',
+      text: 'Eine Kette aus Punkten wächst auf einem Kreis aus 80 Plätzen. In jedem Takt kommen sechs Punkte am Ende der Kette dazu (zwei in der Mitte von Schlag 1, 2 und 3, der zweite eine 16tel später) – im einen Takt im Uhrzeigersinn, im nächsten gegen den Uhrzeigersinn, immer im Wechsel. Im 4. Schlag entstehen am anderen Ende der Kette vier weitere Punkte (auf je einer 16tel), wandern in die entgegengesetzte Richtung einmal um den freien Teil des Kreises herum und setzen sich vorn an die Kette. Dort baut sich der Kreis im nächsten Takt in der anderen Richtung weiter auf. Pro Takt kommen so 10 Punkte dazu; nach den 8 Takten der Spur ist der Kreis mit 80 Punkten voll, dann fängt es von vorn an.',
+      tag: '6 am Ende rein · 4 wandern nach vorn · 80 Punkte',
+      draw(c, s) {
+        const N = 8, S = 80, m0 = Math.min(s.w, s.h), R = m0 * .4, r = m0 * .013;
+        const first = Math.round((DUR - 8 * s.bar) / s.bar);                    // Beginn der Ringtone-Spur
+        const [kk, p] = loop(s.t, s.bar), k = (((kk - first) % N) + N) % N, b = p / s.beat;
+        const T = [.5, .75, 1.5, 1.75, 2.5, 2.75];
+        let lo = 0, hi = 0;                                                       // Kette = Plätze lo … hi−1 (fortlaufend gezählt, nicht modulo)
+        for (let q = 0; q < k; q++) { if (q % 2 === 0) hi += 10; else lo -= 10; }   // Zustand zu Beginn des Takts k
+        const cw = k % 2 === 0, G = S - (hi - lo) - 10;                           // G = Weg, den die vier Wanderer durch den freien Teil zurücklegen
+        c.fillStyle = s.fg;
+        const dot = pos => { const a = -Math.PI / 2 + pos / S * Math.PI * 2; c.beginPath(); c.arc(s.w / 2 + Math.cos(a) * R, s.h / 2 + Math.sin(a) * R, r, 0, Math.PI * 2); c.fill(); };
+        for (let sl = lo; sl < hi; sl++) dot(sl);                                 // die Kette
+        for (let j = 0; j < 6; j++) if (b >= T[j]) dot(cw ? hi + j : lo - 1 - j);   // sechs neue am Ende, im Wechsel mit/gegen den Uhrzeigersinn
+        for (let i = 0; i < 4; i++) {                                             // vier Wanderer: entstehen am anderen Ende und gehen in die Gegenrichtung nach vorn
+          const t0 = 3 + i / 4; if (b < t0) continue;
+          const f = eIO(seg(b, t0, t0 + .3));
+          dot(cw ? lo - 4 + i - G * f : hi + 3 - i + G * f);
+        }
       },
     },
   ],

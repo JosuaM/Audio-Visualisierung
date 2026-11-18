@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script>/* Hell/Dunkel sofort setzen, bevor die Seite gezeichnet wird – sonst blitzt sie beim Wechseln hell auf */
 try { document.documentElement.dataset.theme = localStorage.getItem('av-theme') || 'dark'; } catch (e) { document.documentElement.dataset.theme = 'dark'; }</script>
-<title>Morphologischer Kasten · Version 3 – Audio-Visualisierung</title>
+<title>Morphologischer Kasten · Version 2 – Audio-Visualisierung</title>
 <style>
 /* weicher Übergang zwischen den Seiten statt hartem Neuaufbau */
 @view-transition { navigation: auto; }
@@ -41,8 +41,6 @@ header { display: flex; align-items: center; justify-content: space-between; gap
 h1 { margin: 0; font-size: 15px; font-weight: 650; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 h1 span { color: var(--muted); font-weight: 450; }
 /* Punkte-Navigation: ein Punkt pro Seite der Kategorie, der aktuelle ist groß und farbig */
-.pbtn { margin-left: 22px; height: 28px; }
-header.nav .nc { display: flex; align-items: center; }
 .steps { display: flex; align-items: center; height: 30px; }
 .steps[hidden] { display: none !important; }
 .steps .ln { width: 38px; height: 2px; background: var(--line-2); }
@@ -325,8 +323,8 @@ select.trg { height: 24px; width: 100%; font-size: 11px; padding: 0 20px 0 7px; 
 <body>
 
 <header class="nav">
-  <div class="nl"><a class="home" href="index.html" title="Hauptmenü" aria-label="Zum Hauptmenü"><svg viewBox="0 0 24 24"><path d="M3.5 11 12 4l8.5 7"/><path d="M6 9.5V20h12V9.5"/><path d="M10 20v-5h4v5"/></svg></a><div class="pt"><span class="pk">Morphologischer Kasten</span><h1>Version 3</h1></div></div>
-  <div class="nc"><nav class="steps" aria-label="Seiten in dieser Kategorie"><a class="dot" href="kasten.html" data-l="Version 1" title="Version 1" aria-label="Zu Version 1"></a><span class="ln" aria-hidden="true"></span><a class="dot" href="kasten2.html" data-l="Version 2" title="Version 2" aria-label="Zu Version 2"></a><span class="ln" aria-hidden="true"></span><span class="dot cur" aria-current="page" data-l="Version 3" title="Version 3"></span></nav><a class="btn pbtn" href="parameter.html" title="Eigene Seite: morphologischer Kasten pro allgemeinem Klangparameter (Lautstärke, Tonhöhe …)"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>Parameter</a></div>
+  <div class="nl"><a class="home" href="../../index.html" title="Hauptmenü" aria-label="Zum Hauptmenü"><svg viewBox="0 0 24 24"><path d="M3.5 11 12 4l8.5 7"/><path d="M6 9.5V20h12V9.5"/><path d="M10 20v-5h4v5"/></svg></a><div class="pt"><span class="pk">Morphologischer Kasten</span><h1>Version 2</h1></div></div>
+  <div class="nc"><nav class="steps" aria-label="Seiten in dieser Kategorie"><a class="dot" href="kasten.html" data-l="Version 1" title="Version 1" aria-label="Zu Version 1"></a><span class="ln" aria-hidden="true"></span><span class="dot cur" aria-current="page" data-l="Version 2" title="Version 2"></span><span class="ln" aria-hidden="true"></span><a class="dot" href="kasten3.html" data-l="Version 3" title="Version 3" aria-label="Zu Version 3"></a></nav></div>
   <div class="right">
     <label class="trk" title="Auf welche Tonspur die Visualisierung reagiert: der ganze Song oder eine einzelne Instrumentenspur (auf der Visualisierungsseite pro Instrument hochladbar)">Tonspur
       <span class="sel"><select id="track" aria-label="Tonspur wählen"><option value="all">Alles (Original)</option></select></span>
@@ -394,7 +392,7 @@ select.trg { height: 24px; width: 100%; font-size: 11px; padding: 0 20px 0 7px; 
         <svg id="tthSvg" height="40" preserveAspectRatio="none" aria-hidden="true"></svg>
       </div>
       <button id="psave" hidden><svg class="i" viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/></svg>Speichern</button>
-      <span class="sinfo" id="sinfo" hidden tabindex="0" role="note" aria-label="Wohin wird gespeichert?">i<span class="tip">Speichert in <b>kasten3.html</b> im Projektordner „Audio-Visualisierung“. Beim ersten Mal fragt der Browser nach der Datei – dann <b>kasten3.html</b> auswählen. Danach committen &amp; pushen, damit der andere deine Auswahl sieht.</span></span>
+      <span class="sinfo" id="sinfo" hidden tabindex="0" role="note" aria-label="Wohin wird gespeichert?">i<span class="tip">Speichert in <b>kasten2.html</b> im Projektordner „Audio-Visualisierung“. Beim ersten Mal fragt der Browser nach der Datei – dann <b>kasten2.html</b> auswählen. Danach committen &amp; pushen, damit der andere deine Auswahl sieht.</span></span>
     </div>
     <div class="tabs" role="tablist">
       <button class="t on" data-go="look"><b>1</b>&nbsp;Erscheinung</button>
@@ -408,7 +406,7 @@ select.trg { height: 24px; width: 100%; font-size: 11px; padding: 0 20px 0 7px; 
 <div id="toast"></div>
 
 <script id="profile-data">window.PROFILES={"Jeremy":{"Mosquito":{"c":"71122411030-003-3---003-255.-------------","t":0},"Flute":{"c":"01110710230-00710430255-255.-------------","t":0},"Frog":{"c":"01220700020111096---2050655.-------------","t":0},"Building":{"c":"01201121030000306---0031655.-------------","t":0},"Riser":{"c":"453107000-01000-041-004725-.-------------","t":0},"Hunting Horn":{"c":"5130011102000009-31-00-7254.-------------","t":0},"Drums":{"c":"00220700001000196----------.-------------","t":0},"Ringtone":{"c":"11211701230000--55-32-0-625.-------------","t":1794665090984}},"Josua":{"Mosquito":{"c":"042222111000111204122622215.-------------","t":1794864871164},"Frog":{"c":"234021020020230961036651155.-------------","t":1794865035550},"Building":{"c":"611104212200130214101610301.-------------","t":1794865209886},"Drums":{"c":"633011110200207900002031150.-------------","t":1794865370075},"Ringtone":{"c":"431114120102100813021220402.-------------","t":1794865500967},"Flute":{"c":"302202212200205123001540125.-------------","t":1794916897219}}};</script>
-<script src="analysis.js"></script>
+<script src="../../assets/analysis.js"></script>
 <script>
 'use strict';
 /* ═══════════════════════════ Daten: die drei Kästen ═══════════════════════════ */
@@ -1433,7 +1431,7 @@ class Scene {
 
 /* ═══════════════════════════ Klang: Synthesizer & Song-Analyse ═══════════════════════════ */
 class Sound {
-  constructor() { this.ac = null; this.mode = 'song'; this.direct = location.protocol === 'file:'; this.env = null; this.track = 'all'; this.url = 'song.m4a'; this.notes = []; this.v = {}; this.bpm = 100; this.sm = 0; this.pitchSm = .5; this.peak = .05; }
+  constructor() { this.ac = null; this.mode = 'song'; this.direct = location.protocol === 'file:'; this.env = null; this.track = 'all'; this.url = '../../assets/song.m4a'; this.notes = []; this.v = {}; this.bpm = 100; this.sm = 0; this.pitchSm = .5; this.peak = .05; }
   ensure() {
     if (this.ac) return;
     const ac = this.ac = new (window.AudioContext || window.webkitAudioContext)();
@@ -1479,7 +1477,7 @@ class Sound {
   }
   pauseSong() { if (this.audio) this.audio.pause(); }
   async setTrack(name) {        // 'all' = ganzer Song, sonst Einzelspur eines Instruments
-    let url = 'song.m4a';
+    let url = '../../assets/song.m4a';
     if (name !== 'all') { const r = await Stems.get(name); if (!r) { toast('Diese Tonspur gibt es nicht mehr.'); return false; } url = URL.createObjectURL(r.blob); }
     if (this.url.startsWith('blob:')) URL.revokeObjectURL(this.url);
     this.track = name; this.url = url;
@@ -1676,10 +1674,10 @@ function chipDeco(k, i) {
 }
 const LOCK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="7" width="10" height="7" rx="1.5"/><path d="M5.2 7V5a2.8 2.8 0 0 1 5.6 0v2"/></svg>';
 
-const STORE = 'av-kasten3-v1';
+const STORE = 'av-kasten2-v1';
 let state = { sel: defaults(), trig: trigDefaults(), locks: {}, instruments: [], bpm: 100, current: null };
 try {   // beim ersten Öffnen: Name, Tonspur und Sperren aus dem bisherigen Kasten übernehmen
-  const s = JSON.parse(localStorage.getItem(STORE) || 'null') || JSON.parse(localStorage.getItem('av-kasten2-v1') || 'null') || JSON.parse(localStorage.getItem('av-kasten-v1') || 'null');
+  const s = JSON.parse(localStorage.getItem(STORE) || 'null') || JSON.parse(localStorage.getItem('av-kasten-v1') || 'null');
   if (s && s.sel) state = { ...state, ...s, sel: defaults(), trig: trigDefaults() };
 } catch (e) {}
 { const m = location.hash.match(/k=([0-9a-z.-]+)/i); const d = m && decode(m[1]); if (d) { state.sel = d; state.trig = decodeTrig(m[1]); } }
@@ -1763,7 +1761,7 @@ function drawPaths() {
 }
 
 /* Profile: gespeicherte Auswahl pro Name und Tonspur */
-const PEOPLE = ['Jeremy', 'Josua'], PROF_KEY = 'av-kasten3-profiles';
+const PEOPLE = ['Jeremy', 'Josua'], PROF_KEY = 'av-kasten2-profiles';
 // Gespeicherte Auswahlen: pro Name und Tonspur { c: Code, t: Zeitpunkt }. Sie stehen in dieser Datei (window.PROFILES,
 // kommt per Git zum anderen) und zusätzlich im Browser. Beim Zusammenführen gewinnt jeweils der neuere Eintrag.
 const normP = e => typeof e === 'string' ? { c: e, t: 0 } : e && e.c ? e : null;
@@ -1778,7 +1776,6 @@ function mergeProf(a, b) {
 }
 let profiles = {}, imported = 0, local = null;
 try { local = JSON.parse(localStorage.getItem(PROF_KEY) || 'null'); } catch (e) { local = null; }
-try { const v2 = JSON.parse(localStorage.getItem('av-kasten2-profiles') || 'null'); if (v2) local = v2; } catch (e) {}
 if (!local) {   // erstes Öffnen: gespeicherte Auswahlen aus dem bisherigen Kasten übernehmen (Erscheinung, Verhalten, Interaktion)
   local = {};
   try {
@@ -1829,7 +1826,7 @@ fillPTrack();
 
 /* Vorschau der gewählten Tonspur – so wie sie in „Tonspuren & Elemente · Version 2“ aussieht (live aus visualisierung.html) */
 let V2 = null;
-fetch('visualisierung.html', { cache: 'no-store' }).then(r => r.text()).then(t => {
+fetch('../tonspuren/visualisierung.html', { cache: 'no-store' }).then(r => r.text()).then(t => {
   const m = t.match(/<script id="state-data">window\.STATE=([\s\S]*?);<\/script>/);
   V2 = m ? (JSON.parse(m[1]).variants || {}).v1 : null; drawThumb();
 }).catch(() => {});
@@ -1872,7 +1869,7 @@ function drawThumb() {
 new ResizeObserver(() => drawThumb()).observe($('tthumb'));
 
 /* Ausschnitt der gewählten Tonspur anhören: erster zusammenhängender Abschnitt, höchstens 4 Takte */
-const snip = new Audio('song.m4a'); snip.preload = 'auto';
+const snip = new Audio('../../assets/song.m4a'); snip.preload = 'auto';
 let snipSeg = null, snipRaf = 0;
 function segmentFor(els) {
   const a = [...els].sort((x, y) => x.t0 - y.t0), end = x => x.t0 + x.w * (x.sx || 1), bar = 4 * 60 / SONG.bpm;
@@ -1913,7 +1910,7 @@ document.querySelectorAll('[data-who]').forEach(b => b.onclick = () => {
   else state.who = !both && state.who[0] === n ? [] : [n];
   loadProfile();
 });
-/* Speichern in die Datei kasten3.html – so kommt die Auswahl per Commit & Push zum anderen */
+/* Speichern in die Datei kasten2.html – so kommt die Auswahl per Commit & Push zum anderen */
 const idb = (mode, fn) => new Promise(res => {
   try {
     const r = indexedDB.open('av-store', 1);
@@ -1922,13 +1919,13 @@ const idb = (mode, fn) => new Promise(res => {
     r.onsuccess = () => { const tx = r.result.transaction('h', mode), q = fn(tx.objectStore('h')); tx.oncomplete = () => res(q && q.result); tx.onerror = tx.onabort = () => res(null); };
   } catch (e) { res(null); }
 });
-async function fileHandle() {           // kasten3.html im Projektordner – wird einmal gewählt und gemerkt
-  let h = await idb('readonly', s => s.get('html-kasten3'));
+async function fileHandle() {           // kasten2.html im Projektordner – wird einmal gewählt und gemerkt
+  let h = await idb('readonly', s => s.get('html-kasten2'));
   if (h) { try { if (await h.queryPermission({ mode: 'readwrite' }) !== 'granted' && await h.requestPermission({ mode: 'readwrite' }) !== 'granted') h = null; } catch (e) { h = null; } }
   if (!h) {
-    h = (await showOpenFilePicker({ types: [{ description: 'kasten3.html', accept: { 'text/html': ['.html'] } }] }))[0];
+    h = (await showOpenFilePicker({ types: [{ description: 'kasten2.html', accept: { 'text/html': ['.html'] } }] }))[0];
     if (await h.requestPermission({ mode: 'readwrite' }) !== 'granted') throw new Error('keine Schreibrechte');
-    idb('readwrite', s => s.put(h, 'html-kasten3'));
+    idb('readwrite', s => s.put(h, 'html-kasten2'));
   }
   return h;
 }
@@ -1948,17 +1945,17 @@ $('psave').onclick = async () => {
   try {
     if (window.showOpenFilePicker) {
       const h = await fileHandle(), txt = await (await h.getFile()).text();
-      if (h.name !== 'kasten3.html' || !PROF_RE.test(txt)) throw new Error('Das ist nicht die kasten3.html dieses Projekts');
+      if (h.name !== 'kasten2.html' || !PROF_RE.test(txt)) throw new Error('Das ist nicht die kasten2.html dieses Projekts');
       const w = await h.createWritable(); await w.write(withProfiles(txt)); await w.close();
-      toast(`Gespeichert: ${n} · ${track} – in kasten3.html, jetzt committen & pushen`);
+      toast(`Gespeichert: ${n} · ${track} – in kasten2.html, jetzt committen & pushen`);
     } else {                            // Browser ohne Dateizugriff: geänderte Datei herunterladen
       const txt = await (await fetch(location.href.split('#')[0].split('?')[0], { cache: 'no-store' })).text();
-      const a = document.createElement('a'); a.download = 'kasten3.html';
+      const a = document.createElement('a'); a.download = 'kasten2.html';
       a.href = URL.createObjectURL(new Blob([withProfiles(txt)], { type: 'text/html' })); a.click();
-      toast('kasten3.html heruntergeladen – im Projektordner ersetzen, dann committen & pushen');
+      toast('kasten2.html heruntergeladen – im Projektordner ersetzen, dann committen & pushen');
     }
   } catch (err) {
-    toast(err.name === 'AbortError' ? 'Nur im Browser gespeichert – zum Teilen beim Speichern die Datei kasten3.html wählen'
+    toast(err.name === 'AbortError' ? 'Nur im Browser gespeichert – zum Teilen beim Speichern die Datei kasten2.html wählen'
       : `Nur im Browser gespeichert (${err.message})`, null, null);
   }
   profUI();
@@ -2209,7 +2206,7 @@ function buildBoxImage() {
   c.textBaseline = 'middle';
 
   /* Kopf */
-  c.fillStyle = INK; c.font = `700 24px ${FONT}`; c.textAlign = 'left'; c.fillText('Morphologischer Kasten · Version 3', M, 40);
+  c.fillStyle = INK; c.font = `700 24px ${FONT}`; c.textAlign = 'left'; c.fillText('Morphologischer Kasten · Version 2', M, 40);
   { /* Tonspur gut sichtbar oben rechts */
     const TC = ['#12985f', '#2558e8', '#d8304c', '#d98400', '#e5158f', '#7a4cff', '#0c95ad', '#7ea000'], ci = SONG_INSTRUMENTS.indexOf(state.ptrack), tc = ci >= 0 ? TC[ci] : INK;
     c.font = `700 18px ${FONT}`; const tw = c.measureText(state.ptrack).width; c.font = `450 13px ${FONT}`; const lw = c.measureText('Tonspur').width;

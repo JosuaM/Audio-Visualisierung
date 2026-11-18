@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>/* Hell/Dunkel sofort setzen, bevor die Seite gezeichnet wird – sonst blitzt sie beim Wechseln hell auf */
+try { document.documentElement.dataset.theme = localStorage.getItem('av-theme') || 'dark'; } catch (e) { document.documentElement.dataset.theme = 'dark'; }</script>
+<title>Animations-Zuordnung – Audio-Visualisierung</title>
+<style>
+/* weicher Übergang zwischen den Seiten statt hartem Neuaufbau */
+@view-transition { navigation: auto; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: .2s; animation-timing-function: ease; }
+@media (prefers-reduced-motion: reduce) { @view-transition { navigation: none; } }
+html { background: var(--bg); }
+/* Farben wie auf den anderen Seiten – Spurfarben --c0 … --c7 = Zeile 0 … 7 */
+:root {
+  --bg: #f4f2ed; --panel: #fbfaf7; --ink: #1b1b22; --muted: #7b7a82; --faint: #a9a8ae;
+  --line: #e3e0d8; --line-2: #cfcbc0; --accent: #ff6a14; --accent-ink: #fff; --stage: #ffffff; --stage-fg: #000000;
+  --c0: #12985f; --c1: #2558e8; --c2: #d8304c; --c3: #d98400; --c4: #e5158f; --c5: #7a4cff; --c6: #0c95ad; --c7: #7ea000;
+  --pill-ink: #fff;
+}
+:root[data-theme="dark"] {
+  --bg: #0b0c10; --panel: #11131a; --ink: #eeeef2; --muted: #8b8d99; --faint: #5d5f6b;
+  --line: #1f222c; --line-2: #2d313e; --accent: #ff8a2a; --accent-ink: #15120e; --stage: #000000; --stage-fg: #ffffff;
+  --c0: #3ddc97; --c1: #5ba3ff; --c2: #ff5f76; --c3: #ffb454; --c4: #ff3fa6; --c5: #b88cff; --c6: #46d9ee; --c7: #d6f45c;
+  --pill-ink: #0b0c10;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--ink);
+  font: 14px/1.5 "Inter", system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased;
+  padding: 0 max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px));
+}
+button { font: inherit; color: inherit; }
+
+/* Kopfzeile wie auf den anderen Seiten (Home links, Hell/Dunkel rechts) */
+header.nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 30; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 16px;
+  margin: 0 calc(-1 * max(16px, env(safe-area-inset-left, 0px))); padding: 14px 20px; background: var(--bg); border-bottom: 1px solid var(--line); }
+.nl { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.pt { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.pt .pk { font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.pt h1 { margin: 0; font-size: 16px; font-weight: 650; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.home { flex: none; width: 30px; height: 30px; border: 1px solid var(--line-2); border-radius: 8px; display: grid; place-items: center; color: var(--muted); background: var(--panel); }
+.home:hover { color: var(--ink); border-color: var(--muted); }
+.home:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.home svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.facts { display: flex; flex-wrap: wrap; gap: 6px; justify-self: center; }
+.fact { font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; background: var(--panel); white-space: nowrap; }
+.fact b { color: var(--ink); font-weight: 600; }
+#theme { justify-self: end; flex: none; width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--panel); color: inherit; display: grid; place-items: center; cursor: pointer; }
+#theme:hover { border-color: var(--muted); }
+#theme svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+@media (max-width: 760px) { header.nav { grid-template-columns: minmax(0, 1fr) auto; } header.nav .facts { display: none; } }
+
+.wrap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 22px 4px 0; }
+.wrap > * { min-width: 0; }
+.ttl { margin: 0; font-size: 19px; font-weight: 650; letter-spacing: -.01em; }
+.panel { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.lb { font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+
+/* Tonspur-Auswahl */
+.pick { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 12px 14px; }
+.pick > * { min-width: 0; }
+.pick .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.trk { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px 0 10px; border: 1px solid var(--line-2); border-radius: 999px; background: var(--bg); font-size: 13px; font-weight: 600; cursor: pointer; color: var(--muted); }
+.trk i { width: 10px; height: 10px; border-radius: 50%; background: var(--tc); }
+.trk:hover { color: var(--ink); border-color: var(--muted); }
+.trk[aria-pressed="true"] { background: var(--tc); border-color: var(--tc); color: var(--pill-ink); }
+.trk[aria-pressed="true"] i { background: var(--pill-ink); }
+.trk:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Klanghierarchie der gewählten Spur */
+.hier { display: grid; gap: 6px; }
+.hier .hh { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.hier .src { font-size: 11.5px; color: var(--faint); }
+.hier .info { margin-left: auto; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.hier .info b { color: var(--ink); font-weight: 600; }
+#stripSvg { width: 100%; height: 64px; display: block; border-radius: 6px; background: var(--bg); border: 1px solid var(--line); cursor: pointer; }
+#stripSvg text { font: 9.5px/1 "Inter", system-ui, sans-serif; fill: var(--muted); font-variant-numeric: tabular-nums; }
+.runs { display: flex; flex-wrap: wrap; gap: 5px; }
+.run { display: inline-flex; align-items: baseline; gap: 6px; height: 26px; padding: 0 9px; border: 1px solid var(--line-2); border-radius: 7px; background: var(--bg); font-size: 11.5px; color: var(--muted); cursor: pointer; font-variant-numeric: tabular-nums; }
+.run b { color: var(--ink); font-weight: 600; }
+.run:hover { border-color: var(--tc); color: var(--ink); }
+.run:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.hier .hint { font-size: 11px; color: var(--faint); }
+
+/* Player */
+.player { display: flex; align-items: center; gap: 14px; padding: 10px 16px 10px 10px; flex-wrap: wrap; }
+/* Player bleibt beim Scrollen direkt unter der Kopfzeile sichtbar */
+.player { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 61px); z-index: 25; box-shadow: 0 6px 16px -10px rgba(0,0,0,.35); }
+.playb { flex: none; width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; cursor: pointer; }
+.playb:hover { filter: brightness(1.07); }
+.playb:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.playb svg { width: 18px; height: 18px; fill: currentColor; }
+.tm { flex: none; font-variant-numeric: tabular-nums; font-size: 12.5px; color: var(--muted); min-width: 44px; }
+.tm.cur { color: var(--ink); font-weight: 600; text-align: right; }
+.prog { position: relative; flex: 1; min-width: 160px; height: 34px; cursor: pointer; touch-action: none; }
+.prog:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+.prog::before { content: ""; position: absolute; left: 0; right: 0; top: 14px; height: 6px; border-radius: 3px; background: var(--line-2); }
+.pfill { position: absolute; left: 0; top: 14px; height: 6px; border-radius: 3px; background: var(--accent); width: 0; }
+.pknob { position: absolute; top: 10px; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--panel); left: 0; }
+.rate { flex: none; display: flex; align-items: center; gap: 8px; }
+.rate .sel { position: relative; display: inline-flex; }
+.rate .sel::after { content: ""; position: absolute; right: 11px; top: 50%; width: 6px; height: 6px; margin-top: -5px; border: solid var(--muted); border-width: 0 1.6px 1.6px 0; transform: rotate(45deg); pointer-events: none; }
+.rate select { appearance: none; -webkit-appearance: none; height: 30px; padding: 0 28px 0 10px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--panel); color: var(--ink); font: 600 12.5px/1 "Inter", system-ui, sans-serif; font-variant-numeric: tabular-nums; cursor: pointer; }
+.rate select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.rate.on select { border-color: var(--accent); color: var(--accent); }
+/* Auge: Animationen an/aus */
+.eye { flex: none; width: 34px; height: 30px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--panel); color: var(--muted); display: grid; place-items: center; cursor: pointer; }
+.eye:hover { color: var(--ink); border-color: var(--muted); }
+.eye:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.eye[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
+.eye svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.beatnow { flex: none; font-size: 12px; color: var(--muted); min-width: 150px; text-align: right; font-variant-numeric: tabular-nums; }
+.beatnow b { color: var(--ink); font-weight: 600; }
+@media (max-width: 760px) { .rate .lb, .beatnow { display: none; } }
+
+/* Kästen mit Animationen */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 12px; }
+.box { display: grid; grid-template-rows: auto auto; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); overflow: hidden; min-width: 0; }
+.stage { position: relative; aspect-ratio: 4 / 3; background: var(--stage); }
+.stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.stage .tag { position: absolute; right: 8px; bottom: 8px; max-width: calc(100% - 16px); box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 9.5px; line-height: 1.5; font-weight: 600; letter-spacing: .02em; color: var(--muted); background: color-mix(in srgb, var(--panel) 85%, transparent); border: 1px solid var(--line); border-radius: 999px; padding: 0 7px; }
+.cap { padding: 10px 14px 13px; display: grid; gap: 2px; }
+.cap h3 { margin: 0; font-size: 14px; font-weight: 650; display: flex; align-items: center; gap: 8px; }
+.cap h3 .n { font-size: 11px; font-weight: 650; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: var(--ink); color: var(--bg); flex: none; }
+.cap p { margin: 0; color: var(--muted); font-size: 12.5px; }
+/* Taktfortschritt unter der Überschrift – getrennt von der Animation */
+.pbar { height: 3px; border-radius: 2px; background: var(--line); overflow: hidden; margin-top: 8px; }
+.pbar i { display: block; height: 100%; width: 0; background: var(--muted); border-radius: 2px; }
+.box.empty { border-style: dashed; border-color: var(--line-2); background: transparent; }
+.box.empty .stage { background: transparent; display: grid; place-items: center; }
+.box.empty .plus { width: 38px; height: 38px; border-radius: 50%; border: 1.5px dashed var(--line-2); display: grid; place-items: center; color: var(--faint); font-size: 22px; line-height: 1; }
+.box.empty .cap h3 { color: var(--muted); }
+.box.empty .cap h3 .n { background: var(--line-2); color: var(--panel); }
+.note { margin: 0; color: var(--muted); font-size: 12.5px; }
+.note code { font: 12px/1.4 ui-monospace, "SF Mono", Menlo, monospace; color: var(--ink); }
+/* i-Button & Pop-ups: Zuordnung zum morphologischen Kasten */
+.cap h3 .ibtn { margin-left: auto; flex: none; width: 22px; height: 22px; padding: 0; border-radius: 50%; border: 1px solid var(--line-2); background: var(--panel); color: var(--muted); font: italic 700 12px/1 Georgia, "Times New Roman", serif; cursor: pointer; display: grid; place-items: center; }
+.cap h3 .ibtn:hover, .cap h3 .ibtn:focus-visible { color: var(--accent); border-color: var(--accent); outline: none; }
+.infotip { position: fixed; z-index: 90; width: min(340px, calc(100vw - 16px)); padding: 12px 14px; border-radius: 10px; background: var(--ink); color: var(--bg); font-size: 11.5px; line-height: 1.5; box-shadow: 0 10px 30px rgba(0,0,0,.35); pointer-events: none; }
+.infotip[hidden], .imodal[hidden] { display: none; }
+.infotip h4 { margin: 0 0 6px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; opacity: .7; }
+.infotip div { margin-bottom: 5px; } .infotip small { display: block; margin-top: 8px; opacity: .65; }
+.imodal { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,.55); display: grid; place-items: center; padding: 20px; }
+.im-card { width: min(760px, 100%); max-height: calc(100vh - 40px); display: grid; grid-template-rows: auto minmax(0, 1fr) auto; background: var(--panel); border: 1px solid var(--line-2); border-radius: 14px; overflow: hidden; box-shadow: 0 24px 70px rgba(0,0,0,.5); }
+.im-card.wide { width: min(1080px, 100%); }
+.im-h { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 16px 20px 12px; border-bottom: 1px solid var(--line); }
+.im-h h3 { margin: 2px 0 0; font-size: 17px; } .im-k { font-size: 10.5px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.imodal .im-x { width: 30px; height: 30px; padding: 0; justify-content: center; border: 0; background: transparent; color: var(--muted); border-radius: 8px; }
+.imodal .im-x:hover { background: var(--chip, var(--line)); color: var(--ink); }
+.im-b { overflow: auto; padding: 4px 20px 16px; }
+.im-g { font-size: 10.5px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin: 18px 0 6px; }
+.im-r { display: grid; grid-template-columns: 190px 130px 100px minmax(0, 1fr); gap: 4px 12px; align-items: baseline; padding: 6px 0; border-top: 1px solid var(--line); font-size: 12.5px; }
+.im-n { color: var(--muted); } .im-v { font-weight: 650; } .im-v.none { font-weight: 450; color: var(--faint); } .im-t { color: var(--accent); font-weight: 600; font-size: 12px; } .im-hh { color: var(--muted); font-size: 12px; }
+.im-f { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 20px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+.im-go { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+.im-hr { display: flex; align-items: center; gap: 10px; }
+.im-play { height: 34px; padding: 0 14px 0 12px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; gap: 8px; }
+.im-play small { font-weight: 450; opacity: .85; font-size: 11px; padding-left: 9px; margin-left: 1px; border-left: 1px solid color-mix(in srgb, currentColor 40%, transparent); }
+.im-lab { display: grid; grid-template-columns: 1fr 1fr minmax(210px, .8fr); grid-template-rows: auto 1fr; gap: 14px; padding: 16px 20px; overflow: auto; align-items: start; }
+.im-cv { position: relative; aspect-ratio: 4 / 3; background: var(--stage); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.im-cv canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.im-cv span { position: absolute; left: 8px; top: 8px; font-size: 10.5px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.im-ctl { grid-column: 3; grid-row: 1 / span 2; } .im-vars { grid-column: 1 / 3; } .im-vars .im-g { margin: 2px 0 8px; }
+.im-vt-row { display: flex; flex-wrap: wrap; gap: 8px; } .im-empty { color: var(--faint); font-size: 12px; }
+.im-vt { position: relative; width: 104px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--bg); cursor: pointer; overflow: hidden; font-size: 11px; color: var(--muted); }
+.im-vt:hover, .im-vt:focus-visible { border-color: var(--muted); outline: none; } .im-vt.on { border-color: var(--accent); color: var(--ink); }
+.im-vt canvas { display: block; width: 100%; aspect-ratio: 4 / 3; background: var(--stage); } .im-vt span { display: block; padding: 4px 7px; }
+.im-vt i { position: absolute; top: 3px; right: 3px; width: 16px; height: 16px; border-radius: 50%; display: none; place-items: center; font-style: normal; font-size: 12px; line-height: 1; background: var(--ink); color: var(--bg); }
+.im-vt:hover i { display: grid; }
+.vchips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; } .vchip { height: 22px; padding: 0 9px; font-size: 11px; border-radius: 6px; color: var(--muted); }
+.vchip:hover { color: var(--accent); border-color: var(--accent); }
+.im-ctl .im-g:first-child { margin-top: 0; } .im-sel { display: grid; gap: 6px; }
+.im-sel label { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: center; font-size: 12px; color: var(--muted); }
+.im-sel select { height: 26px; padding: 0 8px; border: 1px solid var(--line-2); border-radius: 7px; background: var(--panel); color: var(--ink); font: inherit; }
+@media (max-width: 860px) { .im-lab { grid-template-columns: 1fr 1fr; } .im-ctl { grid-column: 1 / -1; grid-row: auto; } .im-vars { grid-column: 1 / -1; } .im-r { grid-template-columns: 1fr 1fr; } .im-hh { grid-column: 1 / -1; } }
+/* Seite „Animations-Zuordnung“: pro Tonspur ein Kasten */
+.sum { display: grid; gap: 10px; padding: 12px 14px; }
+.sum .top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.sum .top .sp { flex: 1; }
+.sum .stat { font-size: 12px; color: var(--muted); }
+.sum .stat.dirty { color: var(--accent); font-weight: 600; }
+.btn { height: 30px; padding: 0 12px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--panel); color: var(--ink); font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.btn:hover { border-color: var(--muted); } .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn.go { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.chk { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); cursor: pointer; }
+.chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr)); gap: 6px; }
+.chip { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); text-align: left; cursor: pointer; font-size: 12.5px; color: var(--muted); }
+.chip:hover { border-color: var(--muted); }
+.chip i { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--tc); opacity: .45; }
+.chip b { color: var(--ink); font-weight: 650; flex: none; }
+.chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.chip.on { border-color: var(--tc); } .chip.on i { opacity: 1; box-shadow: 0 0 0 3px color-mix(in srgb, var(--tc) 30%, transparent); }
+.zgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 12px; align-items: start; }
+.zb { display: grid; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); overflow: hidden; min-width: 0; transition: border-color .15s, box-shadow .15s; }
+.zb.on { border-color: var(--tc); box-shadow: 0 0 0 1px var(--tc); }
+.zh { display: flex; align-items: center; gap: 8px; padding: 9px 12px; font-size: 14px; font-weight: 650; }
+.zh i { width: 11px; height: 11px; border-radius: 50%; background: var(--tc); flex: none; }
+.zh .act { margin-left: auto; font-size: 10.5px; font-weight: 650; letter-spacing: .05em; text-transform: uppercase; color: var(--faint); }
+.zb.on .zh .act { color: var(--tc); }
+.zc { display: grid; gap: 8px; padding: 10px 12px 12px; }
+.zc select { width: 100%; height: 32px; padding: 0 8px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--panel); color: var(--ink); font: inherit; font-size: 13px; }
+.zc .row2 { display: flex; align-items: center; gap: 8px; }
+.zc .btn { flex: 1; } .zc .btn[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
+.zc .mod { font-size: 11px; color: var(--accent); font-weight: 600; white-space: nowrap; }
+.zc .desc { margin: 0; font-size: 12px; color: var(--muted); }
+.mp { border-top: 1px solid var(--line); padding: 10px 12px 12px; display: grid; gap: 8px; background: var(--bg); }
+.mp .mph { display: grid; gap: 1px; } .mp .mph b { font-size: 12.5px; } .mp .mph span { font-size: 11.5px; color: var(--muted); }
+.mp .im-g { margin: 6px 0 4px; } .mp .im-sel select { max-width: 100%; }
+.mp select:disabled { opacity: .45; }
+.mp .mpf { display: flex; justify-content: flex-end; }
+.toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 8px; font-size: 13px; z-index: 60; max-width: calc(100vw - 32px); }
+.toast[hidden] { display: none; }
+</style>
+</head>
+<body>
+<header class="nav">
+  <div class="nl"><a class="home" href="../../index.html" title="Hauptmenü" aria-label="Zum Hauptmenü"><svg viewBox="0 0 24 24"><path d="M3.5 11 12 4l8.5 7"/><path d="M6 9.5V20h12V9.5"/><path d="M10 20v-5h4v5"/></svg></a><div class="pt"><span class="pk">Visualisierung der Tonspuren</span><h1>Animations-Zuordnung</h1></div></div>
+  <div class="facts"><span class="fact"><b>116,1</b> BPM</span><span class="fact"><b>4/4</b></span><span class="fact">1 Takt ≈ <b>2,07 s</b></span></div>
+  <button id="theme" title="Dark / Light" aria-label="Dark / Light umschalten"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/></svg></button>
+</header>
+
+<main class="wrap">
+  <h2 class="ttl">Welche Animation gehört zu welcher Spur?</h2>
+
+  <div class="panel player">
+    <button class="playb" id="play" aria-label="Abspielen"><svg viewBox="0 0 24 24" id="playIco"><path d="M8 5.5v13l11-6.5z"/></svg></button>
+    <span class="tm cur" id="tCur">0:00,0</span>
+    <div class="prog" id="prog" role="slider" tabindex="0" aria-label="Position im Song" aria-valuemin="0"><div class="pfill" id="pfill"></div><div class="pknob" id="pknob"></div></div>
+    <span class="tm" id="tDur">1:06,1</span>
+    <label class="rate" title="Wiedergabegeschwindigkeit – Tonhöhe bleibt gleich"><span class="lb">Geschwindigkeit</span><span class="sel"><select id="rate" aria-label="Wiedergabegeschwindigkeit">
+      <option value="0.25">0,25×</option><option value="0.5">0,5×</option><option value="0.75">0,75×</option><option value="1" selected>1×</option><option value="1.25">1,25×</option><option value="1.5">1,5×</option><option value="1.75">1,75×</option><option value="2">2×</option>
+    </select></span></label>
+    <span class="beatnow" id="beatNow"></span>
+  </div>
+
+  <div class="panel sum">
+    <div class="top">
+      <span class="lb">Zuordnung</span>
+      <label class="chk" title="Beim Abspielen läuft die Animation einer Spur nur dort, wo die Spur im Song klingt"><input type="checkbox" id="onlyAct"> nur animieren, wenn die Spur klingt</label>
+      <span class="sp"></span>
+      <span class="stat" id="stat"></span>
+      <button class="btn" id="copy" title="Zuordnung als Text kopieren – zum Einfügen in den Chat">Als Text kopieren</button>
+      <button class="btn" id="reset" title="Alle Spuren auf die erste Animation der eigenen Spur zurücksetzen">Alles zurücksetzen</button>
+      <button class="btn go" id="save" title="Speichert die Zuordnung in zuordnung.html im Projektordner (Strg+S) – dann committen &amp; pushen">Speichern</button>
+    </div>
+  </div>
+
+  <div class="zgrid" id="zgrid"></div>
+  <p class="note">Pro Spur eine Animation aus den Animationsideen wählen (auch die einer anderen Spur) und mit dem <b>morphologischen Kasten</b> anpassen. Der Rahmen leuchtet in der Spurfarbe, solange die Spur im Song klingt. Beim <b>Speichern</b> wird die Zuordnung in <code>zuordnung.html</code> geschrieben – so kann sie gelesen und umgesetzt werden. <b>Leertaste</b> = Play/Pause.</p>
+</main>
+<div class="toast" id="toast" hidden></div>
+<audio id="audio" src="../../assets/song.m4a" preload="metadata"></audio>
+
+<script id="zuordnung-data">window.ZUORDNUNG={"t":0,"by":{}};</script>
+<script src="../../assets/analysis.js"></script>
+<script src="../../assets/data.js"></script>
+<script src="ideen.js"></script>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const fmt = s => { const m = Math.floor(s / 60), r = s - m * 60; return `${m}:${r < 10 ? '0' : ''}${r.toFixed(1).replace('.', ',')}`; };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// Einsätze je Spur aus data.js (wie auf der Animationsseite)
+const ELEMENTS = window.ELEMENTS || [];
+const widthOf = e => e.k === 'l' ? Math.max(...e.p.flatMap(p => p[1].map(q => q[0])))
+                   : e.k === 'f' ? Math.max(...e.p.flatMap(pl => pl.map(q => q[0])))
+                   : e.p[e.p.length - 1][0] + 0.15;
+for (const t of TRACKS) {
+  const els = ELEMENTS.filter(e => e.id.replace(/-\d+$/, '') === t.key);
+  t.row = els.length ? els[0].row : TRACKS.indexOf(t);
+  t.cssColor = `var(--c${t.row})`;
+  t.raw = els.map(e => [e.t0, Math.min(DUR, e.t0 + widthOf(e))]).sort((a, b) => a[0] - b[0]);
+}
+const TBY = Object.fromEntries(TRACKS.map(t => [t.key, t]));
+
+/* ---------- Animationen & morphologischer Kasten ---------- */
+const ideaOf = id => { if (!id) return null; const [k, i] = id.split(':'); return (IDEAS[k] || [])[+i] || null; };
+const fpCfg = id => { if (!id) return null; const [k, i] = id.split(':'); return k === 'flute' ? FPC[+i] || null : null; };   // volle Parametrisierung (Version 2/3-Kasten)
+const GEN_DEF = { hue: 'Original', sat: 'Gesättigt', light: 'Hell', alpha: 'Original', size: 'Original', tempo: 'Original', flip: 'Keine', rot: '0°' };
+const GEN_OPTS = { hue: ['Original', ...FP_OPTS.hue], sat: FP_OPTS.sat, light: FP_OPTS.light, alpha: ['Original', 'Halbtransparent', 'Transparent'], size: ['Klein', 'Original', 'Groß'],
+  tempo: ['¼×', '½×', 'Original', '2×', '4×'], flip: ['Keine', 'Horizontal', 'Vertikal', 'Beide'], rot: ['0°', '90°', '180°', '270°'] };
+const GEN_NAMES = { hue: 'Farbton', sat: 'Sättigung', light: 'Helligkeit', alpha: 'Transparenz', size: 'Größe', tempo: 'Geschwindigkeit', flip: 'Spiegelung', rot: 'Bewegungsrichtung (Drehung)' };
+const GEN_GROUPS = [['Erscheinung', ['hue', 'sat', 'light', 'alpha', 'size']], ['Verhalten', ['tempo', 'flip', 'rot']]];
+const defOf = id => (fpCfg(id) || { def: GEN_DEF }).def;
+const optsOf = (id, k) => fpCfg(id) ? fpOpts(+id.split(':')[1], k) : GEN_OPTS[k];
+const nameOf = (id, k) => fpCfg(id) ? FP_NAMES[k] : GEN_NAMES[k];
+const groupsOf = id => fpCfg(id) ? fpCfg(id).groups : GEN_GROUPS;
+
+function genericDraw(c, s, idea, P) {      // Anpassung beliebiger Animationen: Farbe, Transparenz, Größe, Tempo, Spiegelung, Drehung
+  const f = { Klein: .6, Original: 1, 'Groß': 1.5 }[P.size], k = { '¼×': .25, '½×': .5, Original: 1, '2×': 2, '4×': 4 }[P.tempo];
+  const deg = parseInt(P.rot, 10) || 0, swap = deg === 90 || deg === 270, W = swap ? s.h : s.w, H = swap ? s.w : s.h;
+  const fg = P.hue === 'Original' ? s.fg : fpColor({ hue: P.hue, sat: P.sat, light: P.light, temp: 'Neutral' }, s.fg);
+  const bar = s.bar / k, s2 = { ...s, w: W, h: H, bar, beat: s.beat / k, phase: ((s.t / bar) % 1 + 1) % 1, fg, col: P.hue === 'Original' ? s.col : fg };
+  c.save(); c.translate(s.w / 2, s.h / 2); c.rotate(deg * Math.PI / 180);
+  c.scale((P.flip === 'Horizontal' || P.flip === 'Beide' ? -1 : 1) * f, (P.flip === 'Vertikal' || P.flip === 'Beide' ? -1 : 1) * f);
+  c.translate(-W / 2, -H / 2); c.globalAlpha = { Original: 1, Halbtransparent: .5, Transparent: .25 }[P.alpha];
+  idea.draw(c, s2); c.restore();
+}
+function drawAnim(c, s, st) {
+  const idea = ideaOf(st.anim); if (!idea) return;
+  const fp = fpCfg(st.anim);
+  if (fp) fp.draw(c, s, { ...fp.def, ...st.P }); else genericDraw(c, s, idea, { ...GEN_DEF, ...st.P });
+}
+
+/* ---------- Zustand: Zuordnung je Spur ---------- */
+const LS = 'av-zuordnung';
+const firstOf = k => (IDEAS[k] && IDEAS[k].length) ? k + ':0' : '';
+const clean = by => { const o = {}; for (const t of TRACKS) { const v = by && by[t.key], ok = v && (v.anim === '' || ideaOf(v.anim)); o[t.key] = ok ? { anim: v.anim, P: { ...(v.P || {}) } } : { anim: firstOf(t.key), P: {} }; } return o; };
+let SAVED = window.ZUORDNUNG || { t: 0, by: {} };
+let local = null; try { local = JSON.parse(localStorage.getItem(LS) || 'null'); } catch (e) {}
+const ST = clean(local && local.t > (SAVED.t || 0) ? local.by : SAVED.by);
+const snap = () => JSON.stringify(clean(ST));
+let savedSnap = JSON.stringify(clean(SAVED.by));
+const open = {};          // Morphologischer Kasten je Spur ein-/ausgeblendet
+
+const optLabel = (k, i) => `${i + 1} · ${IDEAS[k][i].title}`;
+const animSelect = k => `<select class="anim" data-k="${k}" aria-label="Animation für ${esc(TBY[k].name)}"><option value="">– keine Animation –</option>${[k, ...TRACKS.map(t => t.key).filter(x => x !== k)].map(g => (IDEAS[g] || []).length ? `<optgroup label="${esc(TBY[g].name)}${g === k ? ' (eigene Spur)' : ''}">${IDEAS[g].map((_, i) => `<option value="${g}:${i}">${esc(optLabel(g, i))}</option>`).join('')}</optgroup>` : '').join('')}</select>`;
+const titleOf = id => { const i = ideaOf(id); return i ? i.title : '– keine –'; };
+const diffs = k => Object.keys(ST[k].P).filter(x => ST[k].P[x] !== defOf(ST[k].anim)[x]);
+
+$('zgrid').innerHTML = TRACKS.map(t => `<article class="zb" data-k="${t.key}" style="--tc:${t.cssColor}">
+  <div class="zh"><i></i>${esc(t.name)}<span class="act"></span></div>
+  <div class="stage"><canvas></canvas></div>
+  <div class="zc">${animSelect(t.key)}<p class="desc"></p><div class="row2"><button class="btn mbtn" aria-expanded="false">Morphologischer Kasten</button><span class="mod" hidden>angepasst</span></div></div>
+  <div class="mp" hidden></div></article>`).join('');
+
+const boxes = TRACKS.map(t => { const el = $('zgrid').querySelector(`[data-k="${t.key}"]`); return { k: t.key, el, cv: el.querySelector('canvas') }; });
+const ro = new ResizeObserver(() => sizeAll()); boxes.forEach(b => ro.observe(b.cv));
+function sizeAll() {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  for (const b of boxes) {
+    const r = b.cv.getBoundingClientRect(), W = Math.max(1, Math.round(r.width * dpr)), H = Math.max(1, Math.round(r.height * dpr));
+    if (b.cv.width !== W || b.cv.height !== H) { b.cv.width = W; b.cv.height = H; }
+    b.w = r.width; b.h = r.height; b.dpr = dpr;
+  }
+}
+let COL = {};
+function readColors() { const cs = getComputedStyle(document.documentElement); boxes.forEach(b => b.col = getComputedStyle(b.el).getPropertyValue('--tc').trim()); COL = { fg: cs.getPropertyValue('--stage-fg').trim(), bg: cs.getPropertyValue('--stage').trim() }; }
+
+function renderMorph(b) {       // Inhalt des morphologischen Kastens einer Spur
+  const k = b.k, st = ST[k], mp = b.el.querySelector('.mp'), id = st.anim;
+  if (!id || !open[k]) { mp.hidden = true; return; }
+  const P = { ...defOf(id), ...st.P }, full = !!fpCfg(id);
+  mp.innerHTML = `<div class="mph"><b>Morphologischer Kasten</b><span>${esc(titleOf(id))} · ${full ? 'alle Parameter dieser Animation (wie Kasten Version 2/3)' : 'allgemeine Anpassung der Animation'}</span></div>
+    ${groupsOf(id).map(([gt, ks]) => `<div><div class="im-g">${gt}</div><div class="im-sel">${ks.map(x => `<label><span>${nameOf(id, x)}</span><select data-p="${x}"${!full && (x === 'sat' || x === 'light') && P.hue === 'Original' ? ' disabled' : ''}>${optsOf(id, x).map(o => `<option${o === P[x] ? ' selected' : ''}>${o}</option>`).join('')}</select></label>`).join('')}</div></div>`).join('')}
+    <div class="mpf"><button class="btn" data-reset>Zurücksetzen</button></div>`;
+  mp.hidden = false;
+}
+function refresh(b) {            // Kasten einer Spur an den Zustand anpassen
+  const st = ST[b.k], idea = ideaOf(st.anim), n = diffs(b.k).length;
+  b.el.querySelector('select.anim').value = st.anim;
+  b.el.querySelector('.desc').textContent = idea ? (idea.tag ? idea.tag + ' · ' : '') + (fpCfg(st.anim) ? 'voll einstellbar' : 'anpassbar') : 'Keine Animation gewählt';
+  const m = b.el.querySelector('.mod'); m.hidden = !n; m.textContent = n + (n === 1 ? ' Änderung' : ' Änderungen');
+  const mb = b.el.querySelector('.mbtn'); mb.disabled = !idea; mb.setAttribute('aria-expanded', String(!!(open[b.k] && idea)));
+  renderMorph(b);
+}
+function update(b) {
+  refresh(b);
+  try { localStorage.setItem(LS, JSON.stringify({ t: Date.now(), by: clean(ST) })); } catch (e) {}
+  saveUi();
+}
+function saveUi() { const d = snap() !== savedSnap, s = $('stat'); s.textContent = d ? 'Ungespeicherte Änderungen' : 'Gespeichert'; s.classList.toggle('dirty', d); }
+
+$('zgrid').addEventListener('change', ev => {
+  const el = ev.target, box = el.closest('.zb'); if (!box) return; const b = boxes.find(x => x.el === box), st = ST[b.k];
+  if (el.classList.contains('anim')) { st.anim = el.value; st.P = {}; if (!st.anim) open[b.k] = false; }
+  else if (el.dataset.p) { const v = el.value, k = el.dataset.p; if (v === defOf(st.anim)[k]) delete st.P[k]; else st.P[k] = v; }
+  update(b);
+});
+$('zgrid').addEventListener('click', ev => {
+  const box = ev.target.closest('.zb'); if (!box) return; const b = boxes.find(x => x.el === box), st = ST[b.k];
+  if (ev.target.closest('.mbtn')) { open[b.k] = !open[b.k]; refresh(b); }
+  else if (ev.target.closest('[data-reset]')) { st.P = {}; update(b); }
+});
+$('reset').onclick = () => { if (!confirm('Alle Spuren auf die erste Animation der eigenen Spur zurücksetzen? (Gespeicherter Stand bleibt, bis du speicherst.)')) return; for (const t of TRACKS) ST[t.key] = { anim: firstOf(t.key), P: {} }; boxes.forEach(refresh); try { localStorage.removeItem(LS); } catch (e) {} saveUi(); };
+$('onlyAct').checked = (() => { try { return localStorage.getItem('av-zuordnung-only') === '1'; } catch (e) { return false; } })();
+$('onlyAct').onchange = () => { try { localStorage.setItem('av-zuordnung-only', $('onlyAct').checked ? '1' : '0'); } catch (e) {} };
+
+let toastT = 0;
+const toast = (m, ms = 3500) => { const t = $('toast'); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, ms); };
+$('copy').onclick = async () => {
+  const txt = 'Animations-Zuordnung:\n' + TRACKS.map(t => { const st = ST[t.key], d = diffs(t.key); return `- ${t.name}: ${st.anim ? `${titleOf(st.anim)} (${st.anim})` : 'keine'}${d.length ? ' – Anpassungen: ' + d.map(x => `${nameOf(st.anim, x)} = ${st.P[x]}`).join(', ') : ''}`; }).join('\n');
+  try { await navigator.clipboard.writeText(txt); toast('Zuordnung kopiert'); } catch (e) { prompt('Zum Kopieren:', txt); }
+};
+
+/* ---------- Speichern in zuordnung.html (wie bei der Klanghierarchie) ---------- */
+const idb = (mode, fn) => new Promise(res => {
+  try {
+    const r = indexedDB.open('av-store', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('h');
+    r.onerror = () => res(null);
+    r.onsuccess = () => { const tx = r.result.transaction('h', mode), q = fn(tx.objectStore('h')); tx.oncomplete = () => res(q && q.result); tx.onerror = tx.onabort = () => res(null); };
+  } catch (e) { res(null); }
+});
+async function fileHandle() {
+  let h = await idb('readonly', s => s.get('html-zuordnung'));
+  if (h) { try { if (await h.queryPermission({ mode: 'readwrite' }) !== 'granted' && await h.requestPermission({ mode: 'readwrite' }) !== 'granted') h = null; } catch (e) { h = null; } }
+  if (!h) {
+    h = (await showOpenFilePicker({ types: [{ description: 'zuordnung.html', accept: { 'text/html': ['.html'] } }] }))[0];
+    if (await h.requestPermission({ mode: 'readwrite' }) !== 'granted') throw new Error('keine Schreibrechte');
+    idb('readwrite', s => s.put(h, 'html-zuordnung'));
+  }
+  return h;
+}
+const DATA_RE = /<script id="zuordnung-data">window\.ZUORDNUNG=([\s\S]*?);<\/script>/;
+const withData = (txt, data) => txt.replace(DATA_RE, () => '<script id="zuordnung-data">window.ZUORDNUNG=' + JSON.stringify(data).replace(/</g, '\\u003c') + ';<\/script>');
+async function save() {
+  const data = { t: Date.now(), by: clean(ST) };
+  try {
+    if (window.showOpenFilePicker) {
+      const h = await fileHandle(), txt = await (await h.getFile()).text();
+      if (h.name !== 'zuordnung.html' || !DATA_RE.test(txt)) throw new Error('Das ist nicht die zuordnung.html dieses Projekts');
+      const wr = await h.createWritable(); await wr.write(withData(txt, data)); await wr.close();
+      toast('Gespeichert in zuordnung.html – jetzt committen & pushen');
+    } else {
+      const txt = await (await fetch(location.href.split('#')[0].split('?')[0], { cache: 'no-store' })).text();
+      const a = document.createElement('a'); a.download = 'zuordnung.html';
+      a.href = URL.createObjectURL(new Blob([withData(txt, data)], { type: 'text/html' })); a.click();
+      toast('zuordnung.html heruntergeladen – im Projektordner ersetzen, dann committen & pushen');
+    }
+    SAVED = data; savedSnap = JSON.stringify(data.by);
+    try { localStorage.setItem(LS, JSON.stringify(data)); } catch (e) {}
+  } catch (err) {
+    toast(err.name === 'AbortError' ? 'Nicht gespeichert – beim Speichern die Datei zuordnung.html wählen' : `Nicht gespeichert (${err.message}) – Änderungen bleiben im Browser`, 6000);
+  }
+  saveUi();
+}
+$('save').onclick = save;
+window.addEventListener('keydown', ev => { if ((ev.ctrlKey || ev.metaKey) && ev.key === 's') { ev.preventDefault(); save(); } });
+
+/* ---------- Uhr, Auge, Player (wie auf der Animationsseite) ---------- */
+const audio = $('audio');
+let free = { perf: performance.now(), t: 0 };
+const rate = () => { const el = $('rate'); return (el && +el.value) || 1; };
+let lastCt = -1, lastP = 0;
+function now() {
+  if (!audio.paused) {
+    const ct = audio.currentTime, p = performance.now();
+    if (ct !== lastCt) { lastCt = ct; lastP = p; }
+    return lastCt + Math.min(.25, (p - lastP) / 1000) * audio.playbackRate;
+  }
+  return free.t + (performance.now() - free.perf) / 1000 * rate();
+}
+const resync = t => { free = { perf: performance.now(), t }; };
+const eyeOn = true;   // Animationen laufen immer – auch bei Pause (im Songtempo weiter)
+const playErr = () => {};
+function seek(t, play) { t = clamp(t, 0, DUR); try { audio.currentTime = t; } catch (e) {} resync(t); if (play && audio.paused) audio.play().catch(playErr); }
+const togglePlay = () => audio.paused ? audio.play().catch(playErr) : audio.pause();
+$('play').onclick = togglePlay;
+const setPlayUi = () => { const p = !audio.paused; $('playIco').innerHTML = p ? '<rect x="6.5" y="5" width="4" height="14" rx="1"/><rect x="13.5" y="5" width="4" height="14" rx="1"/>' : '<path d="M8 5.5v13l11-6.5z"/>'; $('play').setAttribute('aria-label', p ? 'Pause' : 'Abspielen'); };
+audio.addEventListener('play', setPlayUi);
+audio.addEventListener('pause', () => { setPlayUi(); resync(audio.currentTime); });
+audio.addEventListener('ended', () => { setPlayUi(); resync(0); });
+{ const p = $('prog'); let drag = false;
+  const at = ev => { const r = p.getBoundingClientRect(); return clamp((ev.clientX - r.left) / r.width, 0, 1) * DUR; };
+  p.addEventListener('pointerdown', ev => { drag = true; p.setPointerCapture(ev.pointerId); seek(at(ev)); });
+  p.addEventListener('pointermove', ev => { if (drag) seek(at(ev)); });
+  p.addEventListener('pointerup', () => { drag = false; });
+  p.addEventListener('keydown', ev => { const d = ev.key === 'ArrowRight' ? 1 : ev.key === 'ArrowLeft' ? -1 : 0; if (d) { ev.preventDefault(); seek(now() + d * (ev.shiftKey ? 5 : 1)); } });
+}
+{ const r = $('rate'); let v = 1; try { v = +localStorage.getItem('av-rate') || 1; } catch (e) {}
+  r.value = String(v); if (r.value !== String(v)) r.value = '1';
+  const apply = () => { audio.preservesPitch = true; audio.playbackRate = +r.value; r.closest('.rate').classList.toggle('on', r.value !== '1'); };
+  apply(); audio.addEventListener('loadedmetadata', apply);
+  r.onchange = () => { resync(now()); apply(); try { localStorage.setItem('av-rate', r.value); } catch (e) {} };
+}
+window.addEventListener('keydown', ev => { if ((ev.code === 'Space' || ev.key === ' ') && !/^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(ev.target.tagName)) { ev.preventDefault(); ev.stopPropagation(); if (!ev.repeat) togglePlay(); } }, true);
+const root = document.documentElement;
+$('theme').onclick = () => { const n = root.dataset.theme === 'dark' ? 'light' : 'dark'; root.dataset.theme = n; try { localStorage.setItem('av-theme', n); } catch (e) {} readColors(); };
+
+function frame() {
+  const t = now(), tt = t - OFFSET, playing = !audio.paused, shown = playing ? t : (audio.currentTime || 0);
+  const s = { t: tt, bar: BAR, beat: BEAT, phase: ((tt / BAR) % 1 + 1) % 1, ...COL }, only = $('onlyAct').checked;
+  for (const b of boxes) {
+    const on = TBY[b.k].raw.some(([a, z]) => shown >= a && shown < z);
+    b.el.classList.toggle('on', on); b.el.querySelector('.act').textContent = on ? '● klingt' : '';
+    const c = b.cv.getContext('2d'); c.setTransform(b.dpr, 0, 0, b.dpr, 0, 0); c.clearRect(0, 0, b.w, b.h);
+    if (!eyeOn || (only && !on)) continue;
+    c.save(); try { drawAnim(c, { ...s, w: b.w, h: b.h, col: b.col }, ST[b.k]); } catch (e) { console.error(e); } c.restore();
+  }
+  $('tCur').textContent = fmt(shown);
+  const pct = shown / DUR * 100; $('pfill').style.width = pct + '%'; $('pknob').style.left = pct + '%';
+  const k = Math.floor(tt / BEAT), bar = Math.floor(k / SONG.beats) + 1, beat = ((k % SONG.beats) + SONG.beats) % SONG.beats + 1;
+  const act = boxes.filter(b => b.el.classList.contains('on')).map(b => TBY[b.k].name);
+  $('beatNow').innerHTML = playing ? `<b>Takt ${bar}</b> · Schlag ${beat} · ${act.length ? act.join(', ') : 'Pause'}` : `Vorschau · Schlag ${beat}`;
+  requestAnimationFrame(frame);
+}
+
+$('tDur').textContent = fmt(DUR); $('prog').setAttribute('aria-valuemax', DUR.toFixed(1));
+boxes.forEach(refresh); saveUi(); sizeAll(); readColors();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

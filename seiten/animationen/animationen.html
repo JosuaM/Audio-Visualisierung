@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>/* Hell/Dunkel sofort setzen, bevor die Seite gezeichnet wird – sonst blitzt sie beim Wechseln hell auf */
+try { document.documentElement.dataset.theme = localStorage.getItem('av-theme') || 'dark'; } catch (e) { document.documentElement.dataset.theme = 'dark'; }</script>
+<title>Animationsideen – Audio-Visualisierung</title>
+<style>
+/* weicher Übergang zwischen den Seiten statt hartem Neuaufbau */
+@view-transition { navigation: auto; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: .2s; animation-timing-function: ease; }
+@media (prefers-reduced-motion: reduce) { @view-transition { navigation: none; } }
+html { background: var(--bg); }
+/* Farben wie auf den anderen Seiten – Spurfarben --c0 … --c7 = Zeile 0 … 7 */
+:root {
+  --bg: #f4f2ed; --panel: #fbfaf7; --ink: #1b1b22; --muted: #7b7a82; --faint: #a9a8ae;
+  --line: #e3e0d8; --line-2: #cfcbc0; --accent: #ff6a14; --accent-ink: #fff; --stage: #ffffff; --stage-fg: #000000;
+  --c0: #12985f; --c1: #2558e8; --c2: #d8304c; --c3: #d98400; --c4: #e5158f; --c5: #7a4cff; --c6: #0c95ad; --c7: #7ea000;
+  --pill-ink: #fff;
+}
+:root[data-theme="dark"] {
+  --bg: #0b0c10; --panel: #11131a; --ink: #eeeef2; --muted: #8b8d99; --faint: #5d5f6b;
+  --line: #1f222c; --line-2: #2d313e; --accent: #ff8a2a; --accent-ink: #15120e; --stage: #000000; --stage-fg: #ffffff;
+  --c0: #3ddc97; --c1: #5ba3ff; --c2: #ff5f76; --c3: #ffb454; --c4: #ff3fa6; --c5: #b88cff; --c6: #46d9ee; --c7: #d6f45c;
+  --pill-ink: #0b0c10;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--ink);
+  font: 14px/1.5 "Inter", system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased;
+  padding: 0 max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px));
+}
+button { font: inherit; color: inherit; }
+
+/* Kopfzeile wie auf den anderen Seiten (Home links, Hell/Dunkel rechts) */
+header.nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 30; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 16px;
+  margin: 0 calc(-1 * max(16px, env(safe-area-inset-left, 0px))); padding: 14px 20px; background: var(--bg); border-bottom: 1px solid var(--line); }
+.nl { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.pt { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.pt .pk { font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.pt h1 { margin: 0; font-size: 16px; font-weight: 650; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.home { flex: none; width: 30px; height: 30px; border: 1px solid var(--line-2); border-radius: 8px; display: grid; place-items: center; color: var(--muted); background: var(--panel); }
+.home:hover { color: var(--ink); border-color: var(--muted); }
+.home:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.home svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.facts { display: flex; flex-wrap: wrap; gap: 6px; justify-self: center; }
+.fact { font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; background: var(--panel); white-space: nowrap; }
+.fact b { color: var(--ink); font-weight: 600; }
+#theme { justify-self: end; flex: none; width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--panel); color: inherit; display: grid; place-items: center; cursor: pointer; }
+#theme:hover { border-color: var(--muted); }
+#theme svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+@media (max-width: 760px) { header.nav { grid-template-columns: minmax(0, 1fr) auto; } header.nav .facts { display: none; } }
+
+.wrap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 22px 4px 0; }
+.wrap > * { min-width: 0; }
+.ttl { margin: 0; font-size: 19px; font-weight: 650; letter-spacing: -.01em; }
+.panel { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.lb { font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+
+/* Tonspur-Auswahl */
+.pick { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 12px 14px; }
+.pick > * { min-width: 0; }
+.pick .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.trk { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px 0 10px; border: 1px solid var(--line-2); border-radius: 999px; background: var(--bg); font-size: 13px; font-weight: 600; cursor: pointer; color: var(--muted); }
+.trk i { width: 10px; height: 10px; border-radius: 50%; background: var(--tc); }
+.trk:hover { color: var(--ink); border-color: var(--muted); }
+.trk[aria-pressed="true"] { background: var(--tc); border-color: var(--tc); color: var(--pill-ink); }
+.trk[aria-pressed="true"] i { background: var(--pill-ink); }
+.trk:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Klanghierarchie der gewählten Spur */
+.hier { display: grid; gap: 6px; }
+.hier .hh { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.hier .src { font-size: 11.5px; color: var(--faint); }
+.hier .info { margin-left: auto; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.hier .info b { color: var(--ink); font-weight: 600; }
+#stripSvg { width: 100%; height: 64px; display: block; border-radius: 6px; background: var(--bg); border: 1px solid var(--line); cursor: pointer; }
+#stripSvg text { font: 9.5px/1 "Inter", system-ui, sans-serif; fill: var(--muted); font-variant-numeric: tabular-nums; }
+.runs { display: flex; flex-wrap: wrap; gap: 5px; }
+.run { display: inline-flex; align-items: baseline; gap: 6px; height: 26px; padding: 0 9px; border: 1px solid var(--line-2); border-radius: 7px; background: var(--bg); font-size: 11.5px; color: var(--muted); cursor: pointer; font-variant-numeric: tabular-nums; }
+.run b { color: var(--ink); font-weight: 600; }
+.run:hover { border-color: var(--tc); color: var(--ink); }
+.run:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.hier .hint { font-size: 11px; color: var(--faint); }
+
+/* Player */
+.player { display: flex; align-items: center; gap: 14px; padding: 10px 16px 10px 10px; flex-wrap: wrap; }
+/* Player bleibt beim Scrollen direkt unter der Kopfzeile sichtbar */
+.player { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 61px); z-index: 25; box-shadow: 0 6px 16px -10px rgba(0,0,0,.35); }
+.playb { flex: none; width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; cursor: pointer; }
+.playb:hover { filter: brightness(1.07); }
+.playb:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.playb svg { width: 18px; height: 18px; fill: currentColor; }
+.tm { flex: none; font-variant-numeric: tabular-nums; font-size: 12.5px; color: var(--muted); min-width: 44px; }
+.tm.cur { color: var(--ink); font-weight: 600; text-align: right; }
+.prog { position: relative; flex: 1; min-width: 160px; height: 34px; cursor: pointer; touch-action: none; }
+.prog:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+.prog::before { content: ""; position: absolute; left: 0; right: 0; top: 14px; height: 6px; border-radius: 3px; background: var(--line-2); }
+.pfill { position: absolute; left: 0; top: 14px; height: 6px; border-radius: 3px; background: var(--accent); width: 0; }
+.pknob { position: absolute; top: 10px; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--panel); left: 0; }
+.rate { flex: none; display: flex; align-items: center; gap: 8px; }
+.rate .sel { position: relative; display: inline-flex; }
+.rate .sel::after { content: ""; position: absolute; right: 11px; top: 50%; width: 6px; height: 6px; margin-top: -5px; border: solid var(--muted); border-width: 0 1.6px 1.6px 0; transform: rotate(45deg); pointer-events: none; }
+.rate select { appearance: none; -webkit-appearance: none; height: 30px; padding: 0 28px 0 10px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--panel); color: var(--ink); font: 600 12.5px/1 "Inter", system-ui, sans-serif; font-variant-numeric: tabular-nums; cursor: pointer; }
+.rate select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.rate.on select { border-color: var(--accent); color: var(--accent); }
+/* Auge: Animationen an/aus */
+.eye { flex: none; width: 34px; height: 30px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--panel); color: var(--muted); display: grid; place-items: center; cursor: pointer; }
+.eye:hover { color: var(--ink); border-color: var(--muted); }
+.eye:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.eye[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
+.eye svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.beatnow { flex: none; font-size: 12px; color: var(--muted); min-width: 150px; text-align: right; font-variant-numeric: tabular-nums; }
+.beatnow b { color: var(--ink); font-weight: 600; }
+@media (max-width: 760px) { .rate .lb, .beatnow { display: none; } }
+
+/* Kästen mit Animationen */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 12px; }
+.box { display: grid; grid-template-rows: auto auto; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); overflow: hidden; min-width: 0; }
+.stage { position: relative; aspect-ratio: 4 / 3; background: var(--stage); }
+.stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.stage .tag { position: absolute; right: 8px; bottom: 8px; max-width: calc(100% - 16px); box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 9.5px; line-height: 1.5; font-weight: 600; letter-spacing: .02em; color: var(--muted); background: color-mix(in srgb, var(--panel) 85%, transparent); border: 1px solid var(--line); border-radius: 999px; padding: 0 7px; }
+.cap { padding: 10px 14px 13px; display: grid; gap: 2px; }
+.cap h3 { margin: 0; font-size: 14px; font-weight: 650; display: flex; align-items: center; gap: 8px; }
+.cap h3 .n { font-size: 11px; font-weight: 650; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: var(--ink); color: var(--bg); flex: none; }
+.cap p { margin: 0; color: var(--muted); font-size: 12.5px; }
+/* Taktfortschritt unter der Überschrift – getrennt von der Animation */
+.pbar { height: 3px; border-radius: 2px; background: var(--line); overflow: hidden; margin-top: 8px; }
+.pbar i { display: block; height: 100%; width: 0; background: var(--muted); border-radius: 2px; }
+.box.empty { border-style: dashed; border-color: var(--line-2); background: transparent; }
+.box.empty .stage { background: transparent; display: grid; place-items: center; }
+.box.empty .plus { width: 38px; height: 38px; border-radius: 50%; border: 1.5px dashed var(--line-2); display: grid; place-items: center; color: var(--faint); font-size: 22px; line-height: 1; }
+.box.empty .cap h3 { color: var(--muted); }
+.box.empty .cap h3 .n { background: var(--line-2); color: var(--panel); }
+.note { margin: 0; color: var(--muted); font-size: 12.5px; }
+.note code { font: 12px/1.4 ui-monospace, "SF Mono", Menlo, monospace; color: var(--ink); }
+/* i-Button & Pop-ups: Zuordnung zum morphologischen Kasten */
+.cap h3 .ibtn { margin-left: auto; flex: none; width: 22px; height: 22px; padding: 0; border-radius: 50%; border: 1px solid var(--line-2); background: var(--panel); color: var(--muted); font: italic 700 12px/1 Georgia, "Times New Roman", serif; cursor: pointer; display: grid; place-items: center; }
+.cap h3 .ibtn:hover, .cap h3 .ibtn:focus-visible { color: var(--accent); border-color: var(--accent); outline: none; }
+.infotip { position: fixed; z-index: 90; width: min(340px, calc(100vw - 16px)); padding: 12px 14px; border-radius: 10px; background: var(--ink); color: var(--bg); font-size: 11.5px; line-height: 1.5; box-shadow: 0 10px 30px rgba(0,0,0,.35); pointer-events: none; }
+.infotip[hidden], .imodal[hidden] { display: none; }
+.infotip h4 { margin: 0 0 6px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; opacity: .7; }
+.infotip div { margin-bottom: 5px; } .infotip small { display: block; margin-top: 8px; opacity: .65; }
+.imodal { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,.55); display: grid; place-items: center; padding: 20px; }
+.im-card { width: min(760px, 100%); max-height: calc(100vh - 40px); display: grid; grid-template-rows: auto minmax(0, 1fr) auto; background: var(--panel); border: 1px solid var(--line-2); border-radius: 14px; overflow: hidden; box-shadow: 0 24px 70px rgba(0,0,0,.5); }
+.im-card.wide { width: min(1080px, 100%); }
+.im-h { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 16px 20px 12px; border-bottom: 1px solid var(--line); }
+.im-h h3 { margin: 2px 0 0; font-size: 17px; } .im-k { font-size: 10.5px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.imodal .im-x { width: 30px; height: 30px; padding: 0; justify-content: center; border: 0; background: transparent; color: var(--muted); border-radius: 8px; }
+.imodal .im-x:hover { background: var(--chip, var(--line)); color: var(--ink); }
+.im-b { overflow: auto; padding: 4px 20px 16px; }
+.im-g { font-size: 10.5px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin: 18px 0 6px; }
+.im-r { display: grid; grid-template-columns: 190px 130px 100px minmax(0, 1fr); gap: 4px 12px; align-items: baseline; padding: 6px 0; border-top: 1px solid var(--line); font-size: 12.5px; }
+.im-n { color: var(--muted); } .im-v { font-weight: 650; } .im-v.none { font-weight: 450; color: var(--faint); } .im-t { color: var(--accent); font-weight: 600; font-size: 12px; } .im-hh { color: var(--muted); font-size: 12px; }
+.im-f { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 20px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+.im-go { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+.im-hr { display: flex; align-items: center; gap: 10px; }
+.im-play { height: 34px; padding: 0 14px 0 12px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; gap: 8px; }
+.im-play small { font-weight: 450; opacity: .85; font-size: 11px; padding-left: 9px; margin-left: 1px; border-left: 1px solid color-mix(in srgb, currentColor 40%, transparent); }
+.im-lab { display: grid; grid-template-columns: 1fr 1fr minmax(210px, .8fr); grid-template-rows: auto 1fr; gap: 14px; padding: 16px 20px; overflow: auto; align-items: start; }
+.im-cv { position: relative; aspect-ratio: 4 / 3; background: var(--stage); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.im-cv canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.im-cv span { position: absolute; left: 8px; top: 8px; font-size: 10.5px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.im-ctl { grid-column: 3; grid-row: 1 / span 2; } .im-vars { grid-column: 1 / 3; } .im-vars .im-g { margin: 2px 0 8px; }
+.im-vt-row { display: flex; flex-wrap: wrap; gap: 8px; } .im-empty { color: var(--faint); font-size: 12px; }
+.im-vt { position: relative; width: 104px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--bg); cursor: pointer; overflow: hidden; font-size: 11px; color: var(--muted); }
+.im-vt:hover, .im-vt:focus-visible { border-color: var(--muted); outline: none; } .im-vt.on { border-color: var(--accent); color: var(--ink); }
+.im-vt canvas { display: block; width: 100%; aspect-ratio: 4 / 3; background: var(--stage); } .im-vt span { display: block; padding: 4px 7px; }
+.im-vt i { position: absolute; top: 3px; right: 3px; width: 16px; height: 16px; border-radius: 50%; display: none; place-items: center; font-style: normal; font-size: 12px; line-height: 1; background: var(--ink); color: var(--bg); }
+.im-vt:hover i { display: grid; }
+.vchips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; } .vchip { height: 22px; padding: 0 9px; font-size: 11px; border-radius: 6px; color: var(--muted); }
+.vchip:hover { color: var(--accent); border-color: var(--accent); }
+.im-ctl .im-g:first-child { margin-top: 0; } .im-sel { display: grid; gap: 6px; }
+.im-sel label { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: center; font-size: 12px; color: var(--muted); }
+.im-sel select { height: 26px; padding: 0 8px; border: 1px solid var(--line-2); border-radius: 7px; background: var(--panel); color: var(--ink); font: inherit; }
+@media (max-width: 860px) { .im-lab { grid-template-columns: 1fr 1fr; } .im-ctl { grid-column: 1 / -1; grid-row: auto; } .im-vars { grid-column: 1 / -1; } .im-r { grid-template-columns: 1fr 1fr; } .im-hh { grid-column: 1 / -1; } }
+</style>
+</head>
+<body>
+<header class="nav">
+  <div class="nl"><a class="home" href="../../index.html" title="Hauptmenü" aria-label="Zum Hauptmenü"><svg viewBox="0 0 24 24"><path d="M3.5 11 12 4l8.5 7"/><path d="M6 9.5V20h12V9.5"/><path d="M10 20v-5h4v5"/></svg></a><div class="pt"><span class="pk">Visualisierung der Tonspuren</span><h1>Animationsideen</h1></div></div>
+  <div class="facts"><span class="fact"><b>116,1</b> BPM</span><span class="fact"><b>4/4</b></span><span class="fact">1 Takt ≈ <b>2,07 s</b></span></div>
+  <button id="theme" title="Dark / Light" aria-label="Dark / Light umschalten"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/></svg></button>
+</header>
+
+<main class="wrap">
+  <h2 class="ttl">Wie könnte <span id="ttlName">Flute</span> aussehen? <a href="zuordnung.html" style="font-size:12.5px;font-weight:600;color:var(--accent);margin-left:10px;text-decoration:none">Zur Zuordnung aller Spuren →</a><a href="labor.html" style="font-size:12.5px;font-weight:600;color:var(--accent);margin-left:14px;text-decoration:none">Labor →</a></h2>
+
+  <div class="panel pick">
+    <div class="row" role="group" aria-label="Tonspur auswählen"><span class="lb">Tonspur</span><span id="trks" style="display:contents"></span></div>
+    <div class="hier">
+      <div class="hh"><span class="lb" id="stripLb">Klanghierarchie</span><span class="src" id="hierSrc"></span><span class="info" id="stripInfo"></span></div>
+      <svg id="stripSvg" role="img" aria-label="Wo die Spur im Song vorkommt und auf welchem Rang – klicken springt dorthin"></svg>
+      <div class="runs" id="runs"></div>
+      <span class="hint">Pro Schlag (¼-Takt) ein Balken: je höher, desto weiter vorne in der Klanghierarchie (Rang 1 = ganz hoch). Klick auf einen Abschnitt spielt ihn ab.</span>
+    </div>
+  </div>
+
+  <div class="panel player">
+    <button class="playb" id="play" aria-label="Abspielen"><svg viewBox="0 0 24 24" id="playIco"><path d="M8 5.5v13l11-6.5z"/></svg></button>
+    <span class="tm cur" id="tCur">0:00,0</span>
+    <div class="prog" id="prog" role="slider" tabindex="0" aria-label="Position im Song" aria-valuemin="0"><div class="pfill" id="pfill"></div><div class="pknob" id="pknob"></div></div>
+    <span class="tm" id="tDur">1:06,1</span>
+    <label class="rate" title="Wiedergabegeschwindigkeit – Tonhöhe bleibt gleich"><span class="lb">Geschwindigkeit</span><span class="sel"><select id="rate" aria-label="Wiedergabegeschwindigkeit">
+      <option value="0.25">0,25×</option><option value="0.5">0,5×</option><option value="0.75">0,75×</option><option value="1" selected>1×</option><option value="1.25">1,25×</option><option value="1.5">1,5×</option><option value="1.75">1,75×</option><option value="2">2×</option>
+    </select></span></label>
+    <span class="beatnow" id="beatNow"></span>
+  </div>
+
+  <div class="grid" id="grid"></div>
+  <p class="note">Die Animationen laufen im Takt des Songs – auch bei Pause (dann im Songtempo weiter). Beim Abspielen sind sie genau mit der Musik synchron. <b>Leertaste</b> = Play/Pause. Neue Ideen werden in <code>animationen.html</code> im Abschnitt „✎ HIER NEUE ANIMATIONEN EINTRAGEN“ ergänzt.</p>
+</main>
+<audio id="audio" src="../../assets/song.m4a" preload="metadata"></audio>
+
+<script src="../../assets/analysis.js"></script>
+<script src="../../assets/data.js"></script>
+<script src="ideen.js"></script>
+<script>
+'use strict';
+
+const $ = id => document.getElementById(id);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const fmt = s => { const m = Math.floor(s / 60), r = s - m * 60; return `${m}:${r < 10 ? '0' : ''}${r.toFixed(1).replace('.', ',')}`; };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// Einsätze je Spur aus data.js (Länge = größter x-Wert der Zeichnung, wie in der Zeitleiste)
+const ELEMENTS = window.ELEMENTS || [];
+const widthOf = e => e.k === 'l' ? Math.max(...e.p.flatMap(p => p[1].map(q => q[0])))
+                   : e.k === 'f' ? Math.max(...e.p.flatMap(pl => pl.map(q => q[0])))
+                   : e.p[e.p.length - 1][0] + 0.15;
+for (const t of TRACKS) {
+  const els = ELEMENTS.filter(e => e.id.replace(/-\d+$/, '') === t.key);
+  t.row = els.length ? els[0].row : TRACKS.indexOf(t);
+  t.cssColor = `var(--c${t.row})`;
+  t.raw = els.map(e => [e.t0, Math.min(DUR, e.t0 + widthOf(e))]).sort((a, b) => a[0] - b[0]);
+}
+const TBY = Object.fromEntries(TRACKS.map(t => [t.key, t]));
+
+/* ---------- Klanghierarchie (aus hierarchie.html, „jeder ¼-Takt“) ---------- */
+// Grundgewichte wie in hierarchie.html (gelten für Schläge ohne eigene Reihenfolge)
+const HW = { drums: 10, jagd: 9.5, riser: 9, trumpet: 8, building: 6.5, frog: 5.5, ring: 5, flute: 4 };
+const HIER = { by: null, src: 'raw', w: 1000 };
+const BEATS = (() => {                    // dieselben Schläge wie in der Klanghierarchie
+  const b = [0], out = [];
+  for (let t = OFFSET + BEAT; t < DUR - .25; t += BEAT) b.push(t);
+  b.push(DUR);
+  for (let i = 0; i < b.length - 1; i++) {
+    const t0 = b[i], t1 = b[i + 1], need = (t1 - t0) * .3;
+    const active = TRACKS.filter(t => t.raw.some(([a, c]) => Math.min(c, t1) - Math.max(a, t0) >= need)).map(t => t.key);
+    out.push({ t0, t1, active, bar: Math.floor(i / SONG.beats) + 1, beat: i % SONG.beats + 1, key: t0.toFixed(2) });
+  }
+  return out.filter(s => s.active.length);
+})();
+const byW = act => act.slice().sort((a, b) => (HW[b] || 0) - (HW[a] || 0));
+function hierOrder(b) {
+  const e = HIER.by && (HIER.by.beat || {})[b.key];
+  if (!e) return byW(b.active);
+  if (Array.isArray(e)) { const l = e.filter(k => b.active.includes(k)); return [...l, ...byW(b.active.filter(k => !l.includes(k)))]; }
+  return e.o.slice();
+}
+async function loadHier() {
+  let file = null, local = null;
+  try { const txt = await (await fetch('../hierarchie/hierarchie.html', { cache: 'no-store' })).text(); const m = txt.match(/<script id="rank-data">window\.RANKING=([\s\S]*?);<\/script>/); if (m) file = JSON.parse(m[1]); } catch (e) {}
+  try { local = JSON.parse(localStorage.getItem('av-hierarchie-edits-v2') || 'null'); } catch (e) {}
+  if (local && local.by && (!file || local.t > (file.t || 0))) { HIER.by = local.by; HIER.src = 'local'; }
+  else if (file) { HIER.by = file.by || {}; HIER.src = 'file'; }
+  renderHier();
+}
+const lenTxt = n => {                     // Länge in Schlägen → „2 Takte + 1 Schlag · 4 halbe“
+  const bars = Math.floor(n / SONG.beats), rem = n % SONG.beats, p = [];
+  if (bars) p.push(bars + (bars === 1 ? ' Takt' : ' Takte'));
+  if (rem) p.push(rem + (rem === 1 ? ' Schlag' : ' Schläge'));
+  return p.join(' + ') + (n % 2 === 0 && n > 2 ? ` · ${n / 2} halbe Takte` : n === 2 ? ' · ½ Takt' : '');
+};
+function renderHier() {
+  const svg = $('stripSvg'); if (!svg) return;
+  const t = TBY[cur], W = Math.max(200, Math.round(svg.getBoundingClientRect().width)), H = 64;
+  HIER.w = W;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const X = s => s / DUR * W, base = 56, top = 18;
+  let g = '';
+  const nBars = Math.ceil((DUR - OFFSET) / BAR);
+  for (let b = 0; b <= nBars; b++) {      // Taktstriche, Nummer alle 4 Takte
+    const x = X(OFFSET + b * BAR); if (x > W) break;
+    g += `<line x1="${x}" x2="${x}" y1="${b % 4 ? top + 4 : 12}" y2="${base}" stroke="var(--line)" stroke-width="1"/>`;
+    if (b % 4 === 0) g += `<text x="${x + 3}" y="10">${b + 1}</text>`;
+  }
+  // Schläge der Spur: Höhe = Rang
+  const runs = []; let run = null;
+  BEATS.forEach((b, i) => {
+    const o = hierOrder(b), r = o.indexOf(t.key);
+    const prev = BEATS[i - 1], contiguous = prev && Math.abs(prev.t1 - b.t0) < 1e-6;
+    if (r < 0) { run = null; return; }
+    const hgt = (base - top) * (1 - r / 8);
+    g += `<rect x="${X(b.t0) + .5}" y="${base - hgt}" width="${Math.max(1, X(b.t1) - X(b.t0) - 1)}" height="${hgt}" style="fill:${t.cssColor}"><title>Takt ${b.bar}.${b.beat} · Rang ${r + 1} von ${o.length}</title></rect>`;
+    if (!run || !contiguous) { run = { a: b, z: b, n: 0, rmin: r, rmax: r }; runs.push(run); }
+    run.z = b; run.n++; run.rmin = Math.min(run.rmin, r); run.rmax = Math.max(run.rmax, r);
+  });
+  g += `<line x1="0" x2="${W}" y1="${base + .5}" y2="${base + .5}" stroke="var(--line-2)"/>`;
+  g += `<line id="stripPh" x1="0" x2="0" y1="12" y2="${H}" stroke="var(--accent)" stroke-width="2"/>`;
+  svg.innerHTML = g;
+  const total = runs.reduce((a, r) => a + r.n, 0);
+  $('stripInfo').innerHTML = `<b>${runs.length}</b> ${runs.length === 1 ? 'Abschnitt' : 'Abschnitte'} · zusammen <b>${lenTxt(total).split(' · ')[0]}</b>`;
+  $('hierSrc').textContent = HIER.src === 'file' ? 'aus der gespeicherten Klanghierarchie' : HIER.src === 'local' ? 'aus der Klanghierarchie (inkl. ungespeicherter Änderungen)' : 'Klanghierarchie nicht geladen – nur Rohdaten mit Grundgewichten';
+  $('runs').innerHTML = runs.map(r => `<button class="run" data-t="${r.a.t0}" style="--tc:${t.cssColor}"><b>Takt ${r.a.bar}.${r.a.beat}–${r.z.bar}.${r.z.beat}</b>${lenTxt(r.n)} · Rang ${r.rmin === r.rmax ? r.rmin + 1 : (r.rmin + 1) + '–' + (r.rmax + 1)}</button>`).join('') || '<span class="hint">Diese Spur kommt in der Klanghierarchie nicht vor.</span>';
+}
+new ResizeObserver(() => renderHier()).observe($('stripSvg'));
+
+/* ---------- Auswahl der Tonspur ---------- */
+let cur = 'flute';
+try { const q = new URLSearchParams(location.search).get('spur') || localStorage.getItem('av-anim-track'); if (TBY[q]) cur = q; } catch (e) {}
+$('trks').innerHTML = TRACKS.map(t => `<button class="trk" data-k="${t.key}" style="--tc:${t.cssColor}" aria-pressed="false"><i></i>${esc(t.name)}</button>`).join('');
+$('trks').addEventListener('click', ev => { const b = ev.target.closest('.trk'); if (b) setTrack(b.dataset.k); });
+function setTrack(k) {
+  cur = k; try { localStorage.setItem('av-anim-track', k); } catch (e) {}
+  history.replaceState(null, '', '?spur=' + k);
+  document.querySelectorAll('.trk').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.k === k)));
+  const t = TBY[k]; $('ttlName').textContent = t.name;
+  $('stripLb').textContent = `Klanghierarchie · ${t.name}`;
+  renderHier();
+  buildGrid();
+}
+
+/* ---------- Kästen ---------- */
+let boxes = [];
+function buildGrid() {
+  const ideas = IDEAS[cur] || [], t = TBY[cur];
+  let html = '';
+  for (let i = 0; i < Math.max(BOXES, ideas.length + 1); i++) {   // immer mindestens ein freier Kasten
+    const it = ideas[i];
+    html += it
+      ? `<article class="box" data-i="${i}"><div class="stage"><canvas></canvas>${it.tag ? `<span class="tag">${esc(it.tag)}</span>` : ''}</div><div class="cap"><h3><span class="n">${i + 1}</span>${esc(it.title)}${it.info && cur === 'flute' ? `<button class="ibtn" data-i="${i}" aria-label="Zuordnung zum morphologischen Kasten anzeigen">i</button>` : ''}</h3><div class="pbar" title="Fortschritt im aktuellen Takt"><i></i></div>${it.info && cur === 'flute' && vList(i).length ? `<div class="vchips">${vList(i).map((v, k) => `<button class="vchip" data-i="${i}" data-v="${k}" title="${esc(vLabel(i, v.P))}">${esc(v.name)}</button>`).join('')}</div>` : ''}</div></article>`
+      : `<article class="box empty" data-i="${i}"><div class="stage"><span class="plus" aria-hidden="true">+</span></div><div class="cap"><h3><span class="n">${i + 1}</span>Idee ${i + 1} – noch frei</h3></div></article>`;
+  }
+  $('grid').innerHTML = html;
+  boxes = [...$('grid').querySelectorAll('.box:not(.empty)')].map(el => ({ el, idea: ideas[+el.dataset.i], cv: el.querySelector('canvas'), pb: el.querySelector('.pbar i') }));
+  boxes.forEach(b => ro.observe(b.cv));
+  sizeAll(); readColors();
+}
+const ro = new ResizeObserver(() => sizeAll());
+function sizeAll() {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  for (const b of boxes) {
+    const r = b.cv.getBoundingClientRect(), W = Math.max(1, Math.round(r.width * dpr)), H = Math.max(1, Math.round(r.height * dpr));
+    if (b.cv.width !== W || b.cv.height !== H) { b.cv.width = W; b.cv.height = H; }
+    b.w = r.width; b.h = r.height; b.dpr = dpr;
+  }
+}
+// Farben aus den CSS-Variablen (ändern sich mit Hell/Dunkel)
+let COL = {};
+function readColors() {
+  const cs = getComputedStyle(document.documentElement), v = n => cs.getPropertyValue(n).trim();
+  COL = { col: v(`--c${TBY[cur].row}`), fg: v('--stage-fg'), bg: v('--stage') };
+}
+
+/* ---------- Uhr: Song-Zeit beim Abspielen, sonst läuft die Vorschau im Songtempo weiter ---------- */
+const audio = $('audio');
+let free = { perf: performance.now(), t: 0 };
+const rate = () => { const el = $('rate'); return (el && +el.value) || 1; };
+let lastCt = -1, lastP = 0;
+function now() {
+  if (!audio.paused) {                   // Song-Zeit, zwischen den Updates des Players weitergezählt → ruckelfrei und synchron
+    const ct = audio.currentTime, p = performance.now();
+    if (ct !== lastCt) { lastCt = ct; lastP = p; }
+    return lastCt + Math.min(.25, (p - lastP) / 1000) * audio.playbackRate;
+  }
+  return free.t + (performance.now() - free.perf) / 1000 * rate();
+}
+const resync = t => { free = { perf: performance.now(), t }; };
+/* ---------- Auge: Animationen an/aus (aus = Kästen bleiben leer; Play schaltet automatisch ein) ---------- */
+const eyeOn = true;   // Animationen laufen immer – auch bei Pause (im Songtempo weiter)
+function frame() {
+  const t = now(), tt = t - OFFSET;
+  const s = { t: tt, bar: BAR, beat: BEAT, phase: ((tt / BAR) % 1 + 1) % 1, ...COL };
+  for (const b of boxes) {
+    const c = b.cv.getContext('2d');
+    c.setTransform(b.dpr, 0, 0, b.dpr, 0, 0);
+    c.clearRect(0, 0, b.w, b.h);
+    b.pb.style.width = eyeOn ? (s.phase * 100).toFixed(2) + '%' : '0';   // Taktbalken unter der Überschrift
+    if (!eyeOn) continue;                // Auge zu → nichts zeichnen
+    s.w = b.w; s.h = b.h;
+    c.save(); try { b.idea.draw(c, s); } catch (e) { console.error(e); } c.restore();
+  }
+  labFrame(s);
+  ui(t);
+  requestAnimationFrame(frame);
+}
+
+/* ---------- Player ---------- */
+const playErr = () => {};
+function seek(t, play) { t = clamp(t, 0, DUR); try { audio.currentTime = t; } catch (e) {} resync(t); if (play && audio.paused) audio.play().catch(playErr); }
+const togglePlay = () => audio.paused ? audio.play().catch(playErr) : audio.pause();
+$('play').onclick = togglePlay;
+const setPlayUi = () => { const p = !audio.paused; $('playIco').innerHTML = p ? '<rect x="6.5" y="5" width="4" height="14" rx="1"/><rect x="13.5" y="5" width="4" height="14" rx="1"/>' : '<path d="M8 5.5v13l11-6.5z"/>'; $('play').setAttribute('aria-label', p ? 'Pause' : 'Abspielen'); };
+audio.addEventListener('play', setPlayUi);
+audio.addEventListener('pause', () => { setPlayUi(); resync(audio.currentTime); if (typeof setPlayBtn === 'function') setPlayBtn(); });
+audio.addEventListener('ended', () => { setPlayUi(); resync(0); });
+{ const p = $('prog'); let drag = false;
+  const at = ev => { const r = p.getBoundingClientRect(); return clamp((ev.clientX - r.left) / r.width, 0, 1) * DUR; };
+  p.addEventListener('pointerdown', ev => { drag = true; p.setPointerCapture(ev.pointerId); seek(at(ev)); });
+  p.addEventListener('pointermove', ev => { if (drag) seek(at(ev)); });
+  p.addEventListener('pointerup', () => { drag = false; });
+  p.addEventListener('keydown', ev => { const d = ev.key === 'ArrowRight' ? 1 : ev.key === 'ArrowLeft' ? -1 : 0; if (d) { ev.preventDefault(); seek(now() + d * (ev.shiftKey ? 5 : 1)); } });
+}
+$('runs').addEventListener('click', ev => { const b = ev.target.closest('.run'); if (b) seek(+b.dataset.t, true); });
+$('stripSvg').addEventListener('click', ev => { const r = $('stripSvg').getBoundingClientRect(); seek((ev.clientX - r.left) / r.width * DUR, true); });
+{ // Wiedergabegeschwindigkeit – gemeinsam mit den anderen Seiten gespeichert (av-rate), Tonhöhe bleibt gleich
+  const r = $('rate'); let v = 1; try { v = +localStorage.getItem('av-rate') || 1; } catch (e) {}
+  r.value = String(v); if (r.value !== String(v)) r.value = '1';
+  const apply = () => { audio.preservesPitch = true; audio.playbackRate = +r.value; r.closest('.rate').classList.toggle('on', r.value !== '1'); };
+  apply(); audio.addEventListener('loadedmetadata', apply);
+  r.onchange = () => { resync(now()); apply(); try { localStorage.setItem('av-rate', r.value); } catch (e) {} };
+}
+// Leertaste = immer Play/Pause, nie scrollen
+window.addEventListener('keydown', ev => { if ((ev.code === 'Space' || ev.key === ' ') && !/^(INPUT|TEXTAREA)$/.test(ev.target.tagName)) { ev.preventDefault(); ev.stopPropagation(); if (!ev.repeat) togglePlay(); } }, true);
+window.addEventListener('keyup', ev => { if ((ev.code === 'Space' || ev.key === ' ') && !/^(INPUT|TEXTAREA)$/.test(ev.target.tagName)) { ev.preventDefault(); ev.stopPropagation(); } }, true);
+function ui(t) {
+  const playing = !audio.paused, shown = playing ? t : (audio.currentTime || 0);
+  $('tCur').textContent = fmt(shown);
+  const pct = shown / DUR * 100; $('pfill').style.width = pct + '%'; $('pknob').style.left = pct + '%';
+  const ph = $('stripPh'); if (ph) { const x = shown / DUR * HIER.w; ph.setAttribute('x1', x); ph.setAttribute('x2', x); }
+  const tt = t - OFFSET, k = Math.floor(tt / BEAT), bar = Math.floor(k / SONG.beats) + 1, beat = ((k % SONG.beats) + SONG.beats) % SONG.beats + 1;
+  const on = TBY[cur].raw.some(([a, b]) => shown >= a && shown < b);
+  $('beatNow').innerHTML = playing ? `<b>Takt ${bar}</b> · Schlag ${beat} · ${on ? TBY[cur].name + ' klingt' : 'Pause'}` : `Vorschau · Schlag ${beat}`;
+}
+
+/* ---------- Theme wie auf den anderen Seiten ---------- */
+const root = document.documentElement;
+$('theme').onclick = () => { const n = root.dataset.theme === 'dark' ? 'light' : 'dark'; root.dataset.theme = n; try { localStorage.setItem('av-theme', n); } catch (e) {} readColors(); };
+
+
+/* ---- gespeicherte Varianten (bleiben im Browser erhalten) ---- */
+const VKEY = 'av-anim-variants'; let VARS = {};
+try { VARS = JSON.parse(localStorage.getItem(VKEY) || '{}') || {}; } catch (e) { VARS = {}; }
+const vList = i => VARS[cur + ':' + i] || (VARS[cur + ':' + i] = []);
+const vSave = () => { try { localStorage.setItem(VKEY, JSON.stringify(VARS)); } catch (e) {} };
+const vLabel = (i, P) => { const d = Object.keys(FPC[i].def).filter(k => P[k] !== FPC[i].def[k]); return d.length ? d.slice(0, 3).map(k => P[k]).join(' · ') + (d.length > 3 ? ' …' : '') : 'wie Original'; };
+
+/* ---- Popups ---- */
+const infoEl = document.createElement('div'); infoEl.className = 'infotip'; infoEl.hidden = true; document.body.appendChild(infoEl);
+const dlg = document.createElement('div'); dlg.className = 'imodal'; dlg.hidden = true; dlg.setAttribute('role', 'dialog'); dlg.setAttribute('aria-modal', 'true'); document.body.appendChild(dlg);
+const X_ICO = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+let labor = null, curI = 0;   // labor: { O, V, id } – id = Nummer der geladenen gespeicherten Variante
+const fpBrief = map => map.map(g => `<div><b>${esc(g.g.replace(/ ·.*/, ''))}:</b> ${g.rows.filter(r => r.v !== 'Keine').map(r => esc(r.v) + (r.t ? ' ← ' + esc(r.t) : '')).join(' · ')}</div>`).join('');
+function tipShow(btn, idea) {
+  infoEl.innerHTML = `<h4>Zuordnung zum morphologischen Kasten</h4>${fpBrief(idea.info.map)}<small>Klicken für die vollständige Zuordnung</small>`;
+  infoEl.hidden = false; const r = btn.getBoundingClientRect(), w = infoEl.offsetWidth, h = infoEl.offsetHeight;
+  infoEl.style.left = clamp(r.right - w, 8, innerWidth - w - 8) + 'px'; infoEl.style.top = (r.top - h - 8 > 8 ? r.top - h - 8 : r.bottom + 8) + 'px';
+}
+function renderVars() {
+  const box = dlg.querySelector('.im-vars'); if (!box) return;
+  const L = vList(curI);
+  box.innerHTML = `<div class="im-g">Gespeicherte Varianten</div><div class="im-vt-row">${L.length ? L.map((v, k) => `<div class="im-vt${labor.id === k ? ' on' : ''}" role="button" tabindex="0" data-var="${k}" title="${esc(v.name + ' – ' + vLabel(curI, v.P))}"><canvas data-vc="${k}"></canvas><span>${esc(v.name)}</span><i data-del="${k}" title="Variante löschen" aria-label="Variante löschen">×</i></div>`).join('') : '<small class="im-empty">Noch keine – stelle rechts etwas ein und wähle „Als Variante speichern“.</small>'}</div>`;
+}
+function syncSaveBtn() { const b = dlg.querySelector('[data-save]'); if (b) b.textContent = labor.id != null ? 'Variante aktualisieren' : 'Als Variante speichern'; }
+function openInfo(i, lab, vid) {
+  infoEl.hidden = true; curI = i; const idea = IDEAS[cur][i], cfg = FPC[i];
+  if (!lab) {
+    labor = null;
+    dlg.innerHTML = `<div class="im-card"><div class="im-h"><div><span class="im-k">Zuordnung zum morphologischen Kasten</span><h3>${esc(idea.title)}</h3></div><button class="im-x" data-close aria-label="Schließen">${X_ICO}</button></div>
+      <div class="im-b">${idea.info.map.map(g => `<div class="im-g">${esc(g.g)}</div>${g.rows.map(r => `<div class="im-r"><span class="im-n">${esc(r.n)}</span><span class="im-v ${r.v === 'Keine' ? 'none' : ''}">${esc(r.v)}</span>${r.t ? `<span class="im-t">← ${esc(r.t)}</span>` : '<span></span>'}<span class="im-hh">${esc(r.h || '')}</span></div>`).join('')}`).join('')}</div>
+      <div class="im-f"><span>Orange Pfeil = Auslöser: der Klangparameter, der diese Zeile steuert.</span><button class="im-go" data-lab>Andere Parameter ausprobieren →</button></div></div>`;
+  } else {
+    const L = vList(i), from = vid != null && L[vid] ? L[vid].P : null;
+    labor = { O: { ...cfg.def }, V: { ...cfg.def, ...(from || {}) }, id: from ? vid : null };
+    dlg.innerHTML = `<div class="im-card wide"><div class="im-h"><div><span class="im-k">Andere Parameter ausprobieren</span><h3>${esc(idea.title)}</h3></div><div class="im-hr"><button class="im-play" data-play title="Spielt den Song an der Stelle ab, an der ${esc(TBY[cur].name)} zu hören ist, und wiederholt diesen Abschnitt"></button><button class="im-x" data-close aria-label="Schließen">${X_ICO}</button></div></div>
+      <div class="im-lab"><div class="im-cv"><canvas id="labO"></canvas><span>Original</span></div><div class="im-cv"><canvas id="labV"></canvas><span>Variante</span></div>
+        <div class="im-ctl">${cfg.groups.map(([gt, ks]) => `<div class="im-g">${gt}</div><div class="im-sel">${ks.map(k => `<label><span>${FP_NAMES[k]}</span><select data-k="${k}">${fpOpts(i, k).map(o => `<option${o === labor.V[k] ? ' selected' : ''}>${o}</option>`).join('')}</select></label>`).join('')}</div>`).join('')}</div>
+        <div class="im-vars"></div></div>
+      <div class="im-f"><button data-back>← Zurück</button><span><button data-reset>Zurücksetzen</button> <button class="im-go" data-save>Als Variante speichern</button></span></div></div>`;
+    renderVars(); syncSaveBtn(); setPlayBtn();
+  }
+  dlg.hidden = false; dlg.querySelector('button.im-x').focus();
+}
+// Song-Abschnitt, in dem die Tonspur zu hören ist (erster Einsatz) – wird im Pop-up in Schleife abgespielt
+let labLoop = null;
+function labRange() { const rw = TBY[cur].raw; return rw.length ? [rw[0][0], Math.max(rw[0][1], rw[0][0] + BAR * 2)] : [0, Math.min(DUR, BAR * 4)]; }
+function setPlayBtn() {
+  const b = dlg.querySelector('[data-play]'); if (!b) return; const [a, z] = labRange(), on = !audio.paused && !!labLoop;
+  b.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">${on ? '<rect x="6.5" y="5" width="4" height="14" rx="1"/><rect x="13.5" y="5" width="4" height="14" rx="1"/>' : '<path d="M8 5.5v13l11-6.5z"/>'}</svg><span>${on ? 'Pause' : 'Song abspielen'}</span><small>${esc(TBY[cur].name)} · ${fmt(a)}–${fmt(z)}</small>`;
+}
+function closeInfo() { if (labLoop) { audio.pause(); labLoop = null; } dlg.hidden = true; labor = null; }
+dlg.addEventListener('click', e => {
+  const del = e.target.closest('[data-del]');
+  if (e.target === dlg || e.target.closest('[data-close]')) closeInfo();
+  else if (e.target.closest('[data-play]')) {
+    if (labLoop && !audio.paused) { audio.pause(); labLoop = null; } else { const [a, z] = labRange(); labLoop = { a, z }; seek(a, true); }
+    setPlayBtn();
+  }
+  else if (e.target.closest('[data-lab]')) openInfo(curI, true);
+  else if (e.target.closest('[data-back]')) { if (labLoop) { audio.pause(); labLoop = null; } openInfo(curI, false); }
+  else if (e.target.closest('[data-reset]')) { Object.assign(labor.V, FPC[curI].def); labor.id = null; dlg.querySelectorAll('select[data-k]').forEach(sl => sl.value = FPC[curI].def[sl.dataset.k]); renderVars(); syncSaveBtn(); }
+  else if (e.target.closest('[data-save]')) {
+    const L = vList(curI), P = { ...labor.V };
+    if (labor.id != null && L[labor.id]) L[labor.id].P = P; else { L.push({ name: 'Variante ' + (L.length + 1), P }); labor.id = L.length - 1; }
+    vSave(); renderVars(); syncSaveBtn(); buildGrid();
+    const b = dlg.querySelector('[data-save]'); b.textContent = 'Gespeichert ✓'; setTimeout(syncSaveBtn, 1300);
+  }
+  else if (del) { const L = vList(curI), k = +del.dataset.del; L.splice(k, 1); L.forEach((v, j) => { if (/^Variante \d+$/.test(v.name)) v.name = 'Variante ' + (j + 1); }); labor.id = labor.id === k ? null : labor.id > k ? labor.id - 1 : labor.id; vSave(); renderVars(); syncSaveBtn(); buildGrid(); }
+  else { const t = e.target.closest('[data-var]'); if (t) { const P = vList(curI)[+t.dataset.var].P; labor.V = { ...FPC[curI].def, ...P }; labor.id = +t.dataset.var; dlg.querySelectorAll('select[data-k]').forEach(sl => sl.value = labor.V[sl.dataset.k]); renderVars(); syncSaveBtn(); } }
+});
+dlg.addEventListener('keydown', e => { const t = e.target.closest && e.target.closest('[data-var]'); if (t && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); t.click(); } });
+dlg.addEventListener('change', e => { const k = e.target.dataset && e.target.dataset.k; if (k && labor) { labor.V[k] = e.target.value; if (labor.id != null) { labor.id = labor.id; } } });
+addEventListener('keydown', e => { if (e.key === 'Escape' && !dlg.hidden) closeInfo(); });
+function fitDraw(cv, s, fn, P) {
+  const dpr = Math.min(2, devicePixelRatio || 1), r = cv.getBoundingClientRect(), W = Math.round(r.width * dpr), H = Math.round(r.height * dpr);
+  if (!W || !H) return; if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+  const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, r.width, r.height); fn(c, { ...s, w: r.width, h: r.height }, P);
+}
+function labFrame(s) {   // zeichnet Original, Variante und gespeicherte Varianten im Pop-up (unabhängig vom Auge-Schalter)
+  if (!labor || dlg.hidden) return;
+  if (labLoop) { if (audio.paused) { labLoop = null; setPlayBtn(); } else if (audio.currentTime >= labLoop.z) seek(labLoop.a, true); }
+  const fn = FPC[curI].draw;
+  fitDraw($('labO'), s, fn, labor.O); fitDraw($('labV'), s, fn, labor.V);
+  dlg.querySelectorAll('canvas[data-vc]').forEach(cv => { const v = vList(curI)[+cv.dataset.vc]; if (v) fitDraw(cv, s, fn, { ...FPC[curI].def, ...v.P }); });
+}
+$('grid').addEventListener('click', e => {
+  const v = e.target.closest('.vchip'); if (v) return openInfo(+v.dataset.i, true, +v.dataset.v);
+  const b = e.target.closest('.ibtn'); if (b) openInfo(+b.dataset.i, false);
+});
+$('grid').addEventListener('mouseover', e => { const b = e.target.closest('.ibtn'); if (b) tipShow(b, IDEAS[cur][+b.dataset.i]); });
+$('grid').addEventListener('mouseout', e => { if (e.target.closest('.ibtn')) infoEl.hidden = true; });
+$('grid').addEventListener('focusin', e => { const b = e.target.closest('.ibtn'); if (b) tipShow(b, IDEAS[cur][+b.dataset.i]); });
+$('grid').addEventListener('focusout', () => { infoEl.hidden = true; });
+
+/* ---------- Start ---------- */
+$('tDur').textContent = fmt(DUR); $('prog').setAttribute('aria-valuemax', DUR.toFixed(1));
+setTrack(cur);
+loadHier();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

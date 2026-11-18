@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script>/* Hell/Dunkel sofort setzen, bevor die Seite gezeichnet wird – sonst blitzt sie beim Wechseln hell auf */
 try { document.documentElement.dataset.theme = localStorage.getItem('av-theme') || 'dark'; } catch (e) { document.documentElement.dataset.theme = 'dark'; }</script>
-<title>Morphologischer Kasten · Klangparameter – Audio-Visualisierung</title>
+<title>Morphologischer Kasten · Version 1 – Audio-Visualisierung</title>
 <style>
 /* weicher Übergang zwischen den Seiten statt hartem Neuaufbau */
 @view-transition { navigation: auto; }
@@ -54,26 +54,7 @@ header.nav { position: relative; z-index: 30; }   /* Beschriftung der Punkte lie
 /* Kopfzeile auf allen Seiten gleich: links Home + wo man ist, Mitte Blättern, rechts Werkzeuge */
 header.nav { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 16px; padding: 0 4px; }
 header.nav > .right { justify-self: end; min-width: 0; }
-header.nav .nc { justify-self: center; display: flex; align-items: center; gap: 22px; }
-.pbtn { height: 28px; }
-.pbtn[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
-body:not(.pmode) #pview { display: none; }
-body.pmode main.wrap { display: none; }
-#pview { min-height: 0; overflow: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: 28px 32px 56px; }
-#pview .pm-in { max-width: 1180px; margin: 0 auto; }
-#pview h2 { margin: 0 0 4px; font-size: 18px; letter-spacing: -.01em; }
-#pview .pm-lead { margin: 0 0 8px; color: var(--muted); max-width: 70ch; }
-.pm-g { font-size: 10.5px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); margin: 30px 0 10px; padding-top: 14px; border-top: 1px solid var(--line); }
-.pm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 12px; }
-.pm-c { cursor: pointer; border: 1px solid var(--line); border-radius: 10px; padding: 13px 14px; background: var(--bg); display: flex; flex-direction: column; gap: 6px; }
-.pm-c h3 { margin: 0; font-size: 13.5px; display: flex; align-items: center; gap: 8px; }
-.pm-c p { margin: 0; color: var(--muted); }
-.pm-c dl { margin: 4px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 12px; }
-.pm-c dt { color: var(--faint); }
-.pm-c dd { margin: 0; }
-.pm-tag { font-size: 10px; font-weight: 600; border-radius: 999px; padding: 1px 8px; border: 1px solid var(--line-2); color: var(--muted); }
-.pm-tag.live { border-color: var(--accent); color: var(--accent); }
-.pm-use { margin-top: 4px; font-size: 11.5px; color: var(--accent); }
+header.nav .nc { justify-self: center; }
 .nl { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .pt { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
 .pt .pk { font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -108,20 +89,7 @@ select { font: inherit; color: inherit; background: var(--panel); border: 1px so
 .tempo b.fix { min-width: 0; }
 
 /* Hauptlayout */
-.wrap { display: grid; grid-template-columns: minmax(0, 1fr) clamp(560px, 56vw, 960px); gap: 12px; min-height: 0; position: relative; }
-.wrap { grid-template-columns: 30px minmax(0, 1fr) clamp(560px, 56vw, 960px); }
-.wrap.noprev { grid-template-columns: 30px minmax(0, 1fr); }
-.wrap.noprev .left { display: none; }
-#prevShow { display: flex; width: 30px; height: auto; padding: 0; border-radius: 10px; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--muted); }
-#prevShow .op > span, #prevShow .cl > span { writing-mode: vertical-rl; transform: rotate(180deg); font-size: 11.5px; letter-spacing: .04em; }
-#prevShow:hover { color: var(--ink); }
-#prevShow .op { display: flex; }
-#prevShow .cl { display: none; }
-.wrap:not(.noprev) #prevShow .op { display: none; }
-.wrap:not(.noprev) #prevShow .cl { display: flex; }
-#prevShow .op, #prevShow .cl { flex-direction: column; align-items: center; gap: 10px; }
-#prevHide { position: absolute; left: 12px; top: 10px; z-index: 3; height: 26px; padding: 0 10px 0 6px; display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--muted); background: color-mix(in srgb, var(--panel) 85%, transparent); }
-#prevHide:hover { color: var(--ink); }
+.wrap { display: grid; grid-template-columns: minmax(0, 1fr) clamp(560px, 56vw, 960px); gap: 12px; min-height: 0; }
 .left { display: grid; grid-template-rows: minmax(0, 1fr) auto auto auto; gap: 10px; min-height: 0; min-width: 0; }
 .stagebox { position: relative; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--stage); min-height: 220px; }
 .stagebox canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
@@ -183,7 +151,6 @@ input[type=range]::-moz-range-thumb { width: 13px; height: 13px; border-radius: 
 .scroll { overflow: auto; padding: 0 14px 30px; }
 .box { padding: 16px 0 48px; border-bottom: 1px solid var(--line); }
 .box:last-child { border-bottom: 0; padding-bottom: 12px; }
-#scroll > .box:last-child { min-height: calc(100% + 32px); }   /* auch der letzte Kasten lässt sich ganz nach oben scrollen */
 .box + .box { padding-top: 48px; }
 .bh { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .bh h2 { font-size: 13.5px; margin: 0; font-weight: 650; letter-spacing: -.01em; }
@@ -206,64 +173,6 @@ input[type=range]::-moz-range-thumb { width: 13px; height: 13px; border-radius: 
 .lock svg { width: 12px; height: 12px; }
 .row:hover .lock, .lock.on, .lock:focus-visible { opacity: 1; }
 .lock.on { color: var(--accent); }
-.show-m { display: none; }
-.grp-h { font-size: 10.5px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); padding: 14px 0 4px; border-top: 1px solid var(--line); margin-top: 6px; }
-.rows > .grp-h:first-of-type { border-top: 0; margin-top: 0; padding-top: 2px; }
-.rowh + .grp-h { border-top: 0; margin-top: 0; padding-top: 2px; }
-/* Auslöser pro Zeile (Kasten 2 & 3) */
-.sel.mini { margin-top: 5px; width: 100%; }
-.sel.mini::after { right: 9px; width: 5px; height: 5px; margin-top: -4px; }
-select.trg { height: 24px; width: 100%; font-size: 11px; padding: 0 20px 0 7px; border-radius: 6px; color: var(--muted); background: var(--bg); }
-.trgw.live select { border-color: var(--accent); color: var(--ink); }
-.trgw.nl select { border-style: dashed; color: var(--ink); }
-.row.t3 { grid-template-columns: 150px minmax(0, 1fr); }
-.rt, .rowh.t3, .row.rowh { display: none !important; }
-.legend.pinfo { display: block; margin: -2px 0 12px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
-.pinfo b { color: var(--ink); }
-.pinfo .pm-tag { margin-left: 6px; }
-.rt { display: grid; grid-template-columns: 20px minmax(0, 1fr); column-gap: 6px; align-items: center; align-content: center; min-width: 0; }
-.rt .lnk { display: grid; place-items: center; color: var(--faint); }
-.rt .lnk svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-.rt.live .lnk { color: var(--accent); }
-.rt .sel.mini { margin-top: 0; }
-.rt .sel.mini::after { right: 12px; width: 6px; height: 6px; margin-top: -5px; }
-.dd { position: relative; min-width: 0; }
-.dd-btn { width: 100%; height: 36px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 12px 0 11px; border: 1px solid var(--line-2); border-radius: 6px; background: var(--bg); color: var(--muted); font-size: 12px; text-align: left; }
-.dd-btn .dd-v { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dd-btn::after { content: ""; flex: none; width: 6px; height: 6px; margin-top: -3px; border: solid var(--muted); border-width: 0 1.6px 1.6px 0; transform: rotate(45deg); transition: transform .15s, margin .15s; }
-.dd.open .dd-btn { border-color: var(--muted); color: var(--ink); }
-.dd.open .dd-btn::after { transform: rotate(-135deg); margin-top: 3px; }
-.dd.live .dd-btn { border-color: var(--accent); color: var(--ink); }
-.dd.nl .dd-btn { border-style: dashed; border-color: var(--muted); color: var(--ink); }
-.dd-pop { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 40; display: flex; flex-direction: column; padding: 4px; background: var(--panel); border: 1px solid var(--line-2); border-radius: 8px; box-shadow: 0 10px 28px rgba(0,0,0,.28); }
-.dd-pop[hidden] { display: none; }
-.row:has(.dd.open) { z-index: 50; }   /* offene Liste liegt über den folgenden Zeilen */
-.row.idle:has(.dd.open) .rt { opacity: 1; }
-.dd.up .dd-pop { top: auto; bottom: calc(100% + 4px); }
-.dd-g { font-size: 10px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); padding: 9px 8px 4px; margin-top: 4px; border-top: 1px solid var(--line); }
-.dd-g.nl { color: var(--muted); }
-.dd-o { display: flex; align-items: center; gap: 8px; width: 100%; height: 30px; padding: 0 8px; border: 0; border-radius: 5px; background: transparent; color: var(--ink); font-size: 12px; text-align: left; }
-.dd-o:hover, .dd-o:focus-visible { background: var(--chip-h, var(--bg)); outline: none; }
-.dd-o i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
-.dd-o.nl i { background: transparent; border: 1px dashed var(--muted); }
-.dd-o.none { color: var(--muted); }
-.dd-o.none i { background: transparent; border: 1px solid var(--line-2); }
-.dd-o[aria-selected="true"] { font-weight: 650; background: color-mix(in srgb, var(--accent) 14%, transparent); }
-.rt small.trgn { grid-column: 2; color: var(--faint); font-size: 10.5px; line-height: 1.25; margin-top: 3px; }
-.rt small.trgn:empty { display: none; }
-.rt small.trgn.nl { color: var(--muted); }
-.rowh { padding: 0 0 2px; }
-.rowh .rth { padding-left: 26px; font-size: 10.5px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
-/* Zeilen ohne Auswahl abgeschwächt – erst mit Auswahl wird die Zeile deutlich */
-.row .rl, .row .opts, .row .rt { transition: opacity .15s; }
-.row.idle .rl, .row.idle .opts, .row.idle .rt { opacity: .4; }
-.row.idle:hover .rl, .row.idle:hover .opts, .row.idle:hover .rt, .row.idle:focus-within .rl, .row.idle:focus-within .opts, .row.idle:focus-within .rt { opacity: .75; }
-.rl small.trgn { color: var(--faint); }
-.rl small.optl { color: var(--faint); font-size: 10.5px; margin-top: 2px; }
-.rl small.trgn.nl { color: var(--muted); }
-.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: -2px 0 12px; font-size: 11px; color: var(--muted); }
-.legend i { display: inline-block; width: 18px; height: 10px; border-radius: 3px; border: 1px solid var(--accent); margin-right: 5px; vertical-align: -1px; }
-.legend i.nl { border: 1px dashed var(--muted); }
 .opts { display: flex; position: relative; width: 100%; z-index: 1; border: 1px solid var(--line-2); border-radius: 6px; overflow: hidden; background: var(--bg); }
 .chip { flex: 0 0 calc(100% / var(--cols, 7) - .15px); min-width: 0; height: auto; min-height: 36px; padding: 4px 3px; border: 0; border-left: 1px solid var(--line-2); border-radius: 0; background: transparent; font-size: 11.5px; line-height: 1.2; color: var(--ink); gap: 4px; justify-content: center; text-align: center; white-space: normal; overflow-wrap: anywhere; hyphens: auto; }
 .chip:first-child { border-left: 0; }
@@ -294,20 +203,6 @@ select.trg { height: 24px; width: 100%; font-size: 11px; padding: 0 20px 0 7px; 
 .prof #psave { margin-left: auto; height: 28px; border-color: var(--selc, var(--accent)); color: var(--selc, var(--accent)); }
 .prof #psave.ok { border-color: var(--line-2); color: var(--muted); }
 .prof #psave[hidden] { display: none; }
-.sinfo { position: relative; flex: none; width: 18px; height: 18px; border: 1px solid var(--faint); border-radius: 50%; display: inline-grid; place-items: center; font: italic 600 10.5px/1 Georgia, serif; color: var(--muted); cursor: help; }
-.sinfo[hidden] { display: none; }
-.sinfo:hover, .sinfo:focus-visible { color: var(--ink); border-color: var(--ink); outline: none; }
-.sinfo .tip { position: absolute; top: calc(100% + 8px); right: -6px; z-index: 60; width: 270px; padding: 9px 11px; border-radius: 8px; background: var(--ink); color: var(--bg); font: 400 12px/1.45 Inter, system-ui, sans-serif; box-shadow: 0 6px 24px rgba(0,0,0,.25); opacity: 0; pointer-events: none; transition: opacity .15s; }
-.sinfo .tip b { font-weight: 650; }
-.sinfo:hover .tip, .sinfo:focus-visible .tip { opacity: 1; }
-.tthumb { order: 10; flex-basis: 100%; display: grid; grid-template-columns: 36px minmax(0, 1fr); align-items: center; gap: 12px; padding: 8px; border-radius: 8px; background: var(--bg); border: 1px solid var(--line); }
-.tplay { width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; background: var(--ink); color: var(--bg); display: grid; place-items: center; }
-.tplay:hover { background: var(--accent); }
-.tplay svg { width: 15px; height: 15px; fill: currentColor; }
-.tplay .p2, .tplay.on .p1 { display: none; }
-.tplay.on .p2 { display: block; }
-.tthumb[hidden] { display: none; }
-#tthSvg { width: 100%; height: 40px; display: block; overflow: visible; }
 .chip svg { display: none; }
 .sw { width: 11px; height: 11px; border-radius: 50%; display: inline-block; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18); flex: none; }
 .derive { margin-top: 10px; display: flex; gap: 10px; align-items: center; padding: 10px 12px; border: 1px dashed var(--line-2); border-radius: 10px; }
@@ -318,14 +213,11 @@ select.trg { height: 24px; width: 100%; font-size: 11px; padding: 0 20px 0 7px; 
 #toast.on { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
 #toast button { height: 24px; font-size: 12px; background: transparent; color: var(--bg); border-color: color-mix(in srgb, var(--bg) 40%, transparent); }
 
-@media (max-width: 1180px) { .hide-m { display: none; } .show-m { display: inline; } }
+@media (max-width: 1180px) { .hide-m { display: none; } }
 @media (max-width: 980px) {
   html, body { height: auto; overflow: auto; }
   body { grid-template-rows: auto auto; }
-  .wrap, .wrap.noprev { grid-template-columns: minmax(0, 1fr); }
-  #prevShow { width: 100%; height: 34px; }
-  #prevShow .op, #prevShow .cl { flex-direction: row; }
-  #prevShow .op > span, #prevShow .cl > span { writing-mode: horizontal-tb; transform: none; }
+  .wrap { grid-template-columns: minmax(0, 1fr); }
   .left { grid-template-rows: auto auto auto auto; }
   .stagebox { height: 56vh; }
   .scroll { overflow: visible; }
@@ -336,8 +228,7 @@ select.trg { height: 24px; width: 100%; font-size: 11px; padding: 0 20px 0 7px; 
 @media (max-width: 560px) {
   body { padding: 10px 16px; }
   h1 span { display: none; }
-  .row, .row.t3 { grid-template-columns: minmax(0, 1fr); gap: 4px; }
-  .rowh { display: none; }
+  .row { grid-template-columns: minmax(0, 1fr); gap: 4px; }
   .rl { flex-direction: row; gap: 8px; align-items: baseline; padding-top: 0; }
   .lock { opacity: 1; }
 }
@@ -346,8 +237,8 @@ select.trg { height: 24px; width: 100%; font-size: 11px; padding: 0 20px 0 7px; 
 <body>
 
 <header class="nav">
-  <div class="nl"><a class="home" href="index.html" title="Hauptmenü" aria-label="Zum Hauptmenü"><svg viewBox="0 0 24 24"><path d="M3.5 11 12 4l8.5 7"/><path d="M6 9.5V20h12V9.5"/><path d="M10 20v-5h4v5"/></svg></a><div class="pt"><span class="pk">Morphologischer Kasten</span><h1>Klangparameter</h1></div></div>
-  <div class="nc"><nav class="steps" aria-label="Seiten in dieser Kategorie"><a class="dot" href="kasten.html" data-l="Version 1" title="Version 1" aria-label="Zu Version 1"></a><span class="ln" aria-hidden="true"></span><a class="dot" href="kasten2.html" data-l="Version 2" title="Version 2" aria-label="Zu Version 2"></a><span class="ln" aria-hidden="true"></span><a class="dot" href="kasten3.html" data-l="Version 3" title="Version 3" aria-label="Zu Version 3"></a><span class="ln" aria-hidden="true"></span><span class="dot cur" aria-current="page" data-l="Parameter" title="Klangparameter"></span></nav><button id="pbtn" class="pbtn" aria-pressed="false" title="Alle allgemeinen Klangparameter ansehen"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>Übersicht</button></div>
+  <div class="nl"><a class="home" href="../../index.html" title="Hauptmenü" aria-label="Zum Hauptmenü"><svg viewBox="0 0 24 24"><path d="M3.5 11 12 4l8.5 7"/><path d="M6 9.5V20h12V9.5"/><path d="M10 20v-5h4v5"/></svg></a><div class="pt"><span class="pk">Morphologischer Kasten</span><h1>Version 1</h1></div></div>
+  <div class="nc"><nav class="steps" aria-label="Seiten in dieser Kategorie"><span class="dot cur" aria-current="page" data-l="Version 1" title="Version 1"></span><span class="ln" aria-hidden="true"></span><a class="dot" href="kasten2.html" data-l="Version 2" title="Version 2" aria-label="Zu Version 2"></a><span class="ln" aria-hidden="true"></span><a class="dot" href="kasten3.html" data-l="Version 3" title="Version 3" aria-label="Zu Version 3"></a></nav></div>
   <div class="right">
     <label class="trk" title="Auf welche Tonspur die Visualisierung reagiert: der ganze Song oder eine einzelne Instrumentenspur (auf der Visualisierungsseite pro Instrument hochladbar)">Tonspur
       <span class="sel"><select id="track" aria-label="Tonspur wählen"><option value="all">Alles (Original)</option></select></span>
@@ -358,8 +249,7 @@ select.trg { height: 24px; width: 100%; font-size: 11px; padding: 0 20px 0 7px; 
   </div>
 </header>
 
-<main class="wrap noprev" id="wrap">
-  <button id="prevShow" title="Vorschau ein-/ausblenden" aria-label="Vorschau ein- oder ausblenden"><span class="op"><svg class="i" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg><span>Vorschau</span></span><span class="cl"><svg class="i" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg><span>Ausblenden</span></span></button>
+<main class="wrap">
   <section class="left">
     <div class="stagebox" id="stagebox">
       <canvas id="stage" aria-label="Visualisierung der gewählten Kombination"></canvas>
@@ -381,7 +271,7 @@ select.trg { height: 24px; width: 100%; font-size: 11px; padding: 0 20px 0 7px; 
       <button id="play" class="icon" title="Abspielen / Pausieren (Leertaste)" aria-label="Abspielen / Pausieren"></button>
       <span class="tempo" title="Tempo des Songs – fest, wie auf der Visualisierungsseite">Tempo <b id="bpmv" class="fix"></b></span>
       <span class="tempo">Klang</span>
-      <div class="seg" role="group" aria-label="Klangquelle" title="Worauf reagiert die Visualisierung? Synth spielt einen Beispielklang, Song spielt den Track ab. Die Auslöser in Kasten 2 und 3 folgen diesem Klang.">
+      <div class="seg" role="group" aria-label="Klangquelle" title="Worauf reagiert die Visualisierung? Synth spielt den Klang aus Kasten 3, Song spielt den Track ab.">
         <button data-src="off">Aus</button><button data-src="synth">Synth</button><button data-src="song" class="on">Song</button>
       </div>
       <div class="meters" id="meters">
@@ -389,6 +279,7 @@ select.trg { height: 24px; width: 100%; font-size: 11px; padding: 0 20px 0 7px; 
         <div class="meter"><span>Tonhöhe</span><div><i id="mPitch"></i></div></div>
       </div>
       <div class="grp">
+      <button id="rand" title="Zufällige Kombination für Kasten 1 &amp; 2 (R) – gesperrte Zeilen bleiben"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1.1" fill="currentColor"/><circle cx="15" cy="15" r="1.1" fill="currentColor"/><circle cx="15" cy="9" r="1.1" fill="currentColor"/><circle cx="9" cy="15" r="1.1" fill="currentColor"/></svg>Zufall</button>
       <button id="reset" class="icon" title="Alles auf Standard zurücksetzen" aria-label="Zurücksetzen"><svg class="i" viewBox="0 0 24 24"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.5 4.5v4h4"/></svg></button>
       <button id="png" class="icon" title="Aktuelles Bild als PNG speichern" aria-label="Bild speichern"><svg class="i" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l5-4.5 4 3.5 3-2.5 4 3.5"/></svg></button>
       <button id="boxpng" title="Alle drei Kästen als Bild exportieren (weißer Hintergrund, klassische Tabellen, Bewegungsspur)"><svg class="i" viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="2"/><path d="M3.5 9.5h17M3.5 14.5h17M9.5 4v16"/></svg>Kasten als Bild</button>
@@ -401,8 +292,8 @@ select.trg { height: 24px; width: 100%; font-size: 11px; padding: 0 20px 0 7px; 
 
   <aside class="panel" id="panel">
     <div class="prof">
-      <span class="lbl">Parameter</span>
-      <span class="sel"><select id="ptrack" aria-label="Klangparameter, für den der Kasten ausgefüllt wird"></select></span>
+      <span class="lbl">Tonspur</span>
+      <span class="sel"><select id="ptrack" aria-label="Tonspur für die Auswahl"></select></span>
       <div class="who" role="group" aria-label="Wessen Auswahl?">
         <button data-who="Jeremy" style="--c: var(--pa)" title="Auswahl von Jeremy"><i></i>Jeremy</button><button data-who="Josua" style="--c: var(--pb)" title="Auswahl von Josua"><i></i>Josua</button>
       </div>
@@ -410,107 +301,73 @@ select.trg { height: 24px; width: 100%; font-size: 11px; padding: 0 20px 0 7px; 
         <button data-who="both" style="--c: linear-gradient(135deg, var(--pa) 50%, var(--pb) 50%)" title="Auswahl von Jeremy &amp; Josua vergleichen"><i></i>Beide</button>
       </div>
       <span class="st" id="pstat"></span>
-      <div class="tthumb" id="tthumb" hidden>
-        <button id="tthPlay" class="tplay" aria-label="Ausschnitt abspielen" title="Ausschnitt der Tonspur anhören (Leertaste)"><svg class="p1" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z"/></svg><svg class="p2" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="1.5"/></svg></button>
-        <svg id="tthSvg" height="40" preserveAspectRatio="none" aria-hidden="true"></svg>
-      </div>
       <button id="psave" hidden><svg class="i" viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/></svg>Speichern</button>
-      <span class="sinfo" id="sinfo" hidden tabindex="0" role="note" aria-label="Wohin wird gespeichert?">i<span class="tip">Speichert in <b>parameter.html</b> im Projektordner „Audio-Visualisierung“. Beim ersten Mal fragt der Browser nach der Datei – dann <b>parameter.html</b> auswählen. Danach committen &amp; pushen, damit der andere deine Auswahl sieht.</span></span>
     </div>
     <div class="tabs" role="tablist">
-      <button class="t on" data-go="look"><b>1</b>&nbsp;Ruhezustand</button>
-      <button class="t" data-go="move"><b>2</b>&nbsp;Animation</button>
-      <button class="t" data-go="inter"><b>3</b>&nbsp;Interaktion</button>
+      <button class="t on" data-go="look"><b>1</b>&nbsp;Erscheinung</button>
+      <button class="t" data-go="move"><b>2</b>&nbsp;Verhalten</button>
+      <button class="t" data-go="sound"><b>3</b>&nbsp;Klang</button>
+      <button class="icon eye" id="hover" title="Vorschau beim Überfahren der Ausprägungen" aria-label="Hover-Vorschau an/aus"><svg class="i" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></svg></button>
     </div>
     <div class="scroll" id="scroll"></div>
   </aside>
 </main>
 
-<section id="pview" aria-label="Allgemeine Klangparameter"></section>
-
 <div id="toast"></div>
 
-<script id="profile-data">window.PROFILES={};</script>
-<script src="analysis.js"></script>
+<script src="../../assets/analysis.js"></script>
 <script>
 'use strict';
 /* ═══════════════════════════ Daten: die drei Kästen ═══════════════════════════ */
 const BOXES = [
-  { id: 'look', title: 'Morphologischer Kasten 1', sub: 'Ruhezustand', q: 'Wie sieht das Soundelement im Ruhezustand aus – bevor sich durch den Klang etwas verändert?', rows: [
-    { hide: 1, k: 'element', n: 'Grundelement', o: ['Kreis', 'Rechteck', 'Quadrat', 'Polygon', 'Linie', 'Punkt', 'Fläche', 'Dreieck'], d: 0 },
-    { hide: 1, k: 'char', n: 'Formcharakter', o: ['Organisch', 'Geometrisch', 'Kantig', 'Abgerundet', 'Spitz', 'Unregelmäßig'], d: 1 },
+  { id: 'look', title: 'Morphologischer Kasten 1', sub: 'Visuelle Erscheinung', q: 'Wie sieht das Soundelement aus?', rows: [
+    { k: 'element', n: 'Grundelement', o: ['Kreis', 'Rechteck', 'Quadrat', 'Polygon', 'Linie', 'Punkt', 'Fläche', 'Dreieck'], d: 0 },
+    { k: 'char', n: 'Formcharakter', o: ['Organisch', 'Geometrisch', 'Kantig', 'Abgerundet', 'Spitz', 'Unregelmäßig'], d: 1 },
     { k: 'size', n: 'Größe', o: ['Winzig', 'Klein', 'Mittel', 'Groß', 'Riesig'], d: 2 },
     { k: 'temp', n: 'Farbtemperatur', o: ['Warm', 'Neutral', 'Kalt'], d: 1 },
     { k: 'light', n: 'Helligkeit', o: ['Hell', 'Mittel', 'Dunkel'], d: 1 },
     { k: 'hue', n: 'Farbton', o: ['Rot', 'Orange', 'Gelb', 'Grün', 'Blau', 'Violett', 'Magenta', 'Unbunt'], d: -1 },
     { k: 'sat', n: 'Sättigung', o: ['Entsättigt', 'Mittel', 'Gesättigt'], d: 2 },
     { k: 'alpha', n: 'Transparenz', o: ['Undurchsichtig', 'Halbtransparent', 'Transparent'], d: 0 },
-    { hide: 1, k: 'count', n: 'Anzahl', o: ['Einzeln', 'Wenige', 'Mehrere', 'Viele'], d: 0 },
-    { hide: 1, k: 'layout', n: 'Anordnung', o: ['Verteilt', 'Gruppiert', 'Linear', 'Radial', 'Rasterförmig', 'Zufällig'], d: 0 },
-    { hide: 1, k: 'dim', n: 'Dimensionalität', o: ['2D', '2.5D', '3D'], d: 0 },
-    { hide: 1, k: 'fill', n: 'Füllung', o: ['Gefüllt', 'Ungefüllt', 'Teilgefüllt'], d: 0 },
-    { hide: 1, k: 'stroke', n: 'Kontur', o: ['Keine', 'Dünn', 'Dick', 'Gestrichelt', 'Gepunktet'], d: 0 },
-    { hide: 1, k: 'surface', n: 'Oberflächenbeschaffenheit', o: ['Glatt', 'Körnig', 'Rau', 'Strukturiert', 'Texturiert'], d: 0 },
+    { k: 'count', n: 'Anzahl', o: ['Einzeln', 'Wenige', 'Mehrere', 'Viele'], d: 0 },
+    { k: 'layout', n: 'Anordnung', o: ['Verteilt', 'Gruppiert', 'Linear', 'Radial', 'Rasterförmig', 'Zufällig'], d: 0 },
+    { k: 'dim', n: 'Dimensionalität', o: ['2D', '2.5D', '3D'], d: 0 },
+    { k: 'fill', n: 'Füllung', o: ['Gefüllt', 'Ungefüllt', 'Teilgefüllt'], d: 0 },
+    { k: 'stroke', n: 'Kontur', o: ['Keine', 'Dünn', 'Dick', 'Gestrichelt', 'Gepunktet'], d: 0 },
+    { k: 'surface', n: 'Oberflächenbeschaffenheit', o: ['Glatt', 'Körnig', 'Rau', 'Strukturiert', 'Texturiert'], d: 0 },
   ] },
-  { id: 'move', title: 'Morphologischer Kasten 2', sub: 'Animation', q: 'Wie verändert sich das Element, wenn sich ein allgemeiner Klangparameter ändert – etwa lauter, höher oder schneller wird?', rows: [
-    { k: 'shapeFx', g: 'Form', n: 'Formveränderung', o: ['Vergrößern', 'Verkleinern', 'Verzerren', 'Dehnen', 'Drehen', 'Abrunden', 'Verpixeln', 'Keine'], d: -1, opt: 1, trig: 1 },
-    { k: 'transform', g: 'Form', n: 'Formtransformation', o: ['Teilung', 'Vermehrung', 'Reduktion', 'Verzweigung', 'Gruppierung', 'Keine'], d: 5, trig: 1 },
-    { k: 'colorFx', g: 'Farbe', n: 'Farbveränderung', o: ['Konstant', 'Dunkler', 'Heller', 'Farbwechsel', 'Sättigungswechsel', 'Farbverlauf', 'Keine'], d: 0, trig: 1 },
-    { k: 'place', g: 'Raum & Bewegung', n: 'Position im Raum', o: ['Vordergrund', 'Hintergrund', 'Oben', 'Unten', 'Rechts', 'Links', 'Versteckt', 'Mitte'], d: -1, opt: 1, trig: 1 },
-    { k: 'dir', g: 'Raum & Bewegung', n: 'Bewegungsrichtung', o: ['Hoch', 'Runter', 'Rechts', 'Links', 'Schräg', 'Nach vorne', 'Nach hinten', 'Zur Mitte', 'Nach außen', 'Keine'], d: -1, opt: 1, trig: 1 },
-    { k: 'path', g: 'Raum & Bewegung', n: 'Bewegungsbahn', o: ['Gerade', 'Kreisförmig', 'Wellig', 'Zickzack', 'Spiralförmig', 'Zufällig', 'Keine'], d: -1, opt: 1 },
-    { k: 'speed', g: 'Raum & Bewegung', n: 'Geschwindigkeit', o: ['Stillstand', 'Sehr langsam', 'Langsam', 'Moderat', 'Schnell', 'Sehr schnell'], d: 2, trig: 1 },
-    { k: 'accel', g: 'Raum & Bewegung', n: 'Beschleunigung', o: ['Keine', 'Zunehmend', 'Abnehmend', 'Plötzlich', 'Stufenweise'], d: 0 },
-    { k: 'rhythm', g: 'Zeitlicher Ablauf', n: 'Rhythmus', o: ['Regelmäßig', 'Unregelmäßig', 'Pulsierend', 'Repetitiv', 'Alternierend', 'Zufällig'], d: 0 },
-    { k: 'appear', g: 'Zeitlicher Ablauf', n: 'Erscheinungsverhalten', o: ['Fade-in', 'Jump-in', 'Aufpoppen', 'Zusammenfügen', 'Zoom-in', 'Wachsen', 'Einblenden'], d: -1, opt: 1, trig: 1 },
-    { k: 'vanish', g: 'Zeitlicher Ablauf', n: 'Verschwindeverhalten', o: ['Fade-out', 'Zerfallen', 'Zoom-out', 'Jump-out', 'Schrumpfen', 'Auflösen', 'Ausblenden'], d: -1, opt: 1, trig: 1 },
-    { k: 'trail', g: 'Zeitlicher Ablauf', n: 'Spur', o: ['Keine', 'Punkte', 'Linie', 'Nachleuchten', 'Nachzeichnen', 'Nachbild'], d: 0 },
+  { id: 'move', title: 'Morphologischer Kasten 2', sub: 'Visuelles Verhalten', q: 'Wie verändert es sich und wie interagiert es mit anderen Elementen?', rows: [
+    { k: 'shapeFx', n: 'Formveränderung', o: ['Vergrößern', 'Verkleinern', 'Verzerren', 'Dehnen', 'Drehen', 'Abrunden', 'Verpixeln', 'Keine'], d: -1, opt: 1 },
+    { k: 'dir', n: 'Bewegungsrichtung', o: ['Hoch', 'Runter', 'Rechts', 'Links', 'Schräg', 'Nach vorne', 'Nach hinten', 'Zur Mitte', 'Nach außen', 'Keine'], d: -1, opt: 1 },
+    { k: 'path', n: 'Bewegungsbahn', o: ['Gerade', 'Kreisförmig', 'Wellig', 'Zickzack', 'Spiralförmig', 'Zufällig', 'Keine'], d: -1, opt: 1 },
+    { k: 'speed', n: 'Geschwindigkeit', o: ['Stillstand', 'Sehr langsam', 'Langsam', 'Moderat', 'Schnell', 'Sehr schnell'], d: 2 },
+    { k: 'accel', n: 'Beschleunigung', o: ['Gleichmäßig', 'Zunehmend', 'Abnehmend', 'Plötzlich', 'Stufenweise'], d: 0 },
+    { k: 'rhythm', n: 'Rhythmus', o: ['Regelmäßig', 'Unregelmäßig', 'Pulsierend', 'Repetitiv', 'Alternierend', 'Zufällig'], d: 0 },
+    { k: 'appear', n: 'Erscheinungsverhalten', o: ['Fade-in', 'Jump-in', 'Aufpoppen', 'Zusammenfügen', 'Zoom-in', 'Wachsen', 'Einblenden'], d: -1, opt: 1 },
+    { k: 'vanish', n: 'Verschwindeverhalten', o: ['Fade-out', 'Zerfallen', 'Zoom-out', 'Jump-out', 'Schrumpfen', 'Auflösen', 'Ausblenden'], d: -1, opt: 1 },
+    { k: 'trail', n: 'Spur', o: ['Keine', 'Punkte', 'Linie', 'Nachleuchten', 'Nachzeichnen', 'Nachbild'], d: 0 },
+    { k: 'place', n: 'Position im Raum', o: ['Vordergrund', 'Hintergrund', 'Oben', 'Unten', 'Rechts', 'Links', 'Versteckt', 'Mitte'], d: -1, opt: 1 },
+    { k: 'colorFx', n: 'Farbveränderung', o: ['Konstant', 'Dunkler', 'Heller', 'Farbwechsel', 'Sättigungswechsel', 'Farbverlauf', 'Keine'], d: 0 },
+    { k: 'transform', n: 'Formtransformation', o: ['Teilung', 'Vermehrung', 'Reduktion', 'Verzweigung', 'Gruppierung', 'Keine'], d: 5 },
+    { k: 'interact', n: 'Interaktion zwischen Elementen', o: ['Anziehung', 'Abstoßung', 'Kollision', 'Verfolgung', 'Verdeckung', 'Keine'], d: -1, opt: 1 },
   ] },
-  { id: 'inter', title: 'Morphologischer Kasten 3', sub: 'Interaktion', q: 'Wie verhält sich das Element zu den anderen Soundelementen?', rows: [
-    { k: 'interact', n: 'Interaktion zwischen Elementen', o: ['Anziehung', 'Abstoßung', 'Kollision', 'Verfolgung', 'Verdeckung', 'Keine'], d: -1, opt: 1, trig: 1 },
+  { id: 'sound', title: 'Akustische Parameter', sub: 'Klang', q: 'Auf welche Klangeigenschaften reagiert die Visualisierung? Wähle aus, wie das Instrument klingt – mit „Synth“ hörst du es, die Visualisierung reagiert darauf.', rows: [
+    { k: 'loud', n: 'Lautstärke', o: ['Sehr leise', 'Leise', 'Mittel', 'Laut', 'Sehr laut'], d: 2, map: 'Größe, Kontrast, Farbintensität' },
+    { k: 'pitch', n: 'Tonhöhe', o: ['Sehr tief', 'Tief', 'Mittel', 'Hoch', 'Sehr hoch'], d: 2, map: 'Vertikale Position, Größe, Helligkeit' },
+    { k: 'tempo', n: 'Tempo', o: ['Sehr langsam', 'Langsam', 'Moderat', 'Schnell', 'Sehr schnell'], d: 2, map: 'Bewegungsgeschwindigkeit, Wiederholung' },
+    { k: 'srhythm', n: 'Rhythmus', o: ['Regelmäßig', 'Unregelmäßig', 'Pulsierend', 'Repetitiv', 'Alternierend'], d: 0, map: 'Pulsieren, Anordnung, Wiederholung' },
+    { k: 'timbre', n: 'Klangfarbe', o: ['Hell', 'Dunkel', 'Warm', 'Kühl', 'Metallisch', 'Weich'], d: 2, map: 'Farbtemperatur, Formcharakter, Oberfläche' },
+    { k: 'texture', n: 'Klangtextur', o: ['Glatt', 'Rau', 'Körnig', 'Verrauscht', 'Klar'], d: 0, map: 'Körnung, Kontur, Fragmentierung' },
+    { k: 'artic', n: 'Artikulation', o: ['Staccato', 'Legato'], d: -1, opt: 1, map: 'Getrennte oder verbundene Elemente' },
+    { k: 'attack', n: 'Anschlag', o: ['Hart', 'Weich', 'Abrupt', 'Allmählich'], d: -1, opt: 1, map: 'Abruptes Erscheinen, Einblenden' },
+    { k: 'release', n: 'Ausklang', o: ['Kurz', 'Lang', 'Abrupt', 'Allmählich'], d: -1, opt: 1, map: 'Fade-out, Schrumpfen, Nachleuchten' },
+    { k: 'density', n: 'Klangdichte', o: ['Dünn', 'Dicht', 'Vereinzelt', 'Vielschichtig'], d: 0, map: 'Anzahl, Abstand, Füllgrad' },
+    { k: 'dyn', n: 'Dynamik', o: ['Crescendo', 'Decrescendo', 'Konstant', 'Wechselhaft'], d: 2, map: 'Größenveränderung, Farbintensität' },
+    { k: 'harm', n: 'Harmonie', o: ['Konsonant', 'Dissonant'], d: 0, map: 'Symmetrie, Ordnung, Überlagerung' },
+    { k: 'space', n: 'Räumlichkeit', o: ['Nah', 'Fern', 'Trocken', 'Hallend'], d: -1, opt: 1, map: 'Größe, Transparenz, Schärfe' },
   ] },
 ];
-// Auslöser: welcher Klangparameter eine Zeile steuert. live = wird in der Vorschau aus dem Klang gemessen
-const PARAMS = [
-  // Reihenfolge der ersten 13 bleibt fest (gespeicherte Auswahlen), neue Parameter werden hinten angehängt
-  { k: 'loud', g: 'Lautstärke & Dynamik', n: 'Lautstärke', live: 1, hint: 'je lauter, desto stärker', d: 'Wie laut der Klang gerade ist.', v: 'lauter · leiser', a: 'Größe, Helligkeit, Deckkraft, Geschwindigkeit, Intensität' },
-  { k: 'pitch', g: 'Tonhöhe & Melodie', n: 'Tonhöhe', live: 1, hint: 'je höher, desto stärker', d: 'Wie hoch oder tief der Ton liegt.', v: 'höher · tiefer', a: 'Position (oben/unten), Helligkeit, Größe (klein = hoch), Farbton' },
-  { k: 'beat', g: 'Zeit & Rhythmus', n: 'Rhythmus (Schläge)', live: 1, hint: 'auf jedem Schlag', d: 'Die einzelnen Schläge und ihr Muster.', v: 'Schlag · kein Schlag', a: 'Pulsieren, Aufpoppen, Aufblitzen, Wackeln' },
-  { k: 'dyn', g: 'Lautstärke & Dynamik', n: 'Dynamik', live: 1, hint: 'beim Lauterwerden stark, beim Leiserwerden schwach', d: 'Wie stark sich die Lautstärke ändert.', v: 'Crescendo · Decrescendo · gleichbleibend', a: 'Wachsen und Schrumpfen, Auf- und Abblenden, Spannung' },
-  { k: 'tempo', g: 'Zeit & Rhythmus', n: 'Tempo', hint: 'im Song konstant – keine Veränderung messbar', d: 'Wie schnell der Song insgesamt läuft (BPM).', v: 'schneller · langsamer', a: 'Grundgeschwindigkeit der gesamten Bewegung' },
-  { k: 'timbre', g: 'Klangfarbe & Textur', n: 'Klangfarbe', d: 'Der Charakter des Klangs: warm, hell, hohl, metallisch …', v: 'wärmer · kälter · schärfer', a: 'Farbtemperatur, Farbton, Kantigkeit' },
-  { k: 'texture', g: 'Klangfarbe & Textur', n: 'Klangtextur', d: 'Glatt oder rau, weich oder körnig.', v: 'glatter · rauer', a: 'Körnung, Unruhe, Kantenschärfe' },
-  { k: 'artic', g: 'Hüllkurve', n: 'Artikulation', d: 'Gebunden (legato) oder abgesetzt (staccato).', v: 'gebunden · abgehackt', a: 'fließende vs. ruckartige Bewegung' },
-  { k: 'attack', g: 'Hüllkurve', n: 'Anschlag', d: 'Wie schnell der Ton einsetzt.', v: 'weich · hart', a: 'Einblenden vs. Aufpoppen' },
-  { k: 'release', g: 'Hüllkurve', n: 'Ausklang', d: 'Wie lange der Ton nachklingt.', v: 'kurz · lang', a: 'Ausblenden, Nachleuchten, Spur' },
-  { k: 'density', g: 'Klangfarbe & Textur', n: 'Klangdichte', d: 'Wie viele Klangschichten gleichzeitig laufen.', v: 'dünner · dichter', a: 'Anzahl, Überlagerung, Deckkraft' },
-  { k: 'harm', g: 'Harmonie', n: 'Harmonie', d: 'Wie die Töne zusammen klingen.', v: 'Akkordwechsel · Spannung · Auflösung', a: 'Farbwechsel, Gruppierung, Verbindungen' },
-  { k: 'space', g: 'Raum', n: 'Räumlichkeit', d: 'Wie weit und groß der Klang wirkt.', v: 'enger · weiter', a: 'Größe, Unschärfe, Vorder-/Hintergrund' },
-  { k: 'pitchline', g: 'Tonhöhe & Melodie', n: 'Tonhöhenverlauf', d: 'Die Richtung der Melodie.', v: 'steigt · fällt · bleibt · springt', a: 'Bewegung nach oben/unten, Bahn folgt der Melodie' },
-  { k: 'interval', g: 'Tonhöhe & Melodie', n: 'Tonsprünge', d: 'Wie groß der Abstand zwischen aufeinanderfolgenden Tönen ist.', v: 'Schritt · kleiner Sprung · großer Sprung', a: 'Sprunghöhe, Teleportieren vs. Gleiten' },
-  { k: 'range', g: 'Tonhöhe & Melodie', n: 'Tonumfang', d: 'Wie weit die Melodie auseinanderliegt.', v: 'eng · weit', a: 'Bewegungsradius, Streuung' },
-  { k: 'vibrato', g: 'Tonhöhe & Melodie', n: 'Vibrato', d: 'Kleine, schnelle Tonhöhenschwankung.', v: 'ruhig · zitternd', a: 'Zittern, Wackeln, Schwingen' },
-  { k: 'crescendo', g: 'Lautstärke & Dynamik', n: 'Lautstärkeverlauf', d: 'Anschwellen oder Abschwellen über einen längeren Abschnitt.', v: 'anschwellend · abschwellend', a: 'Aufbau, Zoom, Aufhellen' },
-  { k: 'accent', g: 'Lautstärke & Dynamik', n: 'Akzente', d: 'Einzelne besonders laute Töne.', v: 'Akzent · kein Akzent', a: 'Aufblitzen, Ausschlag, Stoßwelle' },
-  { k: 'duration', g: 'Zeit & Rhythmus', n: 'Tondauer', d: 'Wie lange ein Ton gehalten wird.', v: 'kurz · lang', a: 'Lebensdauer, Länge, Verweildauer' },
-  { k: 'pause', g: 'Zeit & Rhythmus', n: 'Pausen', d: 'Stille zwischen den Tönen.', v: 'Stille · Klang', a: 'Verschwinden, Einfrieren, Ausblenden' },
-  { k: 'repeat', g: 'Zeit & Rhythmus', n: 'Wiederholung', d: 'Wiederkehrende Muster und Motive.', v: 'neu · wiederholt · variiert', a: 'wiederkehrende Bewegung, Echo-Elemente' },
-  { k: 'bright', g: 'Klangfarbe & Textur', n: 'Klanghelligkeit', d: 'Wie viel Höhenanteil der Klang hat.', v: 'dumpf · brillant', a: 'Helligkeit, Schärfe, Leuchten' },
-  { k: 'noise', g: 'Klangfarbe & Textur', n: 'Geräuschanteil', d: 'Rauschen im Verhältnis zum reinen Ton.', v: 'rein · verrauscht', a: 'Körnung, Flimmern, Streuung' },
-  { k: 'overtones', g: 'Klangfarbe & Textur', n: 'Obertöne', d: 'Wie reich der Klang an Obertönen ist.', v: 'schlicht · reich', a: 'Konturen, Zusatzelemente, Strahlen' },
-  { k: 'sustain', g: 'Hüllkurve', n: 'Haltephase', d: 'Wie gleichmäßig der Ton gehalten wird.', v: 'gleichmäßig · abfallend', a: 'Verharren, gleichbleibende Größe' },
-  { k: 'consonance', g: 'Harmonie', n: 'Konsonanz / Dissonanz', d: 'Wie harmonisch oder spannungsvoll die Töne zusammen klingen.', v: 'harmonisch · dissonant', a: 'Ruhe vs. Unruhe, Verzerrung, Kollision' },
-  { k: 'mode', g: 'Harmonie', n: 'Stimmung (Dur / Moll)', d: 'Eher heiter oder eher ernst.', v: 'Dur · Moll', a: 'Farbtemperatur, Helligkeit, Bewegungsrichtung' },
-  { k: 'pan', g: 'Raum', n: 'Stereoposition', d: 'Ob der Klang links, mittig oder rechts liegt.', v: 'links · Mitte · rechts', a: 'horizontale Position' },
-  { k: 'reverb', g: 'Raum', n: 'Hall', d: 'Wie stark der Raum mitklingt.', v: 'trocken · hallig', a: 'Nachbilder, Unschärfe, Echo-Spur' },
-  { k: 'distance', g: 'Raum', n: 'Nähe / Distanz', d: 'Wie nah der Klang wirkt.', v: 'nah · fern', a: 'Größe, Schärfe, Vorder-/Hintergrund' },
-];
-const TRIGGERS = PARAMS;
-let CUR_P = 0;   // gewählter Klangparameter (Index in PARAMS) – er ist der Auslöser aller Zeilen des Kastens
-const trigDefaults = () => Object.fromEntries(ROWS_T().map(r => [r.k, CUR_P]));
-const ROWS = []; BOXES.forEach(b => { b.rows.forEach(r => { r.box = b.id; ROWS.push(r); }); b.rows = b.rows.filter(r => !r.hide); });   // ausgeblendete Zeilen (Form, Kontur, Oberfläche …) behalten ihren Standardwert
-function ROWS_T() { return ROWS.filter(r => r.trig); }
-const TRIG_ROWS = ROWS_T();
+const ROWS = []; BOXES.forEach(b => b.rows.forEach(r => { r.box = b.id; ROWS.push(r); }));
 const ROW = Object.fromEntries(ROWS.map(r => [r.k, r]));
 const VISUAL_KEYS = ROWS.filter(r => r.box !== 'sound').map(r => r.k);
 const SONG_INSTRUMENTS = ['Flute', 'Mosquito', 'Frog', 'Building', 'Riser', 'Hunting Horn', 'Drums', 'Ringtone'];
@@ -521,32 +378,15 @@ const defaults = () => Object.fromEntries(ROWS.map(r => [r.k, -1]));   // Start:
 // Für die Darstellung dienen die bisherigen Standardwerte als stiller Ersatz, solange eine Zeile nichts gewählt hat
 // „Keine“ am Ende von Formveränderung, Bewegungsrichtung, Farbveränderung und Interaktion (hinten angehängt, damit gespeicherte Auswahlen gültig bleiben) = Effekt aus
 const vals = s => Object.fromEntries(ROWS.map(r => { const v = s[r.k] >= 0 ? r.o[s[r.k]] : (r.d >= 0 ? r.o[r.d] : null); return [r.k, v === 'Keine' && (r.k === 'shapeFx' || r.k === 'colorFx' || r.k === 'interact' || r.k === 'dir' || r.k === 'path') ? null : v]; }));
-// Code = Auswahl pro Zeile, dann „.“ und der Auslöser pro Kasten-2/3-Zeile
-// feste Reihenfolge der Zeichen im Code – bleibt gleich, auch wenn die Zeilen in der Anzeige anders sortiert werden
-const CODE_KEYS = ['element', 'char', 'size', 'temp', 'light', 'hue', 'sat', 'alpha', 'count', 'layout', 'dim', 'fill', 'stroke', 'surface', 'shapeFx', 'dir', 'path', 'speed', 'accel', 'rhythm', 'appear', 'vanish', 'trail', 'place', 'colorFx', 'transform', 'interact'];
-const TRIG_CODE = CODE_KEYS.slice(14);
-const encode = (s, g = trig) => CODE_KEYS.map(k => s[k] >= 0 ? s[k].toString(36) : '-').join('') + '.' + TRIG_CODE.map(k => ROW[k].trig && g && g[k] >= 0 ? g[k].toString(36) : '-').join('');
+const encode = s => ROWS.map(r => s[r.k] >= 0 ? s[r.k].toString(36) : '-').join('');
+// Zeilen-Reihenfolge älterer Speicherstände (vor „Füllung“), damit gespeicherte Auswahlen gültig bleiben
+const LEGACY_KEYS = ['element', 'char', 'size', 'temp', 'light', 'hue', 'sat', 'alpha', 'count', 'layout', 'dim', 'stroke', 'surface', 'shapeFx', 'dir', 'path', 'speed', 'accel', 'rhythm', 'appear', 'vanish', 'trail', 'place', 'colorFx', 'transform', 'interact', 'loud', 'pitch', 'tempo', 'srhythm', 'timbre', 'texture', 'artic', 'attack', 'release', 'density', 'dyn', 'harm', 'space'];
 function decode(str) {
-  const part = String(str || '').split('.')[0];
-  if (part.length !== CODE_KEYS.length) return null;
   const s = defaults();
-  CODE_KEYS.forEach((k, i) => { const r = ROW[k], c = part[i]; if (c !== '-') { const n = parseInt(c, 36); if (n >= 0 && n < r.o.length) s[k] = n; } });
-  return s;
-}
-function decodeTrig(str) {
-  const part = String(str || '').split('.')[1] || '', g = trigDefaults();
-  TRIG_CODE.forEach((k, i) => { const c = part[i]; if (ROW[k].trig && c && c !== '-') { const n = parseInt(c, 36); if (n >= 0 && n < TRIGGERS.length) g[k] = n; } });
-  return g;
-}
-// Übernahme aus dem bisherigen Kasten (kasten.html): dort steht pro Zeile ein Zeichen, in dieser Reihenfolge
-const OLD_KEYS = ['element', 'char', 'size', 'temp', 'light', 'hue', 'sat', 'alpha', 'count', 'layout', 'dim', 'fill', 'stroke', 'surface', 'shapeFx', 'dir', 'path', 'speed', 'accel', 'rhythm', 'appear', 'vanish', 'trail', 'place', 'colorFx', 'transform', 'interact', 'loud', 'pitch', 'tempo', 'srhythm', 'timbre', 'texture', 'artic', 'attack', 'release', 'density', 'dyn', 'harm', 'space'];
-const OLD_LEGACY = OLD_KEYS.filter(k => k !== 'fill');
-function importOld(str) {
-  const keys = str && str.length === OLD_KEYS.length ? OLD_KEYS : str && str.length === OLD_LEGACY.length ? OLD_LEGACY : null;
+  const keys = str && str.length === ROWS.length ? ROWS.map(r => r.k) : str && str.length === LEGACY_KEYS.length ? LEGACY_KEYS : null;
   if (!keys) return null;
-  const s = defaults();
-  keys.forEach((k, i) => { const r = ROW[k], c = str[i]; if (!r || c === '-') return; const n = parseInt(c, 36); if (n >= 0 && n < r.o.length) s[k] = n; });
-  return encode(s, trigDefaults());
+  keys.forEach((k, i) => { const r = ROW[k], c = str[i]; if (!r) return; if (c === '-') s[k] = -1; else { const n = parseInt(c, 36); if (n >= 0 && n < r.o.length) s[k] = n; } });
+  return s;
 }
 
 /* ═══════════════════════════ Helfer ═══════════════════════════ */
@@ -896,18 +736,6 @@ class Scene {
   }
   motion(e, tm, bx = this.W / 2, by = this.H / 2) {
     const v = this.v, M = this.M, W = this.W, H = this.H;
-    const ld = v.dir ? this.liveSig('dir') : null;
-    if (ld != null) {   // Bewegungsrichtung mit Auslöser: das Element weicht aus seiner Ruhelage in die Richtung aus – je stärker der Klang, desto weiter
-      const o = M * .3 * ld; let dx = 0, dy = 0, persp = 1;
-      switch (v.dir) {
-        case 'Hoch': dy = -o; break; case 'Runter': dy = o; break; case 'Rechts': dx = o; break; case 'Links': dx = -o; break;
-        case 'Schräg': dx = o * .7071; dy = -o * .7071; break;
-        case 'Nach vorne': persp = lerp(1, 1.8, ld); break; case 'Nach hinten': persp = lerp(1, .45, ld); break;
-        case 'Zur Mitte': dx = (W / 2 - bx) * ld; dy = (H / 2 - by) * ld; break;
-        case 'Nach außen': { const rx = bx - W / 2, ry = by - H / 2, d = Math.hypot(rx, ry) || 1; dx = rx / d * o; dy = ry / d * o; break; }
-      }
-      return { dx, dy, planar: false, persp, fade: 1, rfade: 1 };
-    }
     const vpx = (SPEED[v.speed] ?? .26) * M * .18;
     const m = this.shapeTime(tm), D = vpx * m;
     let ux = 0, uy = 0, depth = 0;
@@ -950,6 +778,7 @@ class Scene {
     return { dx, dy, planar, persp, fade, rfade };
   }
   env(t, i, feat) {   // 0..1-Hüllkurve, die Formveränderung, Pixel, Sättigung usw. treibt
+    if (feat) return feat.amp;
     const b = t / this.beat, f = fract(b);
     switch (this.v.rhythm) {
       case 'Unregelmäßig': return onsetEnv(b, [0, .75, 1.5, 2.75, 3.25, 4.5, 5.25], 6, 3.2);
@@ -960,28 +789,17 @@ class Scene {
       default: return .5 - .5 * Math.cos(TAU * b);
     }
   }
-  liveSig(k) {   // 0..1 aus dem Klang, wenn die Zeile einen live messbaren Auslöser hat – sonst null
-    const g = this.trig && this.trig[k], T = TRIGGERS[g];
-    if (!T || !T.live || !this.sig) return null;
-    const x = this.sig[T.k]; return x == null ? null : x;
-  }
-  rs(k, s) { const l = this.liveSig(k); return l != null ? l : s.env; }
-  regionLive() {
-    const l = this.liveSig('place'), v = this.v;
-    if (l == null || !v.place || v.place === 'Versteckt') return this.region();
-    const d = [.1, .14, .9, .86], c = this.region(); return d.map((x, i) => lerp(x, c[i], l));
-  }
   color(s) {
     const v = this.v;
     if (s.e.partner) return { h: 230, s: 6, l: 58 };
     let h = tempHue(HUE[v.hue] ?? 28, v.temp) + (s.e.hj || 0), sat = SAT[v.sat] ?? 50, l = LIGHT[v.light] ?? 55;
-    const lc = this.liveSig('colorFx'), prog = lc != null ? lc : (s.u != null ? s.u : this.pp);
+    const prog = s.u != null ? s.u : this.pp;
     switch (v.colorFx) {
       case 'Dunkler': l -= 32 * prog; break;
       case 'Heller': l += 32 * prog; break;
-      case 'Farbwechsel': h += lc != null ? 150 * lc : 72 * Math.floor(this.t / this.beat); break;
-      case 'Sättigungswechsel': sat = lerp(4, 98, lc != null ? lc : s.env); break;
-      case 'Farbverlauf': h += lc != null ? 220 * lc : this.t * 22; break;
+      case 'Farbwechsel': h += 72 * Math.floor(this.t / this.beat); break;
+      case 'Sättigungswechsel': sat = lerp(4, 98, s.env); break;
+      case 'Farbverlauf': h += this.t * 22; break;
     }
     l += s.lAdd || 0; sat += s.sAdd || 0; if (s.hit) l += 22 * s.hit;
     if (v.hue === 'Unbunt') sat = 0;   // unbunt: Schwarz, Weiß, Grau – Helligkeit bestimmt den Ton
@@ -992,18 +810,16 @@ class Scene {
   /* ── Zustände aller Elemente für den Zeitpunkt t ── */
   computeStates(t, dt, feat) {
     const v = this.v, W = this.W, H = this.H, M = this.M;
-    const rg = this.regionLive(), rw = rg[2] - rg[0], rh = rg[3] - rg[1];
+    const rg = this.region(), rw = rg[2] - rg[0], rh = rg[3] - rg[1];
     const sizeF = (SIZE[v.size] ?? .19) * (CSCALE[v.count] ?? 1);
-    // Erscheinen/Verschwinden mit Auslöser: folgt dem Klang statt einem festen Zyklus
-    const lA = v.appear ? this.liveSig('appear') : null, lV = v.vanish ? this.liveSig('vanish') : null;
-    const life = ((v.appear && lA == null) || (v.vanish && lV == null)) ? this.lifeParams() : null;
+    const life = (v.appear || v.vanish) ? this.lifeParams() : null;
     const els = this.els, n = els.length;
     const tfPh = fract(t / (this.beat * 8)); this.pp = .5 - .5 * Math.cos(TAU * tfPh);
     const quant = v.rhythm === 'Regelmäßig' || !v.rhythm;
 
     const base = (e, tt) => {
       const st = { e, alpha: 1, A: 1, D: 0, cyc: 0, u: null, S: 1, z: e.rank * .001, sx: 1, sy: 1, rot: e.rot };
-      let tm = tt + (this.mOff || 0) + e.phase * 11.7;   // mOff: Bewegung mit Auslöser läuft auf eigener Uhr
+      let tm = tt + e.phase * 11.7;
       if (life) {
         let off = e.phase * life.P; if (quant) off = Math.round(off / this.beat) * this.beat;
         const q = tt + off, cyc = Math.floor(q / life.P), tau = q - cyc * life.P;
@@ -1024,8 +840,6 @@ class Scene {
       if (mo.planar) { const mg = R * 1.9; x = wrap(x, -mg, W + mg); y = wrap(y, -mg, H + mg); }
       if (mo.persp !== 1) { const cx = W / 2, cy = H * .45; x = cx + (x - cx) * mo.persp; y = cy + (y - cy) * mo.persp; R *= mo.persp; st.alpha *= mo.fade; st.z += mo.persp; }
       st.x = x; st.y = y; st.R = R; st.env = this.env(tt, e.i, feat);
-      if (lA != null) st.A = clamp((lA - .15) / .35);          // erscheint, wenn der Klang anschwillt
-      if (lV != null) st.D = 1 - clamp((lV - .1) / .35);       // verschwindet, wenn er abklingt
       return st;
     };
 
@@ -1038,7 +852,7 @@ class Scene {
 
     // Formveränderung
     for (const s of out) {
-      const k = this.rs('shapeFx', s);
+      const k = s.env;
       switch (v.shapeFx) {
         case 'Vergrößern': s.S *= 1 + .65 * k; break;
         case 'Verkleinern': s.S *= 1 - .55 * k; break;
@@ -1048,7 +862,8 @@ class Scene {
         case 'Abrunden': s.round = k; break;
       }
     }
-    // Klang wirkt nur noch über die gewählten Auslöser der einzelnen Zeilen (Kasten 2 & 3)
+    // Klang → Visualisierung (Lautstärke → Größe/Intensität, Tonhöhe → Höhe/Helligkeit)
+    if (feat) for (const s of out) { s.R *= .62 + .76 * feat.amp; s.y -= (feat.pitch - .5) * M * .3; s.lAdd = (feat.pitch - .5) * 26; s.sAdd = (feat.amp - .5) * 34; }
     // Position im Raum
     if (v.place === 'Vordergrund') for (const s of out) { s.S *= 1.3; s.front = true; }
     if (v.place === 'Hintergrund') for (const s of out) s.S *= .68;
@@ -1056,10 +871,10 @@ class Scene {
     // Interaktion
     const centroid = () => { let x = 0, y = 0; out.forEach(s => { x += s.x; y += s.y; }); return [x / out.length, y / out.length]; };
     if (out.length) switch (v.interact) {
-      case 'Anziehung': { const [cx, cy] = centroid(); for (const s of out) { const f = .3 + .5 * this.rs('interact', s); s.x = cx + (s.x - cx) * (1 - f); s.y = cy + (s.y - cy) * (1 - f); s.link = [cx, cy]; } break; }
+      case 'Anziehung': { const [cx, cy] = centroid(); for (const s of out) { const f = .3 + .5 * s.env; s.x = cx + (s.x - cx) * (1 - f); s.y = cy + (s.y - cy) * (1 - f); s.link = [cx, cy]; } break; }
       case 'Abstoßung': {
         const [cx, cy] = centroid();
-        for (const s of out) { const f = .35 * this.rs('interact', s); s.x = cx + (s.x - cx) * (1 + f); s.y = cy + (s.y - cy) * (1 + f); }
+        for (const s of out) { const f = .35 * s.env; s.x = cx + (s.x - cx) * (1 + f); s.y = cy + (s.y - cy) * (1 + f); }
         if (out.length <= 160) for (let i = 0; i < out.length; i++) for (let j = i + 1; j < out.length; j++) {
           const a = out[i], b = out[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || .01, min = (a.R + b.R) * 1.7;
           if (d < min) { const p = (min - d) / 2 / d; a.x -= dx * p; a.y -= dy * p; b.x += dx * p; b.y += dy * p; }
@@ -1078,22 +893,21 @@ class Scene {
       }
     }
 
-    // Formtransformation (mit Auslöser: Fortschritt folgt dem Klang statt dem 8-Schlag-Zyklus)
-    const lT = this.liveSig('transform'), ppT = lT != null ? lT : this.pp, tfT = lT != null ? lT * .95 : tfPh;
+    // Formtransformation
     switch (v.transform) {
-      case 'Teilung': for (const s of out) s.split = ppT; break;
+      case 'Teilung': for (const s of out) s.split = this.pp; break;
       case 'Reduktion': {
-        if (n === 1 || out.length === 1) { for (const s of out) s.reduce = Math.floor(tfT * 6) / 6; }
-        else { const th = 1 - clamp(tfT * 1.15) * .85; out = out.filter(s => s.e.partner || s.e.rank < th + .05); for (const s of out) if (!s.e.partner) s.S *= clamp((th + .05 - s.e.rank) * 20); }
+        if (n === 1 || out.length === 1) { for (const s of out) s.reduce = Math.floor(tfPh * 6) / 6; }
+        else { const th = 1 - clamp(tfPh * 1.15) * .85; out = out.filter(s => s.e.partner || s.e.rank < th + .05); for (const s of out) if (!s.e.partner) s.S *= clamp((th + .05 - s.e.rank) * 20); }
         break;
       }
-      case 'Verzweigung': for (const s of out) s.branch = ppT; break;
+      case 'Verzweigung': for (const s of out) s.branch = this.pp; break;
       case 'Vermehrung': {
         const cnt = n <= 1 ? 5 : n <= 4 ? 3 : n <= 12 ? 2 : 1, extra = [];
         for (const s of out) { if (s.e.partner) continue;
           for (let c = 1; c <= cnt; c++) {
-            const g = clamp((tfT * (cnt + 1.4) - c) * 2.2); if (g <= 0) continue;
-            const fadeEnd = tfT > .9 ? 1 - (tfT - .9) * 10 : 1;
+            const g = clamp((tfPh * (cnt + 1.4) - c) * 2.2); if (g <= 0) continue;
+            const fadeEnd = tfPh > .9 ? 1 - (tfPh - .9) * 10 : 1;
             const a = c * TAU / cnt + s.e.phase * TAU, d = s.R * s.S * 2.3;
             extra.push({ ...s, x: s.x + Math.cos(a) * d, y: s.y + Math.sin(a) * d, cScale: backOut(g) * .72 * fadeEnd, clone: true, z: s.z - .0005 });
           }
@@ -1104,13 +918,13 @@ class Scene {
       case 'Gruppierung': {
         if (out.length <= 2) {
           const extra = [];
-          for (const s of out) { if (s.e.partner) continue; for (let c = 0; c < 4; c++) { const a = c * TAU / 4 + t * .35, d = s.R * lerp(3.4, 1.25, ppT); extra.push({ ...s, x: s.x + Math.cos(a) * d, y: s.y + Math.sin(a) * d, cScale: .45, clone: true }); } }
+          for (const s of out) { if (s.e.partner) continue; for (let c = 0; c < 4; c++) { const a = c * TAU / 4 + t * .35, d = s.R * lerp(3.4, 1.25, this.pp); extra.push({ ...s, x: s.x + Math.cos(a) * d, y: s.y + Math.sin(a) * d, cScale: .45, clone: true }); } }
           out = out.concat(extra);
         } else {
           const k = Math.max(1, Math.round(out.length / 5)), g = 1.32471795724474602596;
           const cs = []; for (let j = 0; j < k; j++) cs.push(k === 1 ? [W / 2, H / 2] : [W * (.2 + .6 * fract(.5 + (j + 1) / g)), H * (.22 + .56 * fract(.5 + (j + 1) / (g * g)))]);
           const cnt = new Array(k).fill(0);
-          out.forEach((s, i) => { const j = i % k, c = cs[j], q = cnt[j]++; const a = q * 2.4, d = s.R * 1.1 * Math.sqrt(q); s.x = lerp(s.x, c[0] + Math.cos(a) * d, ppT); s.y = lerp(s.y, c[1] + Math.sin(a) * d, ppT); });
+          out.forEach((s, i) => { const j = i % k, c = cs[j], q = cnt[j]++; const a = q * 2.4, d = s.R * 1.1 * Math.sqrt(q); s.x = lerp(s.x, c[0] + Math.cos(a) * d, this.pp); s.y = lerp(s.y, c[1] + Math.sin(a) * d, this.pp); });
         }
         break;
       }
@@ -1161,14 +975,8 @@ class Scene {
     else lx.clearRect(0, 0, W, H);
     zs(lx);
 
-    // Signale für die Auslöser: Lautstärke, Tonhöhe, Schläge, Dynamik (lauter/leiser werden)
-    const beatPulse = Math.exp(-fract(t / this.beat) * 5);
-    if (feat) { this.aF = lerp(this.aF ?? feat.amp, feat.amp, .25); this.aS = lerp(this.aS ?? feat.amp, feat.amp, .03); }
-    this.sig = feat ? { loud: feat.amp, pitch: feat.pitch, beat: beatPulse, dyn: clamp(.5 + (this.aF - this.aS) * 3) } : { beat: beatPulse };
-    const lsp = this.liveSig('speed');   // Geschwindigkeit mit Auslöser: Bewegung läuft auf eigener, klanggesteuerter Uhr
-    if (lsp != null) { this.mclock = (this.mclock ?? t) + dt * (.12 + 1.75 * lsp); this.mOff = this.mclock - t; } else { this.mclock = null; this.mOff = 0; }
     const states = this.computeStates(t, dt, feat);
-    this.pixEnv = states.length ? this.rs('shapeFx', states[0]) : 0;
+    this.pixEnv = states.length ? states[0].env : 0;
     states.forEach(s => { s.col = this.color(s); });
     this.updateHistory(states, dt);
     states.sort((a, b) => a.z - b.z);
@@ -1303,7 +1111,6 @@ class Scene {
         case 'Zoom-in': S *= lerp(3.4, 1, easeOut(A)); a *= clamp(A * 1.6); break;
         case 'Wachsen': if (isLine) grow = easeOut(A); else S *= easeOut(A); break;
         case 'Einblenden': wipe = [1, smooth(A)]; break;
-        case 'Jump-in': if (A < .5) a = 0; break;
       }
     }
     if (s.D > 0) {
@@ -1315,7 +1122,6 @@ class Scene {
         case 'Schrumpfen': S *= 1 - easeIn(D); break;
         case 'Auflösen': dust = D; a *= 1 - smooth(clamp(D * 1.6)); break;
         case 'Ausblenden': wipe = [-1, smooth(D)]; break;
-        case 'Jump-out': if (D > .5) a = 0; break;
       }
     }
     if (S <= .002 || (a <= .003 && !dust)) return;
@@ -1482,7 +1288,7 @@ class Scene {
 
 /* ═══════════════════════════ Klang: Synthesizer & Song-Analyse ═══════════════════════════ */
 class Sound {
-  constructor() { this.ac = null; this.mode = 'song'; this.direct = location.protocol === 'file:'; this.env = null; this.track = 'all'; this.url = 'song.m4a'; this.notes = []; this.v = {}; this.bpm = 100; this.sm = 0; this.pitchSm = .5; this.peak = .05; }
+  constructor() { this.ac = null; this.mode = 'song'; this.direct = location.protocol === 'file:'; this.env = null; this.track = 'all'; this.url = '../../assets/song.m4a'; this.notes = []; this.v = {}; this.bpm = 100; this.sm = 0; this.pitchSm = .5; this.peak = .05; }
   ensure() {
     if (this.ac) return;
     const ac = this.ac = new (window.AudioContext || window.webkitAudioContext)();
@@ -1528,7 +1334,7 @@ class Sound {
   }
   pauseSong() { if (this.audio) this.audio.pause(); }
   async setTrack(name) {        // 'all' = ganzer Song, sonst Einzelspur eines Instruments
-    let url = 'song.m4a';
+    let url = '../../assets/song.m4a';
     if (name !== 'all') { const r = await Stems.get(name); if (!r) { toast('Diese Tonspur gibt es nicht mehr.'); return false; } url = URL.createObjectURL(r.blob); }
     if (this.url.startsWith('blob:')) URL.revokeObjectURL(this.url);
     this.track = name; this.url = url;
@@ -1725,47 +1531,32 @@ function chipDeco(k, i) {
 }
 const LOCK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="7" width="10" height="7" rx="1.5"/><path d="M5.2 7V5a2.8 2.8 0 0 1 5.6 0v2"/></svg>';
 
-const STORE = 'av-parameter-v1';
-let state = { sel: defaults(), trig: trigDefaults(), locks: {}, instruments: [], bpm: 100, current: null };
-try {   // beim ersten Öffnen: Name, Tonspur und Sperren aus dem bisherigen Kasten übernehmen
-  const s = JSON.parse(localStorage.getItem(STORE) || 'null') || null;
-  if (s && s.sel) state = { ...state, ...s, sel: defaults(), trig: trigDefaults() };
-} catch (e) {}
-{ const m = location.hash.match(/k=([0-9a-z.-]+)/i); const d = m && decode(m[1]); if (d) { state.sel = d; state.trig = decodeTrig(m[1]); } }
-let sel = state.sel, trig = state.trig;
+const STORE = 'av-kasten-v1';
+let state = { sel: defaults(), locks: {}, instruments: [], bpm: 100, current: null };
+try { const s = JSON.parse(localStorage.getItem(STORE) || 'null'); if (s && s.sel) state = { ...state, ...s, sel: defaults() }; } catch (e) {}
+{ const m = location.hash.match(/k=([0-9a-z-]+)/i); const d = m && decode(m[1]); if (d) state.sel = d; }
+let sel = state.sel;
 
 function save() {
-  state.sel = sel; state.trig = trig;
+  state.sel = sel;
   try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) {}
   history.replaceState(null, '', '#k=' + encode(sel));
 }
 
 /* Panel aufbauen */
-function trigSelect(r) {   // eigene Aufklappliste im Stil des Feldes, Gruppen „Live darstellbar“ / „Nicht live darstellbar“
-  const opt = (T, i) => `<button type="button" class="dd-o${T.live ? '' : ' nl'}" data-v="${i}" role="option"><i></i>${T.n}</button>`;
-  return `<span class="lnk" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M19 12H5M10 7l-5 5 5 5"/></svg></span>` +
-    `<div class="dd trgw" data-trgw="${r.k}"><button type="button" class="dd-btn" data-dd="${r.k}" aria-haspopup="listbox" aria-expanded="false" aria-label="Klangparameter für ${r.n}"><span class="dd-v">kein Auslöser</span></button>` +
-    `<div class="dd-pop" role="listbox" hidden>` +
-    `<button type="button" class="dd-o none" data-v="-1" role="option"><i></i>kein Auslöser</button>` +
-    `<div class="dd-g">Live darstellbar</div>${TRIGGERS.map((T, i) => T.live ? opt(T, i) : '').join('')}` +
-    `<div class="dd-g nl">Nicht live darstellbar</div>${TRIGGERS.map((T, i) => T.live ? '' : opt(T, i)).join('')}` +
-    `</div></div><small class="trgn" data-trgn="${r.k}"></small>`;
-}
 const scrollEl = $('scroll');
 const COLS = Math.max(7, ...ROWS.map(r => r.o.length));   // alle Zeilen gleich viele Spalten → Tabelle
 scrollEl.style.setProperty('--cols', COLS);
 scrollEl.innerHTML = BOXES.map(b => `
   <section class="box" id="box-${b.id}" data-box="${b.id}">
     <div class="bh"><h2>${b.title} <span>· ${b.sub}</span></h2>
-      <div class="acts"><button data-reset="${b.id}" title="Diesen Kasten zurücksetzen">Standard</button></div></div>
+      <div class="acts"><button data-rand="${b.id}" title="Diesen Kasten zufällig belegen (gesperrte Zeilen bleiben)">Zufall</button><button data-reset="${b.id}" title="Diesen Kasten zurücksetzen">Standard</button></div></div>
     <p class="bq">${b.q}</p>
-    ${b.id !== 'look' ? '<div class="legend pinfo"></div>' : ''}
     <div class="rows"><svg class="path"></svg>
-      ${b.rows.some(r => r.trig) ? '<div class="row t3 rowh" aria-hidden="true"><div></div><div></div><div class="rth">gekoppelt an Klangparameter</div></div>' : ''}
-      ${b.rows.map((r, ri) => `${r.g && (ri === 0 || b.rows[ri - 1].g !== r.g) ? `<div class="grp-h">${r.g}</div>` : ''}
-        <div class="row${b.rows.some(x => x.trig) ? ' t3' : ''}" data-k="${r.k}">
-          <div class="rl"><span class="nm"><span class="tx">${r.n}</span></span>${r.opt ? '<small class="optl">optional</small>' : ''}</div>
-          <div class="opts">${r.o.map((o, i) => `<button class="chip" data-k="${r.k}" data-i="${i}" aria-pressed="false">${chipDeco(r.k, i)}${o}</button>`).join('')}${'<span class="chip empty" aria-hidden="true"></span>'.repeat(COLS - r.o.length)}</div>${b.rows.some(x => x.trig) ? `<div class="rt">${r.trig ? trigSelect(r) : ''}</div>` : ''}
+      ${b.rows.map(r => `
+        <div class="row" data-k="${r.k}">
+          <div class="rl"><span class="nm"><button class="lock" data-lock="${r.k}" title="Zeile für „Zufall“ sperren" aria-label="${r.n} sperren">${LOCK}</button><span class="tx">${r.n}${r.opt ? ' <span class="opt">(optional)</span>' : ''}</span></span>${r.map ? `<small>→ ${r.map}</small>` : ''}</div>
+          <div class="opts">${r.o.map((o, i) => `<button class="chip" data-k="${r.k}" data-i="${i}" aria-pressed="false">${chipDeco(r.k, i)}${o}</button>`).join('')}${'<span class="chip empty" aria-hidden="true"></span>'.repeat(COLS - r.o.length)}</div>
         </div>`).join('')}
     </div>
     ${b.id === 'sound' ? `<div class="derive"><p>Passende visuelle Ausprägungen aus dem Klang ableiten – nach der Zuordnung „Wie die Parameter die Visualisierung steuern können“. Gesperrte Zeilen bleiben unverändert.</p><button id="derive">Klang → Visuell</button></div>` : ''}
@@ -1779,21 +1570,6 @@ function syncChips() {
     ch.classList.toggle('pa', !!cmp && cmp[0][k] === i); ch.classList.toggle('pb', !!cmp && cmp[1][k] === i);
   });
   scrollEl.querySelectorAll('.lock').forEach(l => l.classList.toggle('on', !!state.locks[l.dataset.lock]));
-  scrollEl.querySelectorAll('.row[data-k]').forEach(row => {   // nichts gewählt → abgeschwächt
-    const k = row.dataset.k, has = cmp ? (cmp[0][k] >= 0 || cmp[1][k] >= 0) : sel[k] >= 0;
-    row.classList.toggle('idle', !has);
-  });
-  scrollEl.querySelectorAll('.dd').forEach(w => {
-    const k = w.dataset.trgw, g = trig[k] ?? -1, T = TRIGGERS[g];
-    w.querySelector('.dd-v').textContent = T ? T.n : 'kein Auslöser';
-    w.querySelectorAll('.dd-o').forEach(o => o.setAttribute('aria-selected', +o.dataset.v === g));
-    w.classList.toggle('live', !!T && !!T.live); w.classList.toggle('nl', !!T && !T.live);
-    const el = w;
-    el.closest('.rt').classList.toggle('live', !!T && !!T.live);
-    const n = scrollEl.querySelector(`[data-trgn="${k}"]`);
-    n.textContent = !T ? '' : T.live ? (T.hint || '') : (T.hint || 'nicht live darstellbar');
-    n.classList.toggle('nl', !!T && !T.live);
-  });
   drawPaths();
 }
 
@@ -1812,30 +1588,12 @@ function drawPaths() {
 }
 
 /* Profile: gespeicherte Auswahl pro Name und Tonspur */
-const PEOPLE = ['Jeremy', 'Josua'], PROF_KEY = 'av-parameter-profiles';
-// Gespeicherte Auswahlen: pro Name und Tonspur { c: Code, t: Zeitpunkt }. Sie stehen in dieser Datei (window.PROFILES,
-// kommt per Git zum anderen) und zusätzlich im Browser. Beim Zusammenführen gewinnt jeweils der neuere Eintrag.
-const normP = e => typeof e === 'string' ? { c: e, t: 0 } : e && e.c ? e : null;
-function mergeProf(a, b) {
-  const out = {};
-  for (const src of [a || {}, b || {}]) for (const n in src) for (const tr in src[n]) {
-    const e = normP(src[n][tr]); if (!e) continue;
-    const cur = out[n] && out[n][tr];
-    if (!cur || e.t >= cur.t) (out[n] = out[n] || {})[tr] = { c: e.c, t: e.t };
-  }
-  return out;
-}
-let profiles = {}, imported = 0, local = null;
-try { local = JSON.parse(localStorage.getItem(PROF_KEY) || 'null'); } catch (e) { local = null; }
-if (!local) local = {};
-profiles = mergeProf(local, window.PROFILES);
-try { localStorage.setItem(PROF_KEY, JSON.stringify(profiles)); } catch (e) {}
-const codeFor = (name, track) => profiles[name] && profiles[name][track] ? profiles[name][track].c : null;
+const PEOPLE = ['Jeremy', 'Josua'], PROF_KEY = 'av-kasten-profiles';
+let profiles = {};
+try { profiles = JSON.parse(localStorage.getItem(PROF_KEY) || '{}') || {}; } catch (e) {}
 state.who = (state.who || []).filter(n => PEOPLE.includes(n));
-if (!PARAMS.some(p => p.n === state.ptrack)) state.ptrack = PARAMS[0].n;
-CUR_P = PARAMS.findIndex(p => p.n === state.ptrack); trig = trigDefaults();
-const savedFor = (name, track) => { const str = codeFor(name, track); return str ? decode(str) : null; };
-const savedTrigFor = (name, track) => { const str = codeFor(name, track); return str ? decodeTrig(str) : null; };
+state.ptrack = state.ptrack || SONG_INSTRUMENTS[0];
+const savedFor = (name, track) => { const str = profiles[name] && profiles[name][track]; return str ? decode(str) : null; };
 function compareSels() {     // beide Namen gewählt → [Auswahl Jeremy, Auswahl Josua]
   if (state.who.length !== 2) return null;
   return state.who.map(n => savedFor(n, state.ptrack) || defaults());
@@ -1846,10 +1604,10 @@ function profUI() {
   panel.classList.toggle('cmp', who.length === 2);
   const col = one ? (who[0] === PEOPLE[0] ? 'var(--pa)' : 'var(--pb)') : '';
   panel.style.setProperty('--selc', col || 'var(--accent)');
-  $('psave').hidden = !one; $('sinfo').hidden = !one;
+  $('psave').hidden = !one;
   const st = $('pstat');
   if (one) {
-    const saved = codeFor(who[0], state.ptrack), same = !!saved && saved === encode(sel);
+    const saved = profiles[who[0]] && profiles[who[0]][state.ptrack], same = !!saved && encode(decode(saved) || defaults()) === encode(sel);   // auch ältere Speicherstände vergleichen
     st.innerHTML = saved ? (same ? 'gespeichert' : 'Änderungen nicht gespeichert') : 'noch nichts gespeichert';
     st.classList.toggle('dirty', !same); $('psave').classList.toggle('ok', !!saved && same);
   } else if (who.length === 2) {
@@ -1859,92 +1617,20 @@ function profUI() {
   } else { st.textContent = ''; }
 }
 function loadProfile() {      // genau ein Name: dessen gespeicherte Auswahl für die Tonspur laden (sonst leer)
-  if (state.who.length === 1) { sel = savedFor(state.who[0], state.ptrack) || defaults(); }
-  trig = trigDefaults();   // nur, was für Name + Tonspur gespeichert ist
+  if (state.who.length === 1) sel = savedFor(state.who[0], state.ptrack) || defaults();   // nur, was für Name + Tonspur gespeichert ist
   apply();
 }
-function fillPTrack() {
-  const gs = [...new Set(PARAMS.map(p => p.g))];
-  $('ptrack').innerHTML = gs.map(g => `<optgroup label="${g}">${PARAMS.filter(p => p.g === g).map(p => `<option value="${p.n}">${p.n}${p.live ? ' · live' : ''}</option>`).join('')}</optgroup>`).join('');
+function fillPTrack(stems = []) {
+  const list = [...SONG_INSTRUMENTS, ...stems.filter(n => !SONG_INSTRUMENTS.includes(n))];
+  if (!list.includes(state.ptrack)) list.push(state.ptrack);
+  $('ptrack').innerHTML = list.map(n => `<option value="${String(n).replace(/"/g, '&quot;')}">${n}</option>`).join('');
   $('ptrack').value = state.ptrack;
 }
 fillPTrack();
-
-/* Vorschau der gewählten Tonspur – so wie sie in „Tonspuren & Elemente · Version 2“ aussieht (live aus visualisierung.html) */
-let V2 = null;
-fetch('visualisierung.html', { cache: 'no-store' }).then(r => r.text()).then(t => {
-  const m = t.match(/<script id="state-data">window\.STATE=([\s\S]*?);<\/script>/);
-  V2 = m ? (JSON.parse(m[1]).variants || {}).v1 : null; drawThumb();
-}).catch(() => {});
-function thumbShape(e, k, pps, H, c) {   // gleiche Zeichenregeln wie in der Visualisierung, verkleinert
-  const W = e.w * pps, h2 = H - 4, f = v => v.toFixed(1);
-  if (e.k === 'a') {
-    const P = e.p.map(q => [q[0] * W, 2 + q[1] * h2, q[2]]), g = q => f(q[0]) + ' ' + f(q[1]);
-    let d = 'M' + g(P[0]);
-    for (let j = 1; j < P.length; j++) {
-      const b = P[j], n = P[j + 1], a = P[j - 1], at = (u, t) => [b[0] + (u[0] - b[0]) * t, b[1] + (u[1] - b[1]) * t];
-      d += b[2] === 2 && n ? 'L' + g(at(a, .28)) + 'Q' + g(b) + ' ' + g(at(n, .28)) : b[2] || !n ? 'L' + g(b) : 'Q' + g(b) + ' ' + g([(b[0] + n[0]) / 2, (b[1] + n[1]) / 2]);
-    }
-    if (e.h == null) return `<path d="${d}Z" fill="${c}"/>`;
-    const x0 = e.h * W, cnt = 9, pitch = (W - x0) / cnt;
-    let bars = `<rect x="0" y="0" width="${f(x0)}" height="${H}"/>`;
-    for (let j = 0; j < cnt; j++) bars += `<rect x="${f(x0 + j * pitch)}" y="0" width="${f(pitch * (.72 - .58 * j / (cnt - 1)))}" height="${H}"/>`;
-    return `<defs><clipPath id="tth${k}"><path d="${d}Z"/></clipPath></defs><g clip-path="url(#tth${k})" fill="${c}">${bars}</g>`;
-  }
-  if (e.k === 's') { const q = h2 / 8, dx = Math.max(0, W - q) / 7; let o = ''; for (let j = 0; j < 8; j++) o += `<rect x="${f(j * dx)}" y="${f(2 + j * q)}" width="${f(q)}" height="${f(q)}" fill="${c}"/>`; return o; }
-  if (e.k === 'e') { const sx = e.sx || 1, sy = e.sy || 1, r = Math.min(Math.max(W * sx, 3), h2 * sy) / 2; return `<ellipse cx="${(r / sx).toFixed(2)}" cy="${f(2 + h2 / 2)}" rx="${(r / sx).toFixed(2)}" ry="${(r / sy).toFixed(2)}" fill="${c}"/>`; }
-  if (e.k === 'r') return e.p.map(r => `<rect x="${f(r[0] * W)}" y="${f(2 + r[1] * h2)}" width="${f(r[2] * W)}" height="${f(r[3] * h2)}" fill="${c}"/>`).join('');
-  return '';
-}
-let thumbView = null, thumbTrack = null;   // Zeitbereich und Maßstab der Vorschau, für die Abspiel-Linie
-function drawThumb() {
-  const box = $('tthumb'), row = SONG_INSTRUMENTS.indexOf(state.ptrack);
-  const els = V2 && row >= 0 ? (V2.custom || []).filter(c => c.row === row) : [];
-  if (thumbTrack !== state.ptrack) { snipStop(); thumbTrack = state.ptrack; }   // andere Tonspur: Ausschnitt anhalten
-  if (!els.length) { box.hidden = true; snipSeg = null; return; }
-  box.hidden = false; box.title = state.ptrack + ' in Tonspuren · Version 2';
-  const t0 = Math.min(...els.map(e => e.t0)), t1 = Math.max(...els.map(e => e.t0 + e.w * (e.sx || 1)));
-  const svg = $('tthSvg'), W = svg.getBoundingClientRect().width || 600, H = 40, pps = (W - 4) / Math.max(.5, t1 - t0);
-  const col = 'var(--ink)';   // neutral: weiß im Dark Mode, schwarz im hellen – keine Farbe vorgeben
-  svg.setAttribute('viewBox', `0 0 ${W.toFixed(0)} ${H}`);
-  svg.innerHTML = els.map((e, k) => `<g transform="translate(${(2 + (e.t0 - t0) * pps).toFixed(1)} ${H / 2}) scale(${e.sx || 1} ${e.sy || 1}) translate(0 ${-H / 2})">${thumbShape(e, k, pps, H, col)}</g>`).join('') +
-    `<line id="tthPh" x1="0" x2="0" y1="-3" y2="${H + 3}" stroke="var(--accent)" stroke-width="2" visibility="hidden"/>`;
-  thumbView = { t0, pps };
-  snipSeg = segmentFor(els);
-}
-new ResizeObserver(() => drawThumb()).observe($('tthumb'));
-
-/* Ausschnitt der gewählten Tonspur anhören: erster zusammenhängender Abschnitt, höchstens 4 Takte */
-const snip = new Audio('song.m4a'); snip.preload = 'auto';
-let snipSeg = null, snipRaf = 0;
-function segmentFor(els) {
-  const a = [...els].sort((x, y) => x.t0 - y.t0), end = x => x.t0 + x.w * (x.sx || 1), bar = 4 * 60 / SONG.bpm;
-  let s = a[0].t0, e = end(a[0]);
-  for (const x of a.slice(1)) { if (x.t0 > e + .3) break; e = Math.max(e, end(x)); }   // kleine Lücken gehören noch dazu
-  return [s, Math.min(e, s + 4 * bar)];
-}
-function snipStop() {
-  if (!snip.paused) snip.pause();
-  cancelAnimationFrame(snipRaf);
-  const b = $('tthPlay'); if (b) { b.classList.remove('on'); b.setAttribute('aria-label', 'Ausschnitt abspielen'); }
-  const ph = $('tthPh'); if (ph) ph.setAttribute('visibility', 'hidden');
-}
-function snipTick() {
-  const t = snip.currentTime, ph = $('tthPh');
-  if (snip.paused || t >= snipSeg[1]) { snipStop(); return; }
-  if (ph && thumbView) { const x = (2 + (t - thumbView.t0) * thumbView.pps).toFixed(1); ph.setAttribute('x1', x); ph.setAttribute('x2', x); ph.setAttribute('visibility', 'visible'); }
-  snipRaf = requestAnimationFrame(snipTick);
-}
-function snipToggle() {
-  if (!snip.paused) { snipStop(); return; }
-  if (!snipSeg) return;
-  if (playing) setPlay(false);            // Vorschau-Song anhalten, damit nicht zwei Dinge gleichzeitig laufen
-  snip.currentTime = snipSeg[0];
-  snip.play().then(() => { $('tthPlay').classList.add('on'); $('tthPlay').setAttribute('aria-label', 'Ausschnitt stoppen'); snipTick(); }).catch(() => toast('Ausschnitt konnte nicht abgespielt werden'));
-}
-$('tthPlay').onclick = snipToggle;
 $('ptrack').onchange = () => {
-  state.ptrack = $('ptrack').value; CUR_P = PARAMS.findIndex(p => p.n === state.ptrack); loadProfile(); updateQ(); renderPInfo();
+  state.ptrack = $('ptrack').value; loadProfile(); drawSeekMarks();
+  // gibt es für das Instrument eine hochgeladene Einzelspur, reagiert die Visualisierung gleich darauf
+  if ([...trackSel.options].some(o => o.value === state.ptrack) && trackSel.value !== state.ptrack) { trackSel.value = state.ptrack; trackSel.onchange(); }
 };
 document.querySelectorAll('[data-who]').forEach(b => b.onclick = () => {
   const n = b.dataset.who;
@@ -1954,73 +1640,23 @@ document.querySelectorAll('[data-who]').forEach(b => b.onclick = () => {
   else state.who = !both && state.who[0] === n ? [] : [n];
   loadProfile();
 });
-/* Speichern in die Datei parameter.html – so kommt die Auswahl per Commit & Push zum anderen */
-const idb = (mode, fn) => new Promise(res => {
-  try {
-    const r = indexedDB.open('av-store', 1);
-    r.onupgradeneeded = () => r.result.createObjectStore('h');
-    r.onerror = () => res(null);
-    r.onsuccess = () => { const tx = r.result.transaction('h', mode), q = fn(tx.objectStore('h')); tx.oncomplete = () => res(q && q.result); tx.onerror = tx.onabort = () => res(null); };
-  } catch (e) { res(null); }
-});
-async function fileHandle() {           // parameter.html im Projektordner – wird einmal gewählt und gemerkt
-  let h = await idb('readonly', s => s.get('html-parameter'));
-  if (h) { try { if (await h.queryPermission({ mode: 'readwrite' }) !== 'granted' && await h.requestPermission({ mode: 'readwrite' }) !== 'granted') h = null; } catch (e) { h = null; } }
-  if (!h) {
-    h = (await showOpenFilePicker({ types: [{ description: 'parameter.html', accept: { 'text/html': ['.html'] } }] }))[0];
-    if (await h.requestPermission({ mode: 'readwrite' }) !== 'granted') throw new Error('keine Schreibrechte');
-    idb('readwrite', s => s.put(h, 'html-parameter'));
-  }
-  return h;
-}
-const PROF_RE = /<script id="profile-data">window\.PROFILES=([\s\S]*?);<\/script>/;
-function withProfiles(txt) {            // Einträge aus der Datei und aus dem Browser zusammenführen, neuere gewinnen
-  let fileP = {}; try { fileP = JSON.parse(txt.match(PROF_RE)[1]); } catch (e) {}
-  profiles = mergeProf(fileP, profiles);
-  try { localStorage.setItem(PROF_KEY, JSON.stringify(profiles)); } catch (e) {}
-  return txt.replace(PROF_RE, () => '<script id="profile-data">window.PROFILES=' + JSON.stringify(profiles).replace(/</g, '\\u003c') + ';<\/script>');
-}
-$('psave').onclick = async () => {
+$('psave').onclick = () => {
   if (state.who.length !== 1) return;
-  const n = state.who[0], track = state.ptrack;
-  (profiles[n] = profiles[n] || {})[track] = { c: encode(sel), t: Date.now() };
-  try { localStorage.setItem(PROF_KEY, JSON.stringify(profiles)); } catch (e) {}
-  profUI();
-  try {
-    if (window.showOpenFilePicker) {
-      const h = await fileHandle(), txt = await (await h.getFile()).text();
-      if (h.name !== 'parameter.html' || !PROF_RE.test(txt)) throw new Error('Das ist nicht die parameter.html dieses Projekts');
-      const w = await h.createWritable(); await w.write(withProfiles(txt)); await w.close();
-      toast(`Gespeichert: ${n} · ${track} – in parameter.html, jetzt committen & pushen`);
-    } else {                            // Browser ohne Dateizugriff: geänderte Datei herunterladen
-      const txt = await (await fetch(location.href.split('#')[0].split('?')[0], { cache: 'no-store' })).text();
-      const a = document.createElement('a'); a.download = 'parameter.html';
-      a.href = URL.createObjectURL(new Blob([withProfiles(txt)], { type: 'text/html' })); a.click();
-      toast('parameter.html heruntergeladen – im Projektordner ersetzen, dann committen & pushen');
-    }
-  } catch (err) {
-    toast(err.name === 'AbortError' ? 'Nur im Browser gespeichert – zum Teilen beim Speichern die Datei parameter.html wählen'
-      : `Nur im Browser gespeichert (${err.message})`, null, null);
-  }
-  profUI();
+  const n = state.who[0];
+  (profiles[n] = profiles[n] || {})[state.ptrack] = encode(sel);
+  let ok = true; try { localStorage.setItem(PROF_KEY, JSON.stringify(profiles)); } catch (e) { ok = false; }
+  profUI(); toast(ok ? `Gespeichert: ${n} · ${state.ptrack}` : 'Nur bis zum Neuladen gemerkt – der Browser-Speicher ist gesperrt');
 };
 
 /* Szene & Klang */
 const stageCv = $('stage');
 const main = new Scene(stageCv);
 const sound = new Sound();
-function trigNotes(v) {   // Hinweise zum gewählten Parameter
-  const T = PARAMS[CUR_P], N = [];
-  if (!T.live) N.push(`<b>${T.n}</b> → nicht live darstellbar, Vorschau ohne Klangbezug – die Auswahl wird trotzdem gespeichert`);
-  else if (sound.mode === 'off' && T.k !== 'beat') N.push('<b>Klang aus</b> → die Animation folgt nur dem Rhythmus – Song oder Synth wählen');
-  return N;
-}
 function apply(rebuild = true) {
   const v = vals(sel);
-  main.trig = trig;
   if (rebuild) main.set(v);
   sound.v = v; sound.apply();
-  $('notes').innerHTML = [...trigNotes(v), ...notesFor(v)].map(n => `<span class="note">${n}</span>`).join('');
+  $('notes').innerHTML = notesFor(v).map(n => `<span class="note">${n}</span>`).join('');
   syncChips(); save(); profUI();
 }
 function setSel(k, i, opts = {}) {
@@ -2031,35 +1667,12 @@ function setSel(k, i, opts = {}) {
 }
 function setBpm(b) { state.bpm = b; main.bpm = b; sound.bpm = b; $('bpmv').textContent = String(b).replace(/\.0$/, '') + ' BPM'; }
 
-function closeDD(except) {
-  scrollEl.querySelectorAll('.dd.open').forEach(w => { if (w === except) return; w.classList.remove('open', 'up'); w.querySelector('.dd-pop').hidden = true; w.querySelector('.dd-btn').setAttribute('aria-expanded', 'false'); });
-}
-scrollEl.addEventListener('click', e => {
-  const btn = e.target.closest('.dd-btn');
-  if (btn) {   // Liste auf-/zuklappen; nach oben, wenn unten kein Platz ist
-    const w = btn.closest('.dd'), pop = w.querySelector('.dd-pop'), open = !w.classList.contains('open');
-    closeDD(w); w.classList.toggle('open', open); pop.hidden = !open; btn.setAttribute('aria-expanded', open);
-    if (open) { const box = scrollEl.getBoundingClientRect(), r = btn.getBoundingClientRect(); w.classList.toggle('up', r.bottom + pop.offsetHeight + 8 > box.bottom && r.top - pop.offsetHeight - 8 > box.top); }
-    return;
-  }
-  const o = e.target.closest('.dd-o');
-  if (o) {
-    const w = o.closest('.dd'); closeDD();
-    if (compareSels()) { toast('Vergleich von Jeremy & Josua – zum Bearbeiten nur einen Namen wählen'); return; }
-    trig = { ...trig, [w.dataset.trgw]: +o.dataset.v };
-    const T = TRIGGERS[+o.dataset.v];
-    if (T && !T.live) toast(`${T.n} lässt sich in der Vorschau nicht live darstellen – die Auswahl wird trotzdem gespeichert`);
-    apply(); w.querySelector('.dd-btn').focus();
-  }
-});
-document.addEventListener('pointerdown', e => { if (!e.target.closest('.dd')) closeDD(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDD(); });
-scrollEl.addEventListener('scroll', () => closeDD(), { passive: true });
 scrollEl.addEventListener('click', e => {
   if (compareSels() && e.target.closest('.chip, [data-rand], [data-reset], #derive')) { toast('Vergleich von Jeremy & Josua – zum Bearbeiten nur einen Namen wählen'); return; }
   const ch = e.target.closest('.chip'); if (ch) { hoverOff(true); setSel(ch.dataset.k, +ch.dataset.i); return; }
   const lk = e.target.closest('.lock'); if (lk) { const k = lk.dataset.lock; state.locks[k] = !state.locks[k]; syncChips(); save(); return; }
-  const rs = e.target.closest('[data-reset]'); if (rs) { const d = defaults(); const s = { ...sel }; const g = { ...trig }; BOXES.find(b => b.id === rs.dataset.reset).rows.forEach(r => { s[r.k] = d[r.k]; if (r.trig) g[r.k] = -1; }); sel = s; trig = g; apply(); return; }
+  const rb = e.target.closest('[data-rand]'); if (rb) { randomize([rb.dataset.rand]); return; }
+  const rs = e.target.closest('[data-reset]'); if (rs) { const d = defaults(); const s = { ...sel }; BOXES.find(b => b.id === rs.dataset.reset).rows.forEach(r => { if (!state.locks[r.k]) s[r.k] = d[r.k]; }); sel = s; apply(); return; }
   if (e.target.closest('#derive')) {
     const set = deriveFromSound(sel), changed = [];
     const s = { ...sel }; for (const k in set) if (!state.locks[k] && s[k] !== set[k]) { s[k] = set[k]; changed.push(k); }
@@ -2072,6 +1685,9 @@ scrollEl.addEventListener('click', e => {
 
 /* Hover-Vorschau */
 let hoverOn = false, hoverT = 0, previewing = false;   // Vorschau beim Überfahren standardmäßig aus – erst Klick zeigt die Wirkung
+try { hoverOn = localStorage.getItem('av-kasten-hover2') === '1'; } catch (e) {}
+$('hover').classList.toggle('on', hoverOn);
+$('hover').onclick = () => { hoverOn = !hoverOn; $('hover').classList.toggle('on', hoverOn); try { localStorage.setItem('av-kasten-hover2', hoverOn ? '1' : '0'); } catch (e) {} if (!hoverOn) hoverOff(); };
 function hoverOff(skipRebuild) { clearTimeout(hoverT); if (previewing) { previewing = false; $('ptag').classList.remove('on'); if (!skipRebuild) main.set(vals(sel)); } }
 scrollEl.addEventListener('pointerover', e => {
   const ch = e.target.closest('.chip'); if (!ch || ch.classList.contains('empty') || compareSels() || !hoverOn || e.pointerType === 'touch') return;
@@ -2094,37 +1710,29 @@ function randomize(boxIds) {
   if (boxIds.includes('look') && !state.locks.alpha && Math.random() < .6) s.alpha = 0;   // nicht zu oft unsichtbar
   sel = s; apply();
 }
-$('reset').onclick = () => { const before = sel, bt = trig; sel = defaults(); trig = trigDefaults(); apply(); toast('Auf Standard zurückgesetzt', 'Rückgängig', () => { sel = before; trig = bt; apply(); }); };
+$('rand').onclick = () => randomize(['look', 'move']);
+$('reset').onclick = () => { const before = sel; sel = defaults(); apply(); toast('Auf Standard zurückgesetzt', 'Rückgängig', () => { sel = before; apply(); }); };
 
 /* Tabs */
 const tabs = [...document.querySelectorAll('.tabs .t')];
 const boxTop = box => box.getBoundingClientRect().top - scrollEl.getBoundingClientRect().top + scrollEl.scrollTop;   // Position im Scrollbereich
-const headTop = box => box.querySelector('.bh').getBoundingClientRect().top - scrollEl.getBoundingClientRect().top + scrollEl.scrollTop - 16;   // Überschrift immer gleich weit oben
-tabs.forEach(t => t.onclick = () => { const box = $('box-' + t.dataset.go); scrollEl.scrollTo({ top: headTop(box), behavior: 'smooth' }); if (getComputedStyle(scrollEl).overflowY === 'visible') box.scrollIntoView({ behavior: 'smooth' }); });
+tabs.forEach(t => t.onclick = () => { const box = $('box-' + t.dataset.go); scrollEl.scrollTo({ top: boxTop(box), behavior: 'smooth' }); if (getComputedStyle(scrollEl).overflowY === 'visible') box.scrollIntoView({ behavior: 'smooth' }); });
 scrollEl.addEventListener('scroll', () => {
   let cur = 'look'; for (const b of BOXES) { if (boxTop($('box-' + b.id)) - scrollEl.scrollTop < 80) cur = b.id; }
-  if (scrollEl.scrollTop + scrollEl.clientHeight >= scrollEl.scrollHeight - 4) cur = 'inter';
+  if (scrollEl.scrollTop + scrollEl.clientHeight >= scrollEl.scrollHeight - 4) cur = 'sound';
   tabs.forEach(t => t.classList.toggle('on', t.dataset.go === cur));
 });
-
-/* Vorschau ein-/ausblenden – beim Öffnen ausgeblendet, damit die Kästen den ganzen Platz haben */
-function showPreview(on) {
-  $('wrap').classList.toggle('noprev', !on);
-  if (!on && playing) setPlay(false);   // ausgeblendet: Song anhalten
-  requestAnimationFrame(() => { main.resize(); drawPaths(); });
-}
-$('prevShow').onclick = () => showPreview($('wrap').classList.contains('noprev'));
 
 /* Wiedergabe, Tempo, Klangquelle */
 let playing = true;
 const PLAY_ICON = '<svg class="i" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg>', PAUSE_ICON = '<svg class="i" viewBox="0 0 24 24"><path d="M8 5.5v13M16 5.5v13" stroke-width="3"/></svg>';
-const setPlay = p => { if (p) snipStop(); playing = p; $('play').innerHTML = p ? PAUSE_ICON : PLAY_ICON; if (sound.mode === 'song') { if (p) sound.playSong(); else sound.pauseSong(); } };
+const setPlay = p => { playing = p; $('play').innerHTML = p ? PAUSE_ICON : PLAY_ICON; if (sound.mode === 'song') { if (p) sound.playSong(); else sound.pauseSong(); } };
 setPlay(false);
 $('play').onclick = () => setPlay(!playing);
 document.querySelectorAll('[data-src]').forEach(b => b.onclick = () => {
   document.querySelectorAll('[data-src]').forEach(x => x.classList.toggle('on', x === b));
-  sound.setMode(b.dataset.src); $('meters').classList.toggle('off', b.dataset.src === 'off'); apply(false); if (b.dataset.src === 'song' && !playing) toast('Play drücken – die Visualisierung reagiert auf die gewählte Tonspur');
-  if (b.dataset.src === 'synth') toast('Synth spielt einen Beispielklang – die Auslöser reagieren auf Lautstärke, Tonhöhe und Schläge');
+  sound.setMode(b.dataset.src); $('meters').classList.toggle('off', b.dataset.src === 'off'); if (b.dataset.src === 'song' && !playing) toast('Play drücken – die Visualisierung reagiert auf die gewählte Tonspur');
+  if (b.dataset.src === 'synth') toast('Synth spielt den Klang aus Kasten 3 – die Visualisierung reagiert auf Pegel und Tonhöhe');
 });
 
 /* Zoom in der Visualisierung: Finger auseinander = rein, zusammen = raus (Trackpad, Touch, Safari); Doppelklick = zurücksetzen */
@@ -2216,7 +1824,7 @@ function buildBoxImage() {
   tmp.W = FW; tmp.H = FH; tmp.dpr = dpr; tmp.bpm = state.bpm; tmp.dark = false;
   for (const c of [tmp.L, tmp.T]) { c.width = FW * dpr; c.height = FH * dpr; }
   tmp.col = { stage: '#ffffff', grid: 'rgba(40,40,60,.10)', ctxp: 'rgba(110,108,124,.16)', ctxs: 'rgba(110,108,124,.40)', hide: '#e4e1d8', muted: MUTED };
-  tmp.trig = trig; tmp.set(vals(sel));
+  tmp.set(vals(sel));
   const beat = 60 / state.bpm, span = 6 * beat, step = 1 / 30, N = Math.round(span / step);
   const acc = document.createElement('canvas'); acc.width = FW * dpr; acc.height = FH * dpr;
   const ax = acc.getContext('2d'); ax.fillStyle = '#fff'; ax.fillRect(0, 0, acc.width, acc.height);
@@ -2244,19 +1852,19 @@ function buildBoxImage() {
   c.textBaseline = 'middle';
 
   /* Kopf */
-  c.fillStyle = INK; c.font = `700 24px ${FONT}`; c.textAlign = 'left'; c.fillText('Morphologischer Kasten · Klangparameter', M, 40);
+  c.fillStyle = INK; c.font = `700 24px ${FONT}`; c.textAlign = 'left'; c.fillText('Morphologischer Kasten', M, 40);
   { /* Tonspur gut sichtbar oben rechts */
     const TC = ['#12985f', '#2558e8', '#d8304c', '#d98400', '#e5158f', '#7a4cff', '#0c95ad', '#7ea000'], ci = SONG_INSTRUMENTS.indexOf(state.ptrack), tc = ci >= 0 ? TC[ci] : INK;
-    c.font = `700 18px ${FONT}`; const tw = c.measureText(state.ptrack).width; c.font = `450 13px ${FONT}`; const lw = c.measureText('Parameter').width;
+    c.font = `700 18px ${FONT}`; const tw = c.measureText(state.ptrack).width; c.font = `450 13px ${FONT}`; const lw = c.measureText('Tonspur').width;
     const bw = 12 + lw + 10 + 14 + 8 + tw + 14, bx = WD - M - bw;
     rr(bx, 22, bw, 34, 8); c.fillStyle = '#f3f1ec'; c.fill(); c.strokeStyle = LINE; c.lineWidth = 1; c.stroke();
-    c.fillStyle = MUTED; c.fillText('Parameter', bx + 12, 40);
+    c.fillStyle = MUTED; c.fillText('Tonspur', bx + 12, 40);
     c.fillStyle = tc; rr(bx + 12 + lw + 10, 33, 14, 14, 3); c.fill();
     c.fillStyle = INK; c.font = `700 18px ${FONT}`; c.fillText(state.ptrack, bx + 12 + lw + 10 + 14 + 8, 40);
   }
   c.fillStyle = MUTED; c.font = `450 13px ${FONT}`;
   const who = cmpSel ? `${state.who[0]} & ${state.who[1]} im Vergleich` : state.who.length ? `Auswahl von ${state.who[0]}` : 'Aktuelle Auswahl';
-  c.fillText(`Audio-Visualisierung · Parameter: ${state.ptrack} · ${who} · ${state.bpm} BPM`, M, 66);
+  c.fillText(`Audio-Visualisierung · Tonspur: ${state.ptrack} · ${who} · ${state.bpm} BPM`, M, 66);
   c.textAlign = 'right'; c.fillText(new Date().toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' }), WD - M, 66);
   c.textAlign = 'left';
   c.strokeStyle = LINE; c.lineWidth = 1; c.beginPath(); c.moveTo(M, 82); c.lineTo(WD - M, 82); c.stroke();
@@ -2282,13 +1890,12 @@ function buildBoxImage() {
     const tw = c.measureText(b.title).width; c.fillStyle = MUTED; c.font = `450 15px ${FONT}`; c.fillText('· ' + b.sub, M + tw + 6, y + 10);
     y += 24; c.fillStyle = MUTED; c.font = `italic 11.5px ${FONT}`;
     qLines[bi].forEach((l, i) => c.fillText(l, M, y + 7 + i * 15)); y += qLines[bi].length * 15 + 8;
-    const hasMap = b.rows.some(r => r.trig), nOpt = COLS, MAPW = 150, CW = hasMap ? (INNER - LBL - MAPW) / nOpt : CW0;
-    const mapText = r => { const T = TRIGGERS[trig[r.k]]; return T ? `← ${T.n}${T.live ? '' : ' (nicht live)'}` : '–'; };
+    const hasMap = b.id === 'sound', nOpt = hasMap ? COLS - 1 : COLS, MAPW = 190, CW = hasMap ? (INNER - LBL - MAPW) / nOpt : CW0;
     /* Kopfzeile */
     c.fillStyle = FILL; c.fillRect(M, y, INNER, HH); c.strokeStyle = LINE; c.lineWidth = 1; c.strokeRect(M + .5, y + .5, INNER - 1, HH - 1);
     c.fillStyle = INK; c.font = `650 11px ${FONT}`; c.fillText('Parameter', M + 10, y + HH / 2 + 1);
     c.fillText('Ausprägungen', M + LBL + 10, y + HH / 2 + 1);
-    if (hasMap) c.fillText('Auslöser', M + LBL + nOpt * CW + 10, y + HH / 2 + 1);
+    if (hasMap) c.fillText('→ Steuert', M + LBL + nOpt * CW + 10, y + HH / 2 + 1);
     y += HH;
     const y0 = y;
     b.rows.forEach((r, ri) => {
@@ -2306,7 +1913,7 @@ function buildBoxImage() {
         }
         c.strokeStyle = LINE; c.strokeRect(cx0 + .5, ry + .5, CW - 1, RH - 1);
       }
-      if (hasMap && r.trig) {
+      if (hasMap && r.map) {
         const cx0 = M + LBL + nOpt * CW;
         c.fillStyle = '#fff'; c.fillRect(cx0, ry, MAPW, RH); c.strokeStyle = LINE; c.strokeRect(cx0 + .5, ry + .5, MAPW - 1, RH - 1);
       }
@@ -2322,9 +1929,9 @@ function buildBoxImage() {
         if (dot) { c.beginPath(); c.arc(mx - tw / 2 - 9, ry + RH / 2, 4.5, 0, TAU); c.fillStyle = dot; c.fill(); c.strokeStyle = on ? 'rgba(255,255,255,.85)' : 'rgba(0,0,0,.18)'; c.lineWidth = 1; c.stroke(); }
         c.fillStyle = on ? '#fff' : INK; c.fillText(o, mx, ry + RH / 2 + 1);
       });
-      if (hasMap && r.trig) {
-        const cx0 = M + LBL + nOpt * CW; c.fillStyle = TRIGGERS[trig[r.k]] ? INK : MUTED; c.font = `italic 450 9.5px ${FONT}`;
-        const ls = wrapLines(c, mapText(r), MAPW - 12); ls.slice(0, 2).forEach((l, i, a) => c.fillText(l, cx0 + MAPW / 2, ry + RH / 2 + 1 + (i - (a.length - 1) / 2) * 11));
+      if (hasMap && r.map) {
+        const cx0 = M + LBL + nOpt * CW; c.fillStyle = MUTED; c.font = `italic 450 9.5px ${FONT}`;
+        const ls = wrapLines(c, r.map, MAPW - 12); ls.slice(0, 2).forEach((l, i, a) => c.fillText(l, cx0 + MAPW / 2, ry + RH / 2 + 1 + (i - (a.length - 1) / 2) * 11));
       }
     });
     y = y0 + b.rows.length * RH + 30;
@@ -2374,10 +1981,8 @@ $('theme').onclick = () => setTheme(document.documentElement.dataset.theme === '
 /* Tastatur */
 addEventListener('keydown', e => {
   if (e.target.closest('input, select, textarea') || e.metaKey || e.ctrlKey || e.altKey) return;
-  if (e.code === 'Space' && !e.target.closest('button')) {   // Vorschau zu: Leertaste spielt den Tonspur-Ausschnitt, sonst den Vorschau-Song
-    e.preventDefault();
-    if ($('wrap').classList.contains('noprev') && !$('tthumb').hidden) snipToggle(); else setPlay(!playing);
-  }
+  if (e.code === 'Space' && !e.target.closest('button')) { e.preventDefault(); setPlay(!playing); }
+  if (e.key === 'r' || e.key === 'R') randomize(['look', 'move']);
 });
 
 /* Größe */
@@ -2414,41 +2019,11 @@ async function fillTracks() {
 trackSel.onchange = async () => { const v = trackSel.value; if (!(await sound.setTrack(v))) { trackSel.value = sound.track; return; } toast(v === 'all' ? 'Visualisierung reagiert auf den ganzen Song' : `Visualisierung reagiert nur auf die Spur „${v}“`); };
 fillTracks(); addEventListener('focus', fillTracks); document.addEventListener('visibilitychange', () => { if (!document.hidden) fillTracks(); });
 
-function updateQ() {   // Kasten-Fragen beziehen sich auf den gewählten Parameter
-  const T = PARAMS[CUR_P], q = document.querySelector('#box-move .bq'), q3 = document.querySelector('#box-inter .bq');
-  if (q) q.innerHTML = `Wie verändert sich das Element, wenn sich <b>${T.n}</b> ändert (${T.v})?`;
-  if (q3) q3.innerHTML = `Wie verhält sich das Element zu den anderen Soundelementen, wenn sich <b>${T.n}</b> ändert?`;
-}
-function renderPInfo() {
-  const T = PARAMS[CUR_P];
-  document.querySelectorAll('.pinfo').forEach(el => el.innerHTML = `<b>${T.n}</b><span class="pm-tag${T.live ? ' live' : ''}">${T.live ? 'live darstellbar' : 'nicht live darstellbar'}</span> · ${T.d} Typische Animation: ${T.a}.`);
-}
-updateQ(); renderPInfo();
-/* Parameter-Seite: alle allgemeinen Klangparameter, unabhängig von einzelnen Tonspuren */
-function renderParams() {
-  const groups = [...new Set(PARAMS.map(p => p.g))];
-  const used = k => { const i = PARAMS.findIndex(p => p.k === k); return TRIG_ROWS.filter(r => trig[r.k] === i).map(r => r.n); };
-  $('pview').innerHTML = `<div class="pm-in"><h2>Allgemeine Klangparameter</h2>
-    <p class="pm-lead">Parameter, die jeder Song hat – unabhängig davon, welche Tonspur gerade läuft. Du wählst einen Parameter (hier per Klick auf die Karte oder oben im Balken) und füllst dafür den Kasten aus: wie ein Element <b>generell</b> aussieht und sich verändert, wenn sich dieser Parameter ändert (z. B. lauter → größer) – nicht pro Tonspur. Orange = in der Vorschau live darstellbar, die übrigen sind Gestaltungsentscheidungen.</p>` +
-    groups.map(g => `<div class="pm-g">${g}</div><div class="pm-grid">${PARAMS.filter(p => p.g === g).map(p => { const u = used(p.k);
-      return `<article class="pm-c" data-p="${p.n}" tabindex="0" role="button" title="Diesen Parameter im Kasten ausfüllen"><h3>${p.n}<span class="pm-tag${p.live ? ' live' : ''}">${p.live ? 'live' : 'nicht live'}</span></h3><p>${p.d}</p>
-      <dl><dt>Ändert sich</dt><dd>${p.v}</dd><dt>Animation</dt><dd>${p.a}</dd></dl>${u.length ? `<div class="pm-use">im Kasten: ${u.join(', ')}</div>` : ''}</article>`; }).join('')}</div>`).join('') + '</div>';
-}
-function setPMode(on) {
-  document.body.classList.toggle('pmode', on); $('pbtn').setAttribute('aria-pressed', on);
-  if (on) { renderParams(); $('pview').scrollTop = 0; } else { closeDD(); requestAnimationFrame(() => main.resize()); }
-}
-$('pview').addEventListener('click', e => { const c = e.target.closest('.pm-c'); if (!c) return; $('ptrack').value = c.dataset.p; $('ptrack').onchange(); setPMode(false); });
-$('pview').addEventListener('keydown', e => { const c = e.target.closest('.pm-c'); if (c && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); c.click(); } });
-$('pbtn').onclick = () => setPMode(!document.body.classList.contains('pmode'));
-addEventListener('keydown', e => { if (e.key === 'Escape' && document.body.classList.contains('pmode')) setPMode(false); });
-
 /* Start */
 setBpm(SONG.bpm);
 sound.mode = 'song';
 main.resize();
 loadProfile();
-if (imported) toast(`${imported} gespeicherte Auswahl${imported > 1 ? 'en' : ''} aus Version 1 übernommen`);
 requestAnimationFrame(loop);
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(drawPaths);
 </script>

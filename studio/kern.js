@@ -29,7 +29,7 @@ const isOn = (tr, t) => tr.raw.some(([a, z]) => t >= a && t < z);
 Sig.setTracks(t => TRACKS.filter(tr => isOn(tr, t)).length, (t, ctx) => ctx && ctx.track && TBY[ctx.track] && isOn(TBY[ctx.track], t) ? 1 : 0);
 
 /* ---------- Effekte aus dem Labor ---------- */
-const FX = []; (window.LABOR_GROUPS || []).forEach(g => g.fx.forEach(f => { f.nr = FX.length + 1; f.group = g.g; FX.push(f); }));
+const FX = []; for (const neu of [0, 1]) (window.LABOR_GROUPS || []).forEach(g => g.fx.forEach(f => { if (!!f.neu !== !!neu) return; f.nr = FX.length + 1; f.group = g.g; FX.push(f); }));   // Nummern der älteren Effekte bleiben stabil, neue kommen hinten dran
 
 /* ---------- Animationen & morphologischer Kasten (wie Animations-Zuordnung) ---------- */
 const ideaOf = id => { if (!id) return null; const [k, i] = id.split(':'); return (IDEAS[k] || [])[+i] || null; };

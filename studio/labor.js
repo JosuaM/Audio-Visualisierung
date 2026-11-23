@@ -44,24 +44,23 @@ function renderLabor() {
       h += '</div></section>';
     }
   }
-  if (lf === 'alle' || lf === 'map') {
-    h += `<section class="lsec"><h3>Parameter-Zuordnungen · Vorlagen</h3><p>Auslöser → Wirkung. Die Vorschau läuft die Messwerte des Songs im Zeitraffer durch (oder folgt dem Player, wenn er läuft). Mit „In Studio übernehmen“ landet die Vorlage als eigene Zuordnung im Projekt.</p><div class="lcards">`;
-    for (const p of PRESETS) {
+  if (lf === 'alle' || lf === 'map') {                // eine Reihe pro Auslöser: Lautstärke, Tonhöhe, Schlag … – Vorlagen und eigene Zuordnungen nebeneinander
+    const presetCard = p => {
       const m = presetMap(p), dd = describe(m), same = P.maps.filter(x => x.src === m.src && x.tgt === m.tgt), n = add({ kind: 'map', m, preset: p });
-      h += `<article class="lc2" data-ci="${n}"><div class="cv"><canvas></canvas></div><div class="cp"><h4>${esc(p.n)}</h4><p class="when"><b>${esc(dd.when)}</b><br>→ ${esc(dd.then)}</p>`
+      return `<article class="lc2" data-ci="${n}"><div class="cv"><canvas></canvas><span class="tg2">Vorlage</span></div><div class="cp"><h4>${esc(p.n)}</h4><p class="when"><b>${esc(dd.when)}</b><br>→ ${esc(dd.then)}</p>`
         + `<div class="ctl" data-ctl>${presetCtl(m)}</div>`
         + `<div class="zu">${same.length ? same.map(x => pill('im Projekt: ' + layerLabel(x.layer), x.layer === '*' ? 'var(--accent)' : colorOf(layerById(x.layer) || { kind: 'x' }), x.on ? '' : ' · aus')).join('') : '<span class="none">nicht verwendet</span>'}</div>`
         + `<div class="acts"><button class="btn sm go" data-a="use">In Studio übernehmen</button></div></div></article>`;
-    }
-    h += '</div></section>';
-    if (P.maps.length) {
-      h += `<section class="lsec"><h3>Parameter-Zuordnungen · Deine</h3><p>Alle Zuordnungen, die im Projekt angelegt sind.</p><div class="lcards">`;
-      for (const m of P.maps) {
-        const dd = describe(m), n = add({ kind: 'map', m });
-        h += `<article class="lc2" data-ci="${n}"><div class="cv"><canvas></canvas></div><div class="cp"><h4>${esc(mapTitle(m))}</h4><p class="when"><b>${esc(dd.when)}</b><br>→ ${esc(dd.then)}</p>`
-          + `<div class="zu">${pill(layerLabel(m.layer), m.layer === '*' ? 'var(--accent)' : colorOf(layerById(m.layer) || { kind: 'x' }), m.on ? '' : ' · aus')}</div><div class="acts"><button class="btn sm" data-a="edit">Im Studio bearbeiten</button></div></div></article>`;
-      }
-      h += '</div></section>';
+    };
+    const ownCard = m => {
+      const dd = describe(m), n = add({ kind: 'map', m });
+      return `<article class="lc2 own" data-ci="${n}"><div class="cv"><canvas></canvas><span class="tg2">Deine</span></div><div class="cp"><h4>${esc(mapTitle(m))}</h4><p class="when"><b>${esc(dd.when)}</b><br>→ ${esc(dd.then)}</p>`
+        + `<div class="zu">${pill(layerLabel(m.layer), m.layer === '*' ? 'var(--accent)' : colorOf(layerById(m.layer) || { kind: 'x' }), m.on ? '' : ' · aus')}</div><div class="acts"><button class="btn sm" data-a="edit">Im Studio bearbeiten</button></div></div></article>`;
+    };
+    h += `<p class="lhint">Parameter-Zuordnungen: Auslöser → Wirkung. Pro Auslöser eine Reihe – die Vorschau läuft die Messwerte des Songs im Zeitraffer durch (oder folgt dem Player). „In Studio übernehmen“ legt die Vorlage als eigene Zuordnung im Projekt an.</p>`;
+    for (const d of Sig.DEF) {
+      const own = P.maps.filter(m => m.src === d.k), pre = PRESETS.filter(p => p.m.src === d.k); if (!own.length && !pre.length) continue;
+      h += `<section class="lsec"><h3>Auslöser · ${esc(d.n)}</h3><p>${pre.length} Vorlage${pre.length === 1 ? '' : 'n'}${own.length ? ` · ${own.length} im Projekt` : ''}</p><div class="lcards">${own.map(ownCard).join('')}${pre.map(presetCard).join('')}</div></section>`;
     }
   }
   $('lgrid').innerHTML = `<div class="lgrid">${h || '<div class="empty">Nichts gefunden.</div>'}</div>`;

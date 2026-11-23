@@ -93,5 +93,78 @@ const PRESETS = [
   { id: 'high-rot', n: 'Höhen drehen die Ebene', m: { src: 'high', cond: 'grad', lo: 0, hi: 100, tgt: 'rot', a: 0, b: 180, soft: 'weich' } },
   { id: 'dense-size', n: 'Viele Spuren = groß', m: { src: 'dense', cond: 'grad', lo: 1, hi: 6, tgt: 'size', a: .6, b: 1.5, soft: 'weich' } },
   { id: 'bass-y', n: 'Bass drückt nach unten', m: { src: 'bass', cond: 'grad', lo: 20, hi: 90, tgt: 'y', a: 0, b: -.2, soft: 'weich' } },
+  /* ---- weitere Varianten pro Auslöser ---- */
+  // Lautstärke
+  { id: 'loud-y', n: 'Lauter = höher', m: { src: 'loud', cond: 'grad', lo: -20, hi: -5, tgt: 'y', a: -.2, b: .2, soft: 'weich' } },
+  { id: 'loud-shake', n: 'Sehr laut = Zittern', m: { src: 'loud', cond: 'ab', lo: -7, tgt: 'shake', a: null, b: .025, soft: 'weich' } },
+  { id: 'loud-rot', n: 'Lauter = dreht sich', m: { src: 'loud', cond: 'grad', lo: -20, hi: -5, tgt: 'rot', a: 0, b: 90, soft: 'sehr' } },
+  { id: 'loud-bg', n: 'Lautstärke färbt den Hintergrund', m: { src: 'loud', cond: 'grad', lo: -22, hi: -5, tgt: 'bg', a: '#000000', b: '#4d8bff', soft: 'sehr' } },
+  { id: 'loud-color2', n: 'Leise blau → laut rot', m: { src: 'loud', cond: 'grad', lo: -22, hi: -5, tgt: 'color', a: '#4d8bff', b: '#ff3b3b', soft: 'weich' } },
+  { id: 'quiet-small', n: 'Leise = winzig', m: { src: 'loud', cond: 'unter', lo: -20, tgt: 'size', a: null, b: .3, soft: 'weich' } },
+  // Lauter / leiser werdend
+  { id: 'dyn-color', n: 'Lauter werdend grün, leiser werdend rot', m: { src: 'dyn', cond: 'grad', lo: -60, hi: 60, tgt: 'color', a: '#ff3b3b', b: '#3ddc97', soft: 'sehr' } },
+  { id: 'dyn-y', n: 'Lauter werdend = steigt', m: { src: 'dyn', cond: 'grad', lo: -60, hi: 60, tgt: 'y', a: -.2, b: .2, soft: 'sehr' } },
+  { id: 'dyn-alpha', n: 'Lauter werdend = einblenden', m: { src: 'dyn', cond: 'grad', lo: -60, hi: 60, tgt: 'alpha', a: .2, b: 1, soft: 'sehr' } },
+  { id: 'dyn-bg', n: 'Crescendo = Hintergrund heller', m: { src: 'dyn', cond: 'ab', lo: 40, tgt: 'bg', a: null, b: '#ffd23f', soft: 'sehr' } },
+  // Anschlag
+  { id: 'onset-size', n: 'Anschlag = Ebene springt auf', m: { src: 'onset', cond: 'ab', lo: 45, tgt: 'size', a: 1, b: 1.5, soft: 'hart' } },
+  { id: 'onset-alpha', n: 'Anschlag = blitzt auf', m: { src: 'onset', cond: 'grad', lo: 0, hi: 100, tgt: 'alpha', a: .5, b: 1, soft: 'hart' } },
+  { id: 'onset-rot', n: 'Anschlag = Ruck-Drehung', m: { src: 'onset', cond: 'ab', lo: 50, tgt: 'rot', a: 0, b: 45, soft: 'weich' } },
+  { id: 'onset-bg', n: 'Anschlag = Hintergrund-Blitz', m: { src: 'onset', cond: 'ab', lo: 60, tgt: 'bg', a: null, b: '#ffffff', soft: 'hart' } },
+  // Tonhöhe
+  { id: 'pitch-x', n: 'Hoher Ton = rechts', m: { src: 'pitch', cond: 'grad', lo: 10, hi: 90, tgt: 'x', a: -.38, b: .38, soft: 'weich' } },
+  { id: 'pitch-rot', n: 'Hoher Ton = dreht mehr', m: { src: 'pitch', cond: 'grad', lo: 10, hi: 90, tgt: 'rot', a: 0, b: 180, soft: 'weich' } },
+  { id: 'pitch-alpha', n: 'Tiefer Ton = durchsichtig', m: { src: 'pitch', cond: 'grad', lo: 10, hi: 90, tgt: 'alpha', a: .2, b: 1, soft: 'weich' } },
+  { id: 'pitch-bg', n: 'Tonhöhe färbt den Hintergrund', m: { src: 'pitch', cond: 'grad', lo: 10, hi: 90, tgt: 'bg', a: '#4d8bff', b: '#ff8a1f', soft: 'sehr' } },
+  // Klanghelligkeit
+  { id: 'bright-color', n: 'Dumpf blau → hell gelb', m: { src: 'bright', cond: 'grad', lo: 20, hi: 90, tgt: 'color', a: '#4d8bff', b: '#ffd23f', soft: 'weich' } },
+  { id: 'bright-size', n: 'Heller Klang = größer', m: { src: 'bright', cond: 'grad', lo: 20, hi: 90, tgt: 'size', a: .6, b: 1.5, soft: 'weich' } },
+  { id: 'bright-y', n: 'Heller Klang = höher', m: { src: 'bright', cond: 'grad', lo: 20, hi: 90, tgt: 'y', a: -.2, b: .2, soft: 'weich' } },
+  { id: 'bright-shake', n: 'Sehr heller Klang = Zittern', m: { src: 'bright', cond: 'ab', lo: 75, tgt: 'shake', a: null, b: .008, soft: 'weich' } },
+  // Bass
+  { id: 'bass-size', n: 'Bass = pumpt', m: { src: 'bass', cond: 'grad', lo: 20, hi: 90, tgt: 'size', a: 1, b: 1.5, soft: 'weich' } },
+  { id: 'bass-shake', n: 'Starker Bass = Zittern', m: { src: 'bass', cond: 'ab', lo: 70, tgt: 'shake', a: null, b: .06, soft: 'weich' } },
+  { id: 'bass-color', n: 'Bass = rot', m: { src: 'bass', cond: 'grad', lo: 20, hi: 90, tgt: 'color', a: null, b: '#ff3b3b', soft: 'weich' } },
+  { id: 'bass-bg', n: 'Bass färbt den Hintergrund', m: { src: 'bass', cond: 'grad', lo: 20, hi: 90, tgt: 'bg', a: null, b: '#9a6bff', soft: 'weich' } },
+  // Mitten
+  { id: 'mid-size', n: 'Mitten = Größe', m: { src: 'mid', cond: 'grad', lo: 20, hi: 90, tgt: 'size', a: .6, b: 1.5, soft: 'weich' } },
+  { id: 'mid-color', n: 'Mitten = grün', m: { src: 'mid', cond: 'grad', lo: 20, hi: 90, tgt: 'color', a: null, b: '#3ddc97', soft: 'weich' } },
+  { id: 'mid-alpha', n: 'Mitten = deckend', m: { src: 'mid', cond: 'grad', lo: 20, hi: 90, tgt: 'alpha', a: .2, b: 1, soft: 'weich' } },
+  { id: 'mid-x', n: 'Mitten schieben nach rechts', m: { src: 'mid', cond: 'grad', lo: 20, hi: 90, tgt: 'x', a: 0, b: .2, soft: 'weich' } },
+  // Höhen
+  { id: 'high-color', n: 'Höhen = türkis', m: { src: 'high', cond: 'grad', lo: 0, hi: 100, tgt: 'color', a: null, b: '#2fd4e8', soft: 'weich' } },
+  { id: 'high-y', n: 'Höhen heben nach oben', m: { src: 'high', cond: 'grad', lo: 0, hi: 100, tgt: 'y', a: 0, b: .2, soft: 'weich' } },
+  { id: 'high-shake', n: 'Viele Höhen = Zittern', m: { src: 'high', cond: 'ab', lo: 60, tgt: 'shake', a: null, b: .008, soft: 'weich' } },
+  { id: 'high-alpha', n: 'Höhen = glitzern (Deckkraft)', m: { src: 'high', cond: 'grad', lo: 0, hi: 100, tgt: 'alpha', a: .5, b: 1, soft: 'hart' } },
+  // Schlag (Puls)
+  { id: 'beat-alpha', n: 'Schlag = Aufblitzen', m: { src: 'beat', cond: 'grad', lo: 0, hi: 100, tgt: 'alpha', a: .5, b: 1, soft: 'hart' } },
+  { id: 'beat-y', n: 'Schlag = Hüpfen', m: { src: 'beat', cond: 'grad', lo: 0, hi: 100, tgt: 'y', a: 0, b: .2, soft: 'weich' } },
+  { id: 'beat-shake', n: 'Schlag = Wackeln', m: { src: 'beat', cond: 'ab', lo: 50, tgt: 'shake', a: null, b: .025, soft: 'hart' } },
+  { id: 'beat-bg', n: 'Schlag = Hintergrund pulsiert', m: { src: 'beat', cond: 'grad', lo: 0, hi: 100, tgt: 'bg', a: null, b: '#ff3fa6', soft: 'hart' } },
+  { id: 'beat-rot', n: 'Schlag = Ruck-Drehung', m: { src: 'beat', cond: 'grad', lo: 0, hi: 100, tgt: 'rot', a: 0, b: 45, soft: 'weich' } },
+  // Position im Takt
+  { id: 'bar-rot', n: 'Eine Umdrehung pro Takt', m: { src: 'bar', cond: 'grad', lo: 0, hi: 100, tgt: 'rot', a: 0, b: 360, soft: 'hart' } },
+  { id: 'bar-x', n: 'Wandert im Takt von links nach rechts', m: { src: 'bar', cond: 'grad', lo: 0, hi: 100, tgt: 'x', a: -.38, b: .38, soft: 'hart' } },
+  { id: 'bar-color', n: 'Farbverlauf über den Takt', m: { src: 'bar', cond: 'grad', lo: 0, hi: 100, tgt: 'color', a: '#4d8bff', b: '#ff3fa6', soft: 'hart' } },
+  { id: 'bar-size', n: 'Wächst über den Takt', m: { src: 'bar', cond: 'grad', lo: 0, hi: 100, tgt: 'size', a: .6, b: 1.5, soft: 'hart' } },
+  { id: 'bar-alpha', n: 'Taktanfang = Einblenden', m: { src: 'bar', cond: 'grad', lo: 0, hi: 100, tgt: 'alpha', a: 1, b: .2, soft: 'hart' } },
+  // Fortschritt im Song
+  { id: 'prog-color', n: 'Farbverlauf durch den Song', m: { src: 'progress', cond: 'grad', lo: 0, hi: 100, tgt: 'color', a: '#4d8bff', b: '#ff3b3b', soft: 'weich' } },
+  { id: 'prog-bg', n: 'Hintergrund wandert durch den Song', m: { src: 'progress', cond: 'grad', lo: 0, hi: 100, tgt: 'bg', a: '#4d8bff', b: '#ff8a1f', soft: 'sehr' } },
+  { id: 'prog-size', n: 'Wächst über den ganzen Song', m: { src: 'progress', cond: 'grad', lo: 0, hi: 100, tgt: 'size', a: .6, b: 1.5, soft: 'weich' } },
+  { id: 'prog-alpha', n: 'Blendet im Song ein', m: { src: 'progress', cond: 'grad', lo: 0, hi: 30, tgt: 'alpha', a: 0, b: 1, soft: 'weich' } },
+  { id: 'prog-rot', n: 'Dreht sich durch den Song', m: { src: 'progress', cond: 'grad', lo: 0, hi: 100, tgt: 'rot', a: 0, b: 360, soft: 'weich' } },
+  { id: 'prog-end', n: 'Gegen Ende = Farbe', m: { src: 'progress', cond: 'ab', lo: 85, tgt: 'color', a: null, b: '#ff3b3b', soft: 'weich' } },
+  // Spannung
+  { id: 'tension-color', n: 'Spannung = Farbverlauf', m: { src: 'tension', cond: 'grad', lo: 2, hi: 9, tgt: 'color', a: '#4d8bff', b: '#ff3b3b', soft: 'weich' } },
+  { id: 'tension-size', n: 'Spannung = wächst', m: { src: 'tension', cond: 'grad', lo: 2, hi: 9, tgt: 'size', a: .6, b: 1.5, soft: 'weich' } },
+  { id: 'tension-shake', n: 'Hohe Spannung = Zittern', m: { src: 'tension', cond: 'ab', lo: 7, tgt: 'shake', a: null, b: .025, soft: 'weich' } },
+  { id: 'tension-alpha', n: 'Entspannt = durchsichtig', m: { src: 'tension', cond: 'grad', lo: 2, hi: 9, tgt: 'alpha', a: .2, b: 1, soft: 'weich' } },
+  { id: 'tension-y', n: 'Spannung = steigt', m: { src: 'tension', cond: 'grad', lo: 2, hi: 9, tgt: 'y', a: -.2, b: .2, soft: 'sehr' } },
+  // Anzahl klingender Spuren
+  { id: 'dense-color', n: 'Viele Spuren = wärmere Farbe', m: { src: 'dense', cond: 'grad', lo: 1, hi: 6, tgt: 'color', a: '#4d8bff', b: '#ff8a1f', soft: 'weich' } },
+  { id: 'dense-alpha', n: 'Wenige Spuren = durchsichtig', m: { src: 'dense', cond: 'grad', lo: 1, hi: 6, tgt: 'alpha', a: .2, b: 1, soft: 'weich' } },
+  { id: 'dense-bg', n: 'Viele Spuren = Hintergrund hell', m: { src: 'dense', cond: 'ab', lo: 5, tgt: 'bg', a: null, b: '#9a6bff', soft: 'sehr' } },
+  { id: 'dense-shake', n: 'Volle Besetzung = Zittern', m: { src: 'dense', cond: 'ab', lo: 6, tgt: 'shake', a: null, b: .008, soft: 'weich' } },
 ];
 const EMPTY_MAP = { src: 'loud', cond: 'ab', lo: -9, hi: -5, tgt: 'color', a: null, b: '#ff8a1f', soft: 'weich', str: 1 };

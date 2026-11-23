@@ -1,0 +1,107 @@
+{
+ "t": 0,
+ "layers": [
+  {
+   "id": "track:flute",
+   "kind": "track",
+   "key": "flute",
+   "anim": "flute:13",
+   "P": {},
+   "on": true,
+   "tint": true
+  },
+  {
+   "id": "track:trumpet",
+   "kind": "track",
+   "key": "trumpet",
+   "anim": "trumpet:0",
+   "P": {},
+   "on": true,
+   "tint": true
+  },
+  {
+   "id": "track:frog",
+   "kind": "track",
+   "key": "frog",
+   "anim": "frog:2",
+   "P": {},
+   "on": true,
+   "tint": true
+  },
+  {
+   "id": "track:building",
+   "kind": "track",
+   "key": "building",
+   "anim": "building:0",
+   "P": {},
+   "on": true,
+   "tint": true
+  },
+  {
+   "id": "track:riser",
+   "kind": "track",
+   "key": "riser",
+   "anim": "riser:1",
+   "P": {},
+   "on": true,
+   "tint": true
+  },
+  {
+   "id": "track:jagd",
+   "kind": "track",
+   "key": "jagd",
+   "anim": "jagd:0",
+   "P": {},
+   "on": true,
+   "tint": true
+  },
+  {
+   "id": "track:drums",
+   "kind": "track",
+   "key": "drums",
+   "anim": "drums:2",
+   "P": {},
+   "on": true,
+   "tint": true
+  },
+  {
+   "id": "track:ring",
+   "kind": "track",
+   "key": "ring",
+   "anim": "ring:10",
+   "P": {},
+   "on": true,
+   "tint": true
+  }
+ ],
+ "maps": [
+  {
+   "id": "map:1",
+   "name": "Laut = orange",
+   "layer": "*",
+   "src": "loud",
+   "cond": "ab",
+   "lo": -9,
+   "hi": -5,
+   "tgt": "color",
+   "a": null,
+   "b": "#ff8a1f",
+   "soft": "weich",
+   "on": false
+  },
+  {
+   "id": "map:2",
+   "name": "Hoher Ton = oben im Bild",
+   "layer": "track:flute",
+   "src": "pitch",
+   "cond": "grad",
+   "lo": 10,
+   "hi": 90,
+   "tgt": "y",
+   "a": -0.38,
+   "b": 0.38,
+   "soft": "weich",
+   "on": false
+  }
+ ]
+}

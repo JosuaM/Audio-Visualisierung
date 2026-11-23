@@ -2,6 +2,28 @@
 /* Gemeinsame Animationen (IDEAS) und parametrisierte Flöten-Versionen (FPC) – genutzt von animationen.html und zuordnung.html */
 const SONG = window.SONG || { dur: 66.148, bpm: 116.1, beats: 4, offset: 0.036 };
 const DUR = SONG.dur, BEAT = 60 / SONG.bpm, BAR = BEAT * SONG.beats, OFFSET = SONG.offset || 0;
+// Einmalige Umstellung: „Welle läuft mit“ ist als Flöten-Idee 11 dazugekommen – gespeicherte Verweise ab flute:10 (Zuordnung, Studio, Video, Varianten) rücken eine Nummer weiter
+try {
+  if (!localStorage.getItem('av-flute-idx-v2')) {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i); if (!/^av-/.test(k)) continue;
+      const v = localStorage.getItem(k), w = v.replace(/flute:(\d+)/g, (a, d) => +d >= 10 ? 'flute:' + (+d + 1) : a);
+      if (w !== v) localStorage.setItem(k, w);
+    }
+    localStorage.setItem('av-flute-idx-v2', '1');
+  }
+} catch (e) {}
+// Einmalige Umstellung: „Kreis wandert im Uhrzeigersinn“ ist als Flöten-Idee 3 dazugekommen – gespeicherte Verweise ab flute:2 rücken eine Nummer weiter
+try {
+  if (!localStorage.getItem('av-flute-idx-v3')) {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i); if (!/^av-/.test(k)) continue;
+      const v = localStorage.getItem(k), w = v.replace(/flute:(\d+)/g, (a, d) => +d >= 2 ? 'flute:' + (+d + 1) : a);
+      if (w !== v) localStorage.setItem(k, w);
+    }
+    localStorage.setItem('av-flute-idx-v3', '1');
+  }
+} catch (e) {}
 const BOXES = 6;                          // Kästen pro Tonspur
 
 // Spuren: Schlüssel = Präfix der id in data.js; Namen wie in der Zeitleiste
@@ -229,6 +251,42 @@ const IDEAS = {
       },
     },
     {
+      title: 'Kreis wandert im Uhrzeigersinn',
+      text: 'Wie „Kreis zieht sich zusammen“, nur dass die Kugeln nicht zurück in die Mitte gehen: Oben öffnet sich eine Kugel, 8 Kugeln gehen nacheinander (im 16tel) im Kreis nach außen – oben beginnend, im Uhrzeigersinn. Im nächsten halben Takt fliegen sie in die rechte Kugel dieses Kreises, die dabei kräftiger wird. Von dort öffnen sie sich wieder und fliegen dann in die Kugel rechts unten, dann unten, links unten … So wandert die Mitte Takt für Takt einmal im Uhrzeigersinn ringsherum; nach 8 Takten schließt sich der Kreis oben wieder.',
+      tag: '1 Schritt / Takt · 8 Takte rundherum',
+      draw(c, s) {
+        const N = 8, T = s.bar / 2, step = T / N;       // halber Takt, darin 8 Kugeln im Abstand einer 16tel
+        const D = T * .3, EARLY = step * .5;            // Flugzeit wie bei „Kreis zieht sich zusammen“; raus startet eine halbe 16tel früher
+        const m0 = Math.min(s.w, s.h), R = m0 * .2, r = m0 * .04;
+        const dir = i => -Math.PI / 2 + i * Math.PI / 4;   // 8 Richtungen im Uhrzeigersinn, oben beginnend
+        const ap = R / (2 * Math.tan(Math.PI / 8));     // Die Mitte wandert auf einem Achteck mit Seitenlänge R (= Abstand Mitte → Kugel)
+        const H = j => {                                 // Mitte Nr. j: Start oben (obere Kante des Achtecks), dann rechts, rechts unten, unten …
+          j = ((j % 8) + 8) % 8; let x = s.w / 2 - R / 2, y = s.h / 2 - ap;
+          for (let q = 0; q < j; q++) { x += Math.cos(dir(2 + q)) * R; y += Math.sin(dir(2 + q)) * R; }
+          return [x, y];
+        };
+        const ball = (x, y, a) => { c.globalAlpha = a; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); };
+        const lerp = (A, B, k) => [A[0] + (B[0] - A[0]) * k, A[1] + (B[1] - A[1]) * k];
+        const t = s.t, n = Math.floor(t / T), K = Math.floor(n / 2);   // Takt K: 1. halber Takt öffnen, 2. halber Takt zur nächsten Mitte
+        const arrived = m => clamp(Math.floor((t - m * T) / step) + 1, 0, N);
+        const left = m => clamp(Math.floor((t - m * T + EARLY) / step) + 1, 0, N);
+        c.fillStyle = s.fg;
+        for (let k = K - 1; k <= K + 1; k++) {
+          const h = H(k), nx = H(k + 1), ring = i => [h[0] + Math.cos(dir(i)) * R, h[1] + Math.sin(dir(i)) * R];
+          const o = (arrived(2 * k - 1) - left(2 * k)) / N;   // Mitte: jede ankommende Kugel +1/8, jede abfliegende −1/8
+          if (o > 0) ball(h[0], h[1], Math.min(1, o));
+          for (let i = 0; i < N; i++) {
+            const o0 = 2 * k * T + i * step - EARLY, o1 = o0 + D;                 // raus: Mitte → Kreis (bremst ab)
+            const c0 = (2 * k + 1) * T + i * step - D, c1 = c0 + D;               // rein: Kreis → nächste Mitte (beschleunigt)
+            if (t >= o0 && t < o1) { const p = (t - o0) / D; ball(...lerp(h, ring(i), 1 - (1 - p) * (1 - p)), .45); }
+            else if (t >= o1 && t < c0) ball(...ring(i), .45);
+            else if (t >= c0 && t < c1) { const p = (t - c0) / D; ball(...lerp(ring(i), nx, p * p), .45); }
+          }
+        }
+        c.globalAlpha = 1;
+      },
+    },
+    {
       title: 'Kugel wandert im Kreis',
       text: '8 Plätze im Kreis. Pro halben Takt wandert die Kugel einen Platz weiter im Uhrzeigersinn – wie bei Idee 1: 8 Nachbilder ziehen im 16tel hinüber, der neue Platz wird mit jedem kräftiger, der alte blasser. Eine Runde dauert 4 Takte.',
       tag: '1 Platz / ½ Takt',
@@ -263,7 +321,7 @@ const IDEAS = {
     },
     {
       title: '4 Kugeln wandern im Kreis',
-      text: 'Wie Idee 3, aber mit 4 Kugeln auf jedem zweiten Platz. Pro halben Takt wandern alle gleichzeitig einen Platz weiter im Uhrzeigersinn – jeweils 8 Nachbilder im 16tel, der neue Platz wird kräftiger, der alte blasser.',
+      text: 'Wie Idee 4, aber mit 4 Kugeln auf jedem zweiten Platz. Pro halben Takt wandern alle gleichzeitig einen Platz weiter im Uhrzeigersinn – jeweils 8 Nachbilder im 16tel, der neue Platz wird kräftiger, der alte blasser.',
       tag: '1 Platz / ½ Takt',
       draw(c, s) {
         const N = 8, P = 8, T = s.bar / 2, step = T / N;   // 8 Nachbilder pro halben Takt (16tel), 8 Plätze im Kreis
@@ -276,7 +334,7 @@ const IDEAS = {
         const departed = m => clamp(Math.floor((t - m * T + D) / step) + 1, 0, N);
         c.fillStyle = s.fg;
         const B = [0, 2, 4, 6];                        // Kugeln auf jedem zweiten Platz
-        // wie Idee 3, für jede der 4 Kugeln: halber Takt m bringt sie einen Platz weiter
+        // wie Idee 4, für jede der 4 Kugeln: halber Takt m bringt sie einen Platz weiter
         for (const m of [n - 1, n, n + 1]) {
           const o = (landed(m) - departed(m + 1)) / N;
           if (o > 0) for (const b of B) ball(b + m + 1, Math.min(1, o));
@@ -480,7 +538,7 @@ const IDEAS = {
     },
     {
       title: 'Kugeln auf der Welle',
-      text: '8 Plätze auf einer Wellenlinie, auf jedem zweiten eine Kugel. Pro halben Takt rücken alle einen Platz nach rechts – wie bei Idee 3/4 mit 8 Nachbildern im 16tel. Rechts raus, links wieder rein.',
+      text: '8 Plätze auf einer Wellenlinie, auf jedem zweiten eine Kugel. Pro halben Takt rücken alle einen Platz nach rechts – wie bei Idee 4/5 mit 8 Nachbildern im 16tel. Rechts raus, links wieder rein.',
       tag: '1 Platz / ½ Takt',
       draw(c, s) {
         const N = 8, P = 8, T = s.bar / 2, step = T / N;   // 8 Nachbilder pro halben Takt (16tel), 8 Plätze auf der Welle
@@ -494,7 +552,7 @@ const IDEAS = {
         const departed = m => clamp(Math.floor((t - m * T + D) / step) + 1, 0, N);
         const B = [0, 2, 4, 6];                        // Kugeln auf jedem zweiten Platz
         c.fillStyle = s.fg;
-        for (const m of [n - 1, n, n + 1]) {            // wie Idee 3: halber Takt m bringt jede Kugel einen Platz weiter
+        for (const m of [n - 1, n, n + 1]) {            // wie Idee 4: halber Takt m bringt jede Kugel einen Platz weiter
           const o = (landed(m) - departed(m + 1)) / N;
           if (o > 0) for (const b of B) ball(mod(b + m + 1, P), Math.min(1, o));
         }
@@ -504,6 +562,45 @@ const IDEAS = {
             if (t < t0 || t >= t0 + D) continue;
             const p = (t - t0) / D, d = p * p * (3 - 2 * p);
             for (const b of B) ball(mod(b + m, P) + d, .4);
+          }
+        }
+        c.globalAlpha = 1;
+      },
+    },
+    {
+      title: 'Welle läuft mit',
+      text: 'Wie „Kugeln auf der Welle“, aber die Kugeln starten links: Zuerst kommt eine Kugel von links herein, jeden Takt folgt die nächste. Pro halben Takt rückt jede einen Platz weiter (8 Nachbilder im 16tel) – immer von unten nach oben, von oben nach unten. Sobald die erste Kugel das rechte Viertel erreicht, läuft das Bild mit: Es wandert stetig nach links und man sieht die Welle endlos weiterlaufen – aber nur halb so schnell wie die Kugeln, sodass sie gleichzeitig weiter nach rechts über die Welle wandern.',
+      tag: '1 Platz / ½ Takt · Bild läuft mit',
+      draw(c, s) {
+        const N = 8, P = 8, T = s.bar / 2, step = T / N;   // 8 Nachbilder pro halben Takt (16tel), 8 Plätze pro Welle
+        const D = T * .3;                               // Flugzeit eines Nachbilds von Platz zu Platz
+        const gap = s.w / P, r = Math.min(gap * .3, s.h * .07), A = s.h * .26, mid = s.h / 2;
+        const t = s.t, n = Math.floor(t / T);
+        const LEAD = 6;                                 // ab hier (Platz 6, rechtes Viertel) läuft das Bild mit der ersten Kugel mit
+        const FOLLOW = .5;                              // das Bild läuft nur halb so schnell mit – so wandern die Kugeln trotzdem weiter nach rechts
+        const cam = Math.max(0, t / T - LEAD) * FOLLOW;  // Kamera in Plätzen: steht zuerst, läuft dann gleichmäßig nach rechts – das Bild wandert nach links
+        const X = u => (u - cam + .5) * gap, Y = u => mid - A * Math.sin(u / P * Math.PI * 2);   // endlose Wellenlinie
+        const ball = (u, al) => { const x = X(u); if (x < -r * 2 || x > s.w + r * 2) return; c.globalAlpha = al; c.beginPath(); c.arc(x, Y(u), r, 0, Math.PI * 2); c.fill(); };
+        const landed = m => clamp(Math.floor((t - m * T) / step) + 1, 0, N);
+        const departed = m => clamp(Math.floor((t - m * T + D) / step) + 1, 0, N);
+        c.fillStyle = s.fg;
+        // Kugel j kommt im halben Takt 2j von links (Platz −1) herein und rückt dann pro halben Takt einen Platz weiter: im halben Takt m von (m − 2j − 1) nach (m − 2j).
+        // So liegen die Kugeln wie bei „Kugeln auf der Welle“ auf jedem zweiten Platz.
+        const jMax = Math.floor((n + 1) / 2), jMin = Math.max(0, Math.floor((n - cam - P - 3) / 2));   // nur Kugeln, die gerade im Bild sein können
+        for (let j = jMin; j <= jMax; j++) {
+          for (const m of [n - 1, n, n + 1]) {          // Kugel auf ihrem Platz, wird mit jedem Nachbild kräftiger
+            const u = m - 2 * j; if (u < 0) continue;
+            const o = (landed(m) - departed(m + 1)) / N;
+            if (o > 0) ball(u, Math.min(1, o));
+          }
+          for (let m = n - 1; m <= n + 1; m++) {        // Nachbilder entlang der Welle zum nächsten Platz
+            const u0 = m - 2 * j - 1; if (u0 < -1) continue;
+            for (let i = 0; i < N; i++) {
+              const t0 = m * T + i * step - D;
+              if (t < t0 || t >= t0 + D) continue;
+              const p = (t - t0) / D;
+              ball(u0 + p * p * (3 - 2 * p), .4);
+            }
           }
         }
         c.globalAlpha = 1;
@@ -636,81 +733,15 @@ const IDEAS = {
     },
     {
       title: 'Spirale nach innen',
-      text: 'Eine endlose Spirale, die sich langsam dreht, während man immer weiter herauszoomt. Pro halben Takt rückt jede Kugel einen Platz weiter nach innen – wie bei Idee 4 mit 8 Nachbildern im 16tel – und wird dabei kleiner. Jeden halben Takt kommt außen eine neue Kugel dazu.',
+      text: 'Eine endlose Spirale, die sich langsam dreht, während man immer weiter herauszoomt. Pro halben Takt rückt jede Kugel einen Platz weiter nach innen – wie bei Idee 5 mit 8 Nachbildern im 16tel – und wird dabei kleiner. Jeden halben Takt kommt außen eine neue Kugel dazu.',
       tag: '1 Platz · +1 Kugel / ½ Takt',
-      draw(c, s) {
-        const N = 8, T = s.bar / 2, step = T / N;       // 8 Nachbilder pro halben Takt
-        const D = T * .3;                               // Flugzeit eines Nachbilds von Platz zu Platz
-        const cx = s.w / 2, cy = s.h / 2, Rmax = Math.min(s.w, s.h) * .5 * .93;   // Einstieg (Platz −1) liegt genau am Bildrand – sofort sichtbar
-        const Q = .93;                                  // jeder Platz weiter innen ist 7 % näher an der Mitte (logarithmische Spirale)
-        const turn = Math.PI * 2 / 14;                  // 14 Plätze pro Umdrehung – Kugeln liegen dichter, wirkt mehr wie eine Spirale
-        const zoom = s.bar / 2.5;                       // Herauszoomen: pro Takt rückt alles um 2,5 Plätze nach innen – zieht die Kugeln auseinander
-        const rot = s.t / (s.bar * 8) * Math.PI * 2;    // das Ganze dreht sich: eine Umdrehung in 8 Takten
-        const P = u => { const R = Rmax * Math.pow(Q, u), a = -Math.PI / 2 + u * turn + rot; return [cx + Math.cos(a) * R, cy + Math.sin(a) * R, R]; };
-        const dot = (u, al) => { const [x, y, R] = P(u), rr = R * .1; if (rr < .3) return; c.globalAlpha = al; c.beginPath(); c.arc(x, y, rr, 0, Math.PI * 2); c.fill(); };
-        const t = s.t, n = Math.floor(t / T);
-        const landed = m => clamp(Math.floor((t - m * T) / step) + 1, 0, N);
-        const departed = m => clamp(Math.floor((t - m * T + D) / step) + 1, 0, N);
-        c.fillStyle = s.fg;
-        // Kugel b kommt im halben Takt b dazu: im halben Takt m wandert sie von Platz (m − b − 1) nach (m − b); dazu das Herauszoomen,
-        // das die Kugeln auseinanderzieht. Ab Songbeginn baut sie sich auf: zuerst eine Kugel, jeden halben Takt eine mehr.
-        for (let b = Math.max(0, n - 60); b <= n + 1; b++) {
-          // die ersten Kugeln starten direkt am Bildrand (sofort sichtbar), spätere immer weiter außerhalb des Bildes
-          const outside = Math.log(Math.hypot(cx, cy) * 1.15 / (Rmax / Q)) / Math.log(1 / Q);
-          const drift = (t - b * T) / zoom - outside * Math.min(1, b / 6);   // wie weit sie seit ihrem Auftauchen nach innen gerückt ist
-          if (drift < -1 - outside) continue;
-          for (let m = Math.max(b, n - 1); m <= n + 1; m++) {
-            const to = m - b;
-            const o = (landed(m) - departed(m + 1)) / N;
-            if (o > 0) dot(to + drift, Math.min(1, o));
-            for (let i = 0; i < N; i++) {               // Nachbilder entlang der Spirale
-              const t0 = m * T + i * step - D;
-              if (t < t0 || t >= t0 + D) continue;
-              const p = (t - t0) / D;
-              dot(to - 1 + p * p * (3 - 2 * p) + drift, .4);
-            }
-          }
-        }
-        c.globalAlpha = 1;
-      },
+      draw(c, s) { spiralIn(c, s, FPC[15].def); },   // voll einstellbar: siehe spiralIn / FPC[15]
     },
     {
       title: 'Spirale nach außen',
-      text: 'Wie Idee 14, nur umgekehrt: Man zoomt immer weiter hinein. Die Kugeln tauchen in der Mitte auf, rücken pro halben Takt einen Platz nach außen (8 Nachbilder im 16tel) und werden dabei größer. Jeden halben Takt kommt in der Mitte eine neue dazu; das Ganze dreht sich langsam.',
+      text: 'Wie Idee 16, nur umgekehrt: Man zoomt immer weiter hinein. Die Kugeln tauchen in der Mitte auf, rücken pro halben Takt einen Platz nach außen (8 Nachbilder im 16tel) und werden dabei größer. Jeden halben Takt kommt in der Mitte eine neue dazu; das Ganze dreht sich langsam.',
       tag: '1 Platz · +1 Kugel / ½ Takt',
-      draw(c, s) {
-        const N = 8, T = s.bar / 2, step = T / N;       // 8 Nachbilder pro halben Takt
-        const D = T * .3;                               // Flugzeit eines Nachbilds von Platz zu Platz
-        const cx = s.w / 2, cy = s.h / 2, Rmax = Math.hypot(cx, cy) * .82;
-        const Q = .93, turn = Math.PI * 2 / 14;         // dieselbe Spirale wie bei Idee 14
-        const U0 = 31;                                  // „Platz 0“ liegt tief innen in der Spirale (klein, aber nach kurzer Zeit sichtbar)
-        const zoom = s.bar / 2.5;                       // Hineinzoomen: pro Takt rückt alles um 2,5 Plätze nach außen
-        const rot = s.t / (s.bar * 8) * Math.PI * 2;    // dreht sich: eine Umdrehung in 8 Takten
-        const P = u => { const R = Rmax * Math.pow(Q, u), a = -Math.PI / 2 + u * turn + rot; return [cx + Math.cos(a) * R, cy + Math.sin(a) * R, R]; };
-        const dot = (sf, al) => { const [x, y, R] = P(U0 - sf), rr = R * .1; if (rr < .3 || R > Rmax * 2.2) return; c.globalAlpha = al; c.beginPath(); c.arc(x, y, rr, 0, Math.PI * 2); c.fill(); };
-        const t = s.t, n = Math.floor(t / T);
-        const landed = m => clamp(Math.floor((t - m * T) / step) + 1, 0, N);
-        const departed = m => clamp(Math.floor((t - m * T + D) / step) + 1, 0, N);
-        c.fillStyle = s.fg;
-        // Kugel b taucht im halben Takt b in der Mitte auf: im halben Takt m wandert sie von Platz (m − b − 1) nach (m − b) – nach außen;
-        // dazu das Hineinzoomen. Ab Songbeginn baut sie sich auf: zuerst eine Kugel in der Mitte, jeden halben Takt eine mehr.
-        for (let b = Math.max(0, n - 60); b <= n + 1; b++) {
-          const drift = (t - b * T) / zoom;
-          if (drift < -1) continue;
-          for (let m = Math.max(b, n - 1); m <= n + 1; m++) {
-            const to = m - b;
-            const o = (landed(m) - departed(m + 1)) / N;
-            if (o > 0) dot(to + drift, Math.min(1, o));
-            for (let i = 0; i < N; i++) {               // Nachbilder entlang der Spirale nach außen
-              const t0 = m * T + i * step - D;
-              if (t < t0 || t >= t0 + D) continue;
-              const p = (t - t0) / D;
-              dot(to - 1 + p * p * (3 - 2 * p) + drift, .4);
-            }
-          }
-        }
-        c.globalAlpha = 1;
-      },
+      draw(c, s) { spiralOut(c, s, FPC[16].def); },   // voll einstellbar: siehe spiralOut / FPC[16]
     },
   ],
   trumpet: [
@@ -1692,7 +1723,7 @@ const FLUTE_MAP = [
     { n: 'Position im Raum', v: 'Mitte', h: 'Wo im Bild das Element seinen Platz hat. Hier: Die Kugeln sammeln sich in der Bildmitte als Haltepunkt, bevor sie nach unten weiterfliegen. „Oben“, „Unten“ würden diesen Haltepunkt verschieben; „Vordergrund“/„Hintergrund“ meint dagegen Tiefe.' },
     { n: 'Bewegungsrichtung', v: 'Runter', t: 'Tonhöhe', h: 'Die Flöte fällt in der Tonhöhe immer weiter ab – deshalb bewegen sich auch die Kugeln nach unten.' },
     { n: 'Bewegungsbahn', v: 'Gerade', h: 'Senkrecht, ohne seitlichen Ausschlag.' },
-    { n: 'Geschwindigkeit', v: 'Moderat', t: 'Tonhöhe', h: 'Richtet sich nach den Wechseln der Tonhöhe. Eine Kugel braucht etwa 30 % eines halben Takts bis zur nächsten Station.' },
+    { n: 'Geschwindigkeit', v: 'Moderat', t: 'Rhythmus', h: 'Richtet sich nach dem Rhythmus: 8 Töne pro halbem Takt, eine Kugel braucht etwa 30 % eines halben Takts bis zur nächsten Station.' },
     { n: 'Beschleunigung', v: 'Zunehmend', h: 'Im Code fallen die Kugeln leicht beschleunigt (Weg ∝ Zeit²). Du hattest „keine“ gesagt – wenn das nicht gewollt ist, stelle ich es auf „Keine“ um.' },
     { n: 'Rhythmus', v: 'Regelmäßig', t: 'Rhythmus', h: 'Der Sound gibt den Takt vor: 8 Kugeln im Abstand einer 16tel, ein Durchlauf = 1 Takt.' },
     { n: 'Erscheinungsverhalten', v: 'Einblenden', h: 'Die Kugeln kommen von außerhalb des Bildes (oben) herein.' },
@@ -1728,7 +1759,7 @@ const MAP2 = [
     { n: 'Position im Raum', v: 'Mitte', h: 'Wo im Bild das Element seinen Platz hat: Sammelpunkt ist die Bildmitte, die Ausgangsplätze liegen auf einem Kreis darum.' },
     { n: 'Bewegungsrichtung', v: 'Zur Mitte', h: '1. halber Takt: zur Mitte. 2. halber Takt: wieder nach außen. Eine Kopplung an einen Klangparameter ist hier noch nicht festgelegt.' },
     { n: 'Bewegungsbahn', v: 'Gerade', h: 'Geradlinig auf dem Radius.' },
-    { n: 'Geschwindigkeit', v: 'Moderat', h: 'Eine Kugel braucht etwa 30 % eines halben Takts bis zur Mitte.' },
+    { n: 'Geschwindigkeit', v: 'Moderat', t: 'Rhythmus', h: 'Richtet sich nach dem Rhythmus: 8 Töne pro halbem Takt, eine Kugel braucht etwa 30 % eines halben Takts bis zur Mitte.' },
     { n: 'Beschleunigung', v: 'Zunehmend', h: 'Nach innen werden die Kugeln schneller, nach außen bremsen sie ab.' },
     { n: 'Rhythmus', v: 'Regelmäßig', t: 'Rhythmus', h: 'Eine Kugel pro 16tel; 1 Durchlauf = 1 Takt.' },
     { n: 'Erscheinungsverhalten', v: 'Zusammenfügen', h: 'Der Punkt in der Mitte entsteht aus den ankommenden Kugeln.' },
@@ -1744,11 +1775,69 @@ const MAP3 = [
     { n: 'Position im Raum', v: 'Mitte', h: 'Wo im Bild das Element seinen Platz hat: Der Kreis liegt um die Bildmitte; die Kugel springt von Platz zu Platz.' },
     { n: 'Bewegungsrichtung', v: 'Im Uhrzeigersinn', h: 'Der Kasten kennt keine Kreisrichtung (Hoch/Runter/Rechts …) – deshalb hier als eigener Wert. Eine Kopplung an einen Klangparameter ist noch nicht festgelegt.' },
     { n: 'Bewegungsbahn', v: 'Kreisförmig', h: 'Auf dem Kreisbogen von Platz zu Platz.' },
-    { n: 'Geschwindigkeit', v: 'Moderat', h: 'Ein Nachbild braucht 30 % eines halben Takts von Platz zu Platz.' },
+    { n: 'Geschwindigkeit', v: 'Moderat', t: 'Rhythmus', h: 'Richtet sich nach dem Rhythmus: 8 Töne pro halbem Takt, ein Nachbild braucht 30 % eines halben Takts von Platz zu Platz.' },
     { n: 'Beschleunigung', v: 'Stufenweise', h: 'Pro halbem Takt ein Platz weiter, dazwischen weich abgebremst.' },
     { n: 'Rhythmus', v: 'Regelmäßig', t: 'Rhythmus', h: '8 Nachbilder im 16tel, ein Platz pro halbem Takt, eine Runde = 4 Takte.' },
     { n: 'Erscheinungsverhalten', v: 'Einblenden', h: 'Der neue Platz wird mit jedem Nachbild kräftiger.' },
     { n: 'Verschwindeverhalten', v: 'Ausblenden', h: 'Der alte Platz wird mit jedem Nachbild blasser.' },
+    { n: 'Spur', v: 'Nachbild', h: '8 halbtransparente Nachbilder ziehen von Platz zu Platz.' }] }, NONE3];
+
+const MAP14 = [
+  { g: 'Kasten 1 · Visuelle Erscheinung', rows: [
+    { n: 'Grundelement', v: 'Kreis', h: 'Jede Kugel ist ein Kreis.' },
+    { n: 'Formcharakter', v: 'Geometrisch', h: 'Exakter Kreis, nichts Wackliges oder Weiches.' },
+    { n: 'Größe', v: 'Mittel', h: 'Außen am Rand mittelgroß (Radius ≈ 10 % des Abstands zur Mitte), nach innen werden die Kugeln kleiner – siehe Formveränderung.' },
+    { n: 'Farbtemperatur', v: 'Neutral', h: 'Weder warm noch kalt.' },
+    { n: 'Helligkeit', v: 'Hell', h: 'Im Dark Mode weiß auf schwarz. Im Light Mode kehrt es sich um (schwarz auf weiß), die Rolle bleibt „Kontrastfarbe“.' },
+    { n: 'Farbton', v: 'Unbunt', h: 'Schwarz-weiß, kein Farbton.' },
+    { n: 'Sättigung', v: 'Entsättigt', h: 'Keine Farbe – passt zu „unbunt“.' },
+    { n: 'Transparenz', v: 'Halbtransparent', h: 'Die Nachbilder haben 40 % Deckkraft; die Kugel auf ihrem Platz wird mit jedem Nachbild kräftiger.' },
+    { n: 'Anzahl', v: 'Viele', h: 'Jeden halben Takt kommt außen eine Kugel dazu – die Spirale füllt sich.' },
+    { n: 'Anordnung', v: 'Radial', h: 'Auf einer logarithmischen Spirale um die Bildmitte (14 Plätze pro Umdrehung).' },
+    { n: 'Dimensionalität', v: '2D', h: 'Flach, ohne Schatten oder Tiefe.' },
+    { n: 'Füllung', v: 'Gefüllt', h: 'Vollflächig in der Vordergrundfarbe.' },
+    { n: 'Kontur', v: 'Keine' }, { n: 'Oberflächenbeschaffenheit', v: 'Glatt' }] },
+  { g: 'Kasten 2 · Visuelles Verhalten', rows: [
+    { n: 'Formveränderung', v: 'Verkleinern', t: 'Tonhöhe', h: 'Mit der Tonhöhe werden die Kugeln immer kleiner – je weiter sie auf der Spirale nach innen rücken.' },
+    { n: 'Formtransformation', v: 'Keine' },
+    { n: 'Farbveränderung', v: 'Keine', h: 'Nur die Deckkraft ändert sich, nicht die Farbe.' },
+    { n: 'Position im Raum', v: 'Mitte', h: 'Die Spirale liegt um die Bildmitte; dorthin läuft alles zusammen.' },
+    { n: 'Bewegungsrichtung', v: 'Zur Mitte', t: 'Lautstärke', h: 'Über die ganze Dauer (die 16 Einsätze am Anfang) wird die Flöte immer leiser – die Kugeln wandern immer weiter in die Mitte, die Spirale geht von einem weg.' },
+    { n: 'Bewegungsbahn', v: 'Spiralförmig', h: 'Von Platz zu Platz entlang der Spirale, das Ganze dreht sich langsam (eine Umdrehung in 8 Takten).' },
+    { n: 'Geschwindigkeit', v: 'Moderat', t: 'Rhythmus', h: 'Richtet sich nach dem Rhythmus: 8 Töne pro halbem Takt, ein Nachbild braucht 30 % eines halben Takts bis zum nächsten Platz.' },
+    { n: 'Beschleunigung', v: 'Stufenweise', h: 'Pro halbem Takt ein Platz weiter, dazwischen weich abgebremst.' },
+    { n: 'Rhythmus', v: 'Regelmäßig', t: 'Rhythmus', h: 'Die Kugeln bewegen sich nach dem Rhythmus der Flöte: 8 Abstufungen der Tonhöhe = 8 Nachbilder im 16tel, ein Platz pro halbem Takt.' },
+    { n: 'Erscheinungsverhalten', v: 'Einblenden', h: 'Neue Kugeln kommen von außen am Bildrand herein.' },
+    { n: 'Verschwindeverhalten', v: 'Schrumpfen', h: 'In der Mitte werden die Kugeln so klein, dass sie verschwinden.' },
+    { n: 'Spur', v: 'Nachbild', h: '8 halbtransparente Nachbilder ziehen von Platz zu Platz.' }] }, NONE3];
+
+const MAP15 = [
+  { g: 'Kasten 1 · Visuelle Erscheinung', rows: [
+    { n: 'Grundelement', v: 'Kreis', h: 'Jede Kugel ist ein Kreis.' },
+    { n: 'Formcharakter', v: 'Geometrisch', h: 'Exakter Kreis, nichts Wackliges oder Weiches.' },
+    { n: 'Größe', v: 'Mittel', h: 'Radius ≈ 10 % des Abstands zur Mitte: in der Mitte winzig, nach außen werden die Kugeln größer – siehe Formveränderung.' },
+    { n: 'Farbtemperatur', v: 'Neutral', h: 'Weder warm noch kalt.' },
+    { n: 'Helligkeit', v: 'Hell', h: 'Im Dark Mode weiß auf schwarz. Im Light Mode kehrt es sich um (schwarz auf weiß), die Rolle bleibt „Kontrastfarbe“.' },
+    { n: 'Farbton', v: 'Unbunt', h: 'Schwarz-weiß, kein Farbton.' },
+    { n: 'Sättigung', v: 'Entsättigt', h: 'Keine Farbe – passt zu „unbunt“.' },
+    { n: 'Transparenz', v: 'Halbtransparent', h: 'Die Nachbilder haben 40 % Deckkraft; die Kugel auf ihrem Platz wird mit jedem Nachbild kräftiger.' },
+    { n: 'Anzahl', v: 'Viele', h: 'Jeden halben Takt kommt in der Mitte eine Kugel dazu – die Spirale füllt sich.' },
+    { n: 'Anordnung', v: 'Radial', h: 'Auf einer logarithmischen Spirale um die Bildmitte (14 Plätze pro Umdrehung).' },
+    { n: 'Dimensionalität', v: '2D', h: 'Flach, ohne Schatten oder Tiefe.' },
+    { n: 'Füllung', v: 'Gefüllt', h: 'Vollflächig in der Vordergrundfarbe.' },
+    { n: 'Kontur', v: 'Keine' }, { n: 'Oberflächenbeschaffenheit', v: 'Glatt' }] },
+  { g: 'Kasten 2 · Visuelles Verhalten', rows: [
+    { n: 'Formveränderung', v: 'Vergrößern', t: 'Tonhöhe', h: 'Umgekehrt zur Spirale nach innen: Mit der Tonhöhe werden die Kugeln immer größer – je weiter sie auf der Spirale nach außen rücken.' },
+    { n: 'Formtransformation', v: 'Keine' },
+    { n: 'Farbveränderung', v: 'Keine', h: 'Nur die Deckkraft ändert sich, nicht die Farbe.' },
+    { n: 'Position im Raum', v: 'Mitte', h: 'Die Spirale liegt um die Bildmitte; von dort läuft alles nach außen.' },
+    { n: 'Bewegungsrichtung', v: 'Nach außen', t: 'Lautstärke', h: 'Umgekehrt zur Spirale nach innen: Je lauter die Flöte wird, desto weiter wandern die Kugeln nach außen – die Spirale kommt auf einen zu.' },
+    { n: 'Bewegungsbahn', v: 'Spiralförmig', h: 'Von Platz zu Platz entlang der Spirale, das Ganze dreht sich langsam (eine Umdrehung in 8 Takten).' },
+    { n: 'Geschwindigkeit', v: 'Moderat', t: 'Rhythmus', h: 'Richtet sich nach dem Rhythmus: 8 Töne pro halbem Takt, ein Nachbild braucht 30 % eines halben Takts bis zum nächsten Platz.' },
+    { n: 'Beschleunigung', v: 'Stufenweise', h: 'Pro halbem Takt ein Platz weiter, dazwischen weich abgebremst.' },
+    { n: 'Rhythmus', v: 'Regelmäßig', t: 'Rhythmus', h: 'Die Kugeln bewegen sich nach dem Rhythmus der Flöte: 8 Abstufungen der Tonhöhe = 8 Nachbilder im 16tel, ein Platz pro halbem Takt.' },
+    { n: 'Erscheinungsverhalten', v: 'Wachsen', h: 'Neue Kugeln tauchen winzig in der Mitte auf und wachsen von dort.' },
+    { n: 'Verschwindeverhalten', v: 'Ausblenden', h: 'Groß geworden verlassen sie das Bild über den Rand.' },
     { n: 'Spur', v: 'Nachbild', h: '8 halbtransparente Nachbilder ziehen von Platz zu Platz.' }] }, NONE3];
 
 // ---- Parametrisierte Versionen der Ideen (Standardwerte = Original) ----
@@ -1856,7 +1945,7 @@ function circleContract(c, s, P) {      // Idee 2: Kugeln im Kreis wandern zur M
     }
   }
 }
-function wanderCircle(c, s, P) {         // Idee 3: Kugel(n) wandern von Platz zu Platz im Kreis
+function wanderCircle(c, s, P) {         // Idee 4: Kugel(n) wandern von Platz zu Platz im Kreis
   const N = 8, PL = 8, T = s.bar / 2, step = T / N, D = T * SPEEDF[P.speed], cnt = { Einzeln: 1, Wenige: 2, Mehrere: 4, Viele: 8 }[P.count];
   const m0 = Math.min(s.w, s.h), r = m0 * .048 * SIZEF[P.size], R = m0 * .38, cx = s.w / 2, cy = s.h / 2, col = fpColor(P, s.fg), sg = P.dir === 'Im Uhrzeigersinn' ? 1 : -1;
   const A = { Undurchsichtig: 1, Halbtransparent: .4, Transparent: .2 }[P.alpha];
@@ -1872,15 +1961,180 @@ function wanderCircle(c, s, P) {         // Idee 3: Kugel(n) wandern von Platz z
     }
   }
 }
+function spiralIn(c, s, P) {          // Idee 16: Spirale nach innen – voll einstellbar (Standardwerte = Original)
+  const N = 8, T = s.bar / 2, step = T / N;       // 8 Nachbilder pro halben Takt
+  const D = T * SPEEDF[P.speed];                  // Flugzeit eines Nachbilds von Platz zu Platz (Moderat = 30 % eines halben Takts)
+  const cx = s.w / 2, cy = s.h / 2, Rmax = Math.min(s.w, s.h) * .5 * .93;   // Einstieg (Platz −1) liegt genau am Bildrand – sofort sichtbar
+  const Q = .93;                                  // jeder Platz weiter innen ist 7 % näher an der Mitte (logarithmische Spirale)
+  const turn = Math.PI * 2 / 14;                  // 14 Plätze pro Umdrehung – Kugeln liegen dichter, wirkt mehr wie eine Spirale
+  const zoom = s.bar / 2.5;                       // Herauszoomen: pro Takt rückt alles um 2,5 Plätze nach innen – zieht die Kugeln auseinander
+  const rot = s.t / (s.bar * 8) * Math.PI * 2;    // das Ganze dreht sich: eine Umdrehung in 8 Takten
+  const pos = u => { const R = Rmax * Math.pow(Q, u), a = -Math.PI / 2 + u * turn + rot; return [cx + Math.cos(a) * R, cy + Math.sin(a) * R, R]; };
+  const A = { Undurchsichtig: 1, Halbtransparent: .4, Transparent: .2 }[P.alpha], col = fpColor(P, s.fg), sz = SIZEF[P.size] / SIZEF.Mittel;   // Original = „Mittel“
+  const dot = (u, al, i) => { const [x, y, R] = pos(u), rr = R * .1 * sz; if (rr < .3) return; fpShape(c, P, x, y, rr, col, al, i); };
+  const t = s.t, n = Math.floor(t / T);
+  const landed = m => clamp(Math.floor((t - m * T) / step) + 1, 0, N);
+  const departed = m => clamp(Math.floor((t - m * T + D) / step) + 1, 0, N);
+  // Kugel b kommt im halben Takt b dazu: im halben Takt m wandert sie von Platz (m − b − 1) nach (m − b); dazu das Herauszoomen,
+  // das die Kugeln auseinanderzieht. Ab Songbeginn baut sie sich auf: zuerst eine Kugel, jeden halben Takt eine mehr.
+  for (let b = Math.max(0, n - 60); b <= n + 1; b++) {
+    // die ersten Kugeln starten direkt am Bildrand (sofort sichtbar), spätere immer weiter außerhalb des Bildes
+    const outside = Math.log(Math.hypot(cx, cy) * 1.15 / (Rmax / Q)) / Math.log(1 / Q);
+    const drift = (t - b * T) / zoom - outside * Math.min(1, b / 6);   // wie weit sie seit ihrem Auftauchen nach innen gerückt ist
+    if (drift < -1 - outside) continue;
+    for (let m = Math.max(b, n - 1); m <= n + 1; m++) {
+      const to = m - b;
+      const o = (landed(m) - departed(m + 1)) / N;
+      if (o > 0) dot(to + drift, Math.min(1, o) * Math.min(1, A / .4), b);
+      for (let i = 0; i < N; i++) {               // Nachbilder entlang der Spirale
+        const t0 = m * T + i * step - D;
+        if (t < t0 || t >= t0 + D) continue;
+        const p = (t - t0) / D;
+        dot(to - 1 + p * p * (3 - 2 * p) + drift, A, b);
+      }
+    }
+  }
+  c.globalAlpha = 1;
+}
+function spiralOut(c, s, P) {         // Idee 17: Spirale nach außen – voll einstellbar (Standardwerte = Original)
+  const N = 8, T = s.bar / 2, step = T / N;       // 8 Nachbilder pro halben Takt
+  const D = T * SPEEDF[P.speed];                  // Flugzeit eines Nachbilds von Platz zu Platz (Moderat = 30 % eines halben Takts)
+  const cx = s.w / 2, cy = s.h / 2, Rmax = Math.hypot(cx, cy) * .82;
+  const Q = .93, turn = Math.PI * 2 / 14;         // dieselbe Spirale wie bei Idee 16
+  const U0 = 31;                                  // „Platz 0“ liegt tief innen in der Spirale (klein, aber nach kurzer Zeit sichtbar)
+  const zoom = s.bar / 2.5;                       // Hineinzoomen: pro Takt rückt alles um 2,5 Plätze nach außen
+  const rot = s.t / (s.bar * 8) * Math.PI * 2;    // dreht sich: eine Umdrehung in 8 Takten
+  const pos = u => { const R = Rmax * Math.pow(Q, u), a = -Math.PI / 2 + u * turn + rot; return [cx + Math.cos(a) * R, cy + Math.sin(a) * R, R]; };
+  const A = { Undurchsichtig: 1, Halbtransparent: .4, Transparent: .2 }[P.alpha], col = fpColor(P, s.fg), sz = SIZEF[P.size] / SIZEF.Mittel;   // Original = „Mittel“
+  const dot = (sf, al, i) => { const [x, y, R] = pos(U0 - sf), rr = R * .1 * sz; if (rr < .3 || R > Rmax * 2.2) return; fpShape(c, P, x, y, rr, col, al, i); };
+  const t = s.t, n = Math.floor(t / T);
+  const landed = m => clamp(Math.floor((t - m * T) / step) + 1, 0, N);
+  const departed = m => clamp(Math.floor((t - m * T + D) / step) + 1, 0, N);
+  // Kugel b taucht im halben Takt b in der Mitte auf: im halben Takt m wandert sie von Platz (m − b − 1) nach (m − b) – nach außen;
+  // dazu das Hineinzoomen. Ab Songbeginn baut sie sich auf: zuerst eine Kugel in der Mitte, jeden halben Takt eine mehr.
+  for (let b = Math.max(0, n - 60); b <= n + 1; b++) {
+    const drift = (t - b * T) / zoom;
+    if (drift < -1) continue;
+    for (let m = Math.max(b, n - 1); m <= n + 1; m++) {
+      const to = m - b;
+      const o = (landed(m) - departed(m + 1)) / N;
+      if (o > 0) dot(to + drift, Math.min(1, o) * Math.min(1, A / .4), b);
+      for (let i = 0; i < N; i++) {               // Nachbilder entlang der Spirale nach außen
+        const t0 = m * T + i * step - D;
+        if (t < t0 || t >= t0 + D) continue;
+        const p = (t - t0) / D;
+        dot(to - 1 + p * p * (3 - 2 * p) + drift, A, b);
+      }
+    }
+  }
+  c.globalAlpha = 1;
+}
 // Konfiguration je Idee (Index in IDEAS.flute): Zeichenfunktion, Standardwerte, Reihenfolge der Auswahlfelder
 const FPC = {
   0: { map: FLUTE_MAP, draw: fluteFall, def: { ...LOOK, count: 'Mehrere', layout: 'Linear', place: 'Mitte', dir: 'Runter', path: 'Gerade', speed: 'Moderat', accel: 'Zunehmend' },
     groups: [['Erscheinung', [...LOOK_KEYS, 'layout', 'dim', 'fill', 'stroke']], ['Verhalten', ['place', 'dir', 'path', 'speed', 'accel']]] },
   1: { map: MAP2, draw: circleContract, def: { ...LOOK, count: 'Mehrere', speed: 'Moderat', accel: 'Zunehmend' },
     groups: [['Erscheinung', [...LOOK_KEYS, 'dim', 'fill', 'stroke']], ['Verhalten', ['speed', 'accel']]] },
-  2: { map: MAP3, draw: wanderCircle, def: { ...LOOK, count: 'Einzeln', dir: 'Im Uhrzeigersinn', speed: 'Moderat' }, opts: { dir: ['Im Uhrzeigersinn', 'Gegen den Uhrzeigersinn'] },
+  3: { map: MAP3, draw: wanderCircle, def: { ...LOOK, count: 'Einzeln', dir: 'Im Uhrzeigersinn', speed: 'Moderat' }, opts: { dir: ['Im Uhrzeigersinn', 'Gegen den Uhrzeigersinn'] },
     groups: [['Erscheinung', [...LOOK_KEYS, 'dim', 'fill', 'stroke']], ['Verhalten', ['dir', 'speed']]] },
+  15: { map: MAP14, draw: spiralIn, def: { ...LOOK, size: 'Mittel', speed: 'Moderat' },
+    groups: [['Erscheinung', [...LOOK_KEYS.filter(k => k !== 'count'), 'dim', 'fill', 'stroke']], ['Verhalten', ['speed']]] },
+  16: { map: MAP15, draw: spiralOut, def: { ...LOOK, size: 'Mittel', speed: 'Moderat' },
+    groups: [['Erscheinung', [...LOOK_KEYS.filter(k => k !== 'count'), 'dim', 'fill', 'stroke']], ['Verhalten', ['speed']]] },
 };
 const FP_TITLES = ['Fallender Kreis mit Nachbildern', 'Kreis zieht sich zusammen', 'Kugel wandert im Kreis'];
 for (const k in FPC) IDEAS.flute[k].info = { title: IDEAS.flute[k].title, map: FPC[k].map };
 const fpOpts = (i, k) => (FPC[i].opts && FPC[i].opts[k]) || FP_OPTS[k];
+
+// ---- Morphologischer Kasten für alle übrigen Ideen (M-Button) ----
+// Kurzschreibweise: nur was vom Standard der Spur abweicht. Wert = 'Auswahl' oder ['Auswahl', 'Klangparameter' | null, 'Erklärung']
+const KM_ROWS = [
+  ['Kasten 1 · Visuelle Erscheinung', [['element', 'Grundelement'], ['char', 'Formcharakter'], ['size', 'Größe'], ['temp', 'Farbtemperatur'], ['light', 'Helligkeit'], ['hue', 'Farbton'], ['sat', 'Sättigung'], ['alpha', 'Transparenz'], ['count', 'Anzahl'], ['layout', 'Anordnung'], ['dim', 'Dimensionalität'], ['fill', 'Füllung'], ['stroke', 'Kontur'], ['surface', 'Oberflächenbeschaffenheit']]],
+  ['Kasten 2 · Visuelles Verhalten', [['shapeFx', 'Formveränderung'], ['transform', 'Formtransformation'], ['colorFx', 'Farbveränderung'], ['place', 'Position im Raum'], ['dir', 'Bewegungsrichtung'], ['path', 'Bewegungsbahn'], ['speed', 'Geschwindigkeit'], ['accel', 'Beschleunigung'], ['rhythm', 'Rhythmus'], ['appear', 'Erscheinungsverhalten'], ['vanish', 'Verschwindeverhalten'], ['trail', 'Spur']]],
+  ['Kasten 3 · Interaktion', [['interact', 'Interaktion zwischen Elementen']]],
+];
+const KM_BASE = { element: 'Kreis', char: 'Geometrisch', size: 'Klein', temp: 'Neutral', light: ['Hell', null, 'Im Dark Mode weiß auf schwarz, im Light Mode umgekehrt – die Rolle bleibt „Kontrastfarbe“.'], hue: ['Unbunt', null, 'Schwarz-weiß, kein Farbton.'], sat: 'Entsättigt',
+  alpha: 'Undurchsichtig', count: 'Einzeln', layout: 'Gruppiert', dim: '2D', fill: 'Gefüllt', stroke: 'Keine', surface: 'Glatt',
+  shapeFx: 'Keine', transform: 'Keine', colorFx: 'Keine', place: 'Mitte', dir: 'Keine', path: 'Keine', speed: 'Moderat', accel: 'Keine', rhythm: 'Regelmäßig', appear: 'Einblenden', vanish: 'Ausblenden', trail: 'Keine', interact: 'Keine' };
+const KM_TRACK = {   // Standard je Spur – vor allem die Kopplung an den Klang
+  flute: { alpha: ['Halbtransparent', null, 'Nachbilder mit 40 % Deckkraft; der Zielplatz wird mit jedem kräftiger.'], accel: 'Stufenweise', trail: ['Nachbild', null, '8 halbtransparente Nachbilder pro Bewegung.'],
+    speed: ['Moderat', 'Rhythmus', 'An den Rhythmus angepasst: 8 Töne pro halbem Takt, ein Nachbild braucht etwa 30 % eines halben Takts.'],
+    rhythm: ['Regelmäßig', 'Rhythmus', 'Gebaut nach den 8 Flöten-Tönen pro halbem Takt (16tel).'] },
+  trumpet: { rhythm: ['Unregelmäßig', 'Rhythmus', 'Folgt dem Mosquito-Ablauf: 3 · Pause 3 · 2 + 2 · Pause 2 · 3 · Pause 1 Schläge.'], appear: ['Jump-in', 'Rhythmus', 'Mit jedem Mosquito-Ton springt es herein.'],
+    shapeFx: ['Verkleinern', 'Lautstärke', 'Wird mit dem Ausklingen des Tons stetig kleiner, bis es weg ist.'], vanish: 'Schrumpfen', speed: 'Schnell', accel: 'Plötzlich' },
+  frog: { rhythm: ['Unregelmäßig', 'Rhythmus', 'Folgt dem Frog-Ablauf mit unterschiedlich langen Abschnitten: 6 · 2 · 4 · 4 Schläge.'], shapeFx: ['Vergrößern', 'Rhythmus', 'Je länger ein Frog-Abschnitt dauert, desto mehr wächst es.'] },
+  building: { rhythm: ['Repetitiv', 'Rhythmus', 'Jeder Takt gleich aufgebaut: Schlag 1, Schlag 2, dann Schlag 3 und 4 als Reaktion.'], appear: ['Einblenden', 'Rhythmus', 'Auf Schlag 1 und 2 kommt je ein Element dazu.'] },
+  riser: { rhythm: ['Regelmäßig', 'Rhythmus', '2¾ Schläge hinein, 2¼ Schläge hinaus – startet mit dem Riser in Takt 24.2.'], dir: ['Zur Mitte', 'Tonhöhe', 'Der Riser steigt in der Tonhöhe – alles zieht sich zur Mitte zusammen wie beim Einatmen.'],
+    accel: ['Zunehmend', 'Tonhöhe', 'Mit steigender Tonhöhe wird es schneller.'], layout: 'Radial', count: 'Viele', element: 'Linie' },
+  jagd: { rhythm: ['Repetitiv', 'Rhythmus', '3 Schläge Bewegung, dann 1 Schlag Pause – wie die Hornstöße.'], vanish: ['Fade-out', 'Lautstärke', 'Verblasst mit dem Ausklingen des Horns.'] },
+  drums: { rhythm: ['Pulsierend', 'Rhythmus', 'Reagiert auf jeden Schlag der Drums.'], shapeFx: ['Verzerren', 'Lautstärke', 'Auf jedem Schlag kurz stark ausgelenkt, dann wieder Ruhe.'], appear: 'Jump-in', accel: 'Plötzlich' },
+  ring: { rhythm: ['Repetitiv', 'Rhythmus', 'Ringtone-Muster je Takt: zwei Elemente in der Mitte von Schlag 1, 2 und 3 (das zweite eine 16tel später), im 4. Schlag vier auf je einer 16tel.'],
+    appear: ['Aufpoppen', 'Rhythmus', 'Jedes Element erscheint genau auf seinem Ringtone-Ton.'], count: 'Viele', size: 'Klein' },
+};
+const KM = {
+  flute: {
+    2: { count: 'Mehrere', layout: ['Radial', null, '8 Kugeln auf einem Kreis um die jeweilige Mitte.'], transform: ['Gruppierung', null, 'Die 8 Kugeln öffnen sich aus einer Kugel und sammeln sich in der nächsten.'], place: ['Mitte', null, 'Die Mitte wandert Takt für Takt auf einem Achteck ringsherum – oben beginnend.'], dir: ['Nach außen', null, '1. halber Takt nach außen, 2. halber Takt in die nächste Kugel im Uhrzeigersinn (rechts, rechts unten, unten …).'], path: ['Kreisförmig', null, 'Die Mitte läuft in 8 Takten einmal im Uhrzeigersinn herum, dann schließt sich der Kreis.'], accel: ['Zunehmend', null, 'Hinein werden die Kugeln schneller, hinaus bremsen sie ab.'], appear: 'Zusammenfügen', vanish: 'Auflösen', trail: 'Keine', alpha: ['Halbtransparent', null, 'Kugeln auf dem Kreis 45 % Deckkraft; die Mitte füllt sich bis 100 %.'] },
+    4: { count: ['Wenige', null, '4 Kugeln auf jedem zweiten Platz.'], layout: ['Radial', null, '8 Plätze auf einem Kreis um die Mitte.'], dir: 'Rechts', path: ['Kreisförmig', null, 'Alle gleichzeitig einen Platz weiter im Uhrzeigersinn.'] },
+    5: { count: ['Viele', null, '16 kleine Kugeln im Kreis, dazu der Kreis in der Mitte.'], layout: 'Radial', shapeFx: ['Vergrößern', null, 'Die Nachbilder werden auf dem Weg größer; der Kreis in der Mitte wächst mit jeder Kugel.'], transform: ['Gruppierung', null, 'Die Kugeln gehen im Kreis in der Mitte auf.'], dir: 'Zur Mitte', path: 'Gerade', rhythm: ['Regelmäßig', 'Rhythmus', 'Pro halbem Takt eine Kugel (zufällige Reihenfolge), nach 8 Takten von vorn.'], vanish: 'Zusammenfügen' },
+    6: { count: 'Mehrere', layout: ['Linear', null, '8 Spalten nebeneinander wie Tasten.'], place: 'Oben', dir: ['Runter', 'Tonhöhe', 'Absteigende Tonleiter: jede Kugel fällt eine Stufe tiefer als die davor.'], path: 'Gerade', vanish: 'Ausblenden' },
+    7: { element: 'Punkt', count: 'Mehrere', layout: 'Zufällig', colorFx: ['Dunkler', null, 'Die Punkte leuchten auf und dunkeln langsam ab.'], place: 'Mitte', speed: 'Langsam', accel: 'Keine', appear: 'Aufpoppen', vanish: 'Fade-out', trail: ['Nachleuchten', null, 'Eine Stelle leuchtet nach und wird nicht erneut gewählt.'] },
+    8: { element: 'Linie', count: 'Mehrere', layout: 'Zufällig', alpha: 'Undurchsichtig', dir: 'Runter', path: 'Gerade', appear: ['Wachsen', null, '1. halber Takt: 8 Linien ziehen sich nacheinander von oben nach unten auf.'], vanish: ['Auflösen', null, '2. halber Takt: in derselben Reihenfolge verschwinden sie wieder.'], trail: 'Keine' },
+    9: { count: ['Viele', null, '72 hellgraue Kugeln.'], light: 'Mittel', layout: 'Zufällig', colorFx: ['Dunkler', null, 'Die Ziel-Kugel wird mit jeder ankommenden dunkler; am Ende zieht sich das Feld schwarz auf.'], transform: 'Gruppierung', dir: 'Zur Mitte', path: 'Gerade', vanish: 'Zusammenfügen' },
+    10: { count: ['Wenige', null, '4 Kugeln auf jedem zweiten von 8 Plätzen.'], layout: ['Linear', null, 'Auf einer Wellenlinie über die Bildbreite.'], dir: 'Rechts', path: ['Wellig', null, 'Pro halben Takt einen Platz weiter auf der Welle – rechts raus, links wieder rein.'] },
+    11: { count: ['Viele', null, 'Jeden Takt kommt links eine Kugel dazu, auf jedem zweiten Platz.'], layout: ['Linear', null, 'Auf einer endlosen Wellenlinie.'], place: ['Mitte', null, 'Das Bild läuft mit der ersten Kugel mit und wandert stetig nach links.'], dir: ['Rechts', null, 'Die Kugeln laufen nach rechts, das Bild läuft halb so schnell mit – die Welle zieht nach links, die Kugeln wandern trotzdem weiter nach rechts.'], path: ['Wellig', null, 'Immer von unten nach oben, von oben nach unten.'], appear: ['Einblenden', null, 'Die Kugeln starten links und kommen von dort herein.'] },
+    12: { element: 'Linie', char: 'Abgerundet', count: 'Einzeln', layout: 'Linear', dir: ['Rechts', null, 'Abwechselnd von links nach rechts und von rechts nach links.'], path: ['Wellig', null, '8 Ausschläge pro Zeile, 4 hoch, 4 runter; am Rand führt ein Halbkreis in die nächste Zeile.'], appear: 'Wachsen', vanish: ['Fade-out', null, 'Ältere Zeilen verblassen.'], trail: ['Nachzeichnen', null, 'Eine Kugel zeichnet die Wellenlinie.'] },
+    13: { size: 'Groß', fill: 'Ungefüllt', stroke: 'Dünn', count: 'Mehrere', layout: ['Radial', null, '8 große Kreise im Kreis, in der Mitte ein Fluchtpunkt.'], shapeFx: ['Verkleinern', null, 'Das Abbild wird auf dem Weg zur Mitte immer kleiner.'], dir: 'Zur Mitte', path: 'Gerade', vanish: 'Schrumpfen' },
+    14: { element: 'Punkt', count: 'Viele', layout: 'Radial', dim: '2.5D', shapeFx: ['Dehnen', null, 'Zum Rand hin ziehen die Sterne immer längere Streifen.'], place: 'Vordergrund', dir: ['Nach vorne', null, 'Flug durch den Raum: die Sterne kommen aus der Mitte auf einen zu.'], path: 'Gerade', speed: 'Schnell', accel: 'Zunehmend', appear: 'Zoom-in', vanish: 'Zoom-out', trail: 'Linie' },
+  },
+  trumpet: {
+    0: { element: 'Polygon', char: 'Spitz', size: 'Groß', path: 'Keine', shapeFx: ['Verkleinern', 'Lautstärke', 'Springt groß herein, schießt kurz über und zieht sich bis zum Tonende zusammen – stetig kleiner, bis er weg ist.'] },
+    1: { element: 'Rechteck', size: 'Groß', place: 'Unten', dir: ['Hoch', 'Lautstärke', 'Wie ein Pegel: schießt mit dem Ton hoch und sinkt mit dem Ausklingen.'], path: 'Gerade', shapeFx: ['Dehnen', 'Lautstärke', 'Der Balken wird mit dem Ton lang und sinkt danach.'] },
+    2: { element: 'Linie', char: 'Abgerundet', stroke: 'Dick', dir: 'Rechts', path: ['Zickzack', null, 'Links starke Ausschläge und dicke Kontur, nach rechts kleiner und dünner.'], speed: ['Moderat', 'Rhythmus', 'Der Punkt erreicht das rechte Ende genau mit dem Tonende.'], trail: ['Nachzeichnen', null, 'Der Punkt zeichnet die Welle selbst; dahinter bleibt die Spur stehen.'], vanish: 'Ausblenden', interact: ['Verschmelzen', null, 'Punkt und Linie hängen wie ein Tropfen zusammen (Metaballs).'] },
+    3: { element: 'Fläche', char: 'Organisch', size: 'Riesig', place: 'Unten', dir: ['Hoch', 'Lautstärke', 'Mit jedem Ton wölbt sich eine breite Kuppel nach oben und sinkt mit dem Ausklingen.'], path: 'Wellig', shapeFx: ['Dehnen', 'Lautstärke', 'Wird stetig kleiner, bis nur die flache Welle bleibt.'], vanish: 'Schrumpfen' },
+  },
+  frog: {
+    0: { fill: 'Ungefüllt', stroke: ['Dick', null, 'Innen dicke Kontur, nach außen dünner und blasser.'], count: 'Viele', layout: 'Radial', alpha: 'Halbtransparent', dir: 'Nach außen', path: 'Gerade', speed: 'Langsam', appear: ['Wachsen', 'Rhythmus', 'Alle halbe Schläge kommt aus der Mitte ein neuer Kreis.'], vanish: ['Fade-out', 'Rhythmus', 'Beim Wechsel im Frog-Ablauf verschwinden weich die äußeren Kreise.'], trail: 'Nachbild' },
+    1: { fill: 'Ungefüllt', stroke: 'Dick', size: 'Mittel', char: 'Unregelmäßig', count: 'Mehrere', layout: 'Radial', shapeFx: ['Verzerren', 'Rhythmus', 'Der Rand zittert wie eine Frequenz; je länger der Abschnitt, desto stärker reißt die Verzerrung aus. Auf jedem Schlag zuckt er.'], trail: ['Nachbild', null, 'Nach innen immer kleinere, dünnere, blassere Abbilder, leicht verzögert.'] },
+    2: { element: 'Linie', char: 'Organisch', dir: 'Nach außen', path: 'Spiralförmig', shapeFx: ['Dehnen', 'Rhythmus', 'Der Streifen wird immer länger und dicker wie ein Trichter; beim Wechsel zieht er sich in die Mitte zurück.'], appear: 'Wachsen', vanish: 'Schrumpfen' },
+    3: { size: 'Mittel', surface: ['Strukturiert', null, 'Nur aus waagrechten Streifen in wechselnder Dicke, wie ein gestörtes Bildsignal.'], shapeFx: ['Verpixeln', 'Rhythmus', 'Je länger der Abschnitt, desto mehr zerfällt sie – auf jeder 16tel flackernd.'], transform: 'Teilung', colorFx: ['Heller', null, 'Einzelne Streifen blitzen hell auf.'], vanish: 'Zerfallen' },
+  },
+  building: {
+    0: { count: ['Viele', null, '4 → 6 → 8 → … → 14 Kugeln.'], layout: 'Gruppiert', transform: ['Teilung', 'Rhythmus', 'Auf Schlag 3 verschmelzen die Kugeln und teilen sich – jedes Mal in 2 mehr.'], shapeFx: ['Verzerren', null, 'Beim Auseinandergehen wackeln die Kugeln leicht.'], dir: ['Runter', null, 'Beim 4. Mal nach unten, beim 5. Mal nach oben, beim 6. Mal fliegen alle aus dem Bild.'], vanish: 'Zusammenfügen', interact: ['Verschmelzen', null, 'Kugeln fließen zusammen und teilen sich wieder.'] },
+    1: { element: 'Linie', count: 'Wenige', layout: 'Linear', dir: ['Zur Mitte', null, 'Schlag 1 von links, Schlag 2 von rechts.'], path: 'Wellig', shapeFx: ['Verzerren', 'Rhythmus', 'Ab Schlag 3 eine Linie, die dicker wird und 2 Schläge lang immer welliger schwingt.'], transform: 'Gruppierung', vanish: 'Ausblenden', interact: ['Verbinden', null, 'Die beiden Striche schnappen zu einer Linie zusammen.'] },
+    2: { element: 'Fläche', char: 'Organisch', size: 'Riesig', place: 'Unten', count: 'Wenige', dir: ['Hoch', 'Rhythmus', 'Mit jeder Kugel steigt der Wasserspiegel; beim 4. Mal sinkt er ein Stück.'], path: 'Wellig', shapeFx: ['Verzerren', null, 'In Schlag 3 und 4 vibriert das Wasser.'], appear: 'Einblenden', vanish: ['Ausblenden', null, 'Nach 6 Takten läuft das Wasser ab.'], interact: ['Aufprall', null, 'Die Kugeln fallen ins Wasser und lösen Wellen aus.'] },
+    3: { element: 'Linie', size: 'Groß', fill: 'Ungefüllt', stroke: 'Dünn', count: 'Wenige', surface: 'Strukturiert', dir: ['Zur Mitte', null, 'Schlag 1 von links, Schlag 2 leicht verdreht von rechts.'], shapeFx: ['Drehen', 'Rhythmus', 'In Schlag 3 und 4 zittert der obere Kreis in seiner Drehung – die Muster flimmern.'], interact: ['Überlagern', null, 'Wo sich die Kreise überlagern, entstehen Moiré-Muster.'] },
+    4: { element: 'Punkt', size: 'Winzig', count: 'Viele', layout: ['Zufällig', null, 'Die Körner rieseln zufällig herein und ordnen sich zu einer Klangfigur.'], surface: 'Körnig', transform: ['Gruppierung', 'Rhythmus', 'In Schlag 3 und 4 vibriert die Platte – die Körner wandern zu den ruhigen Linien.'], dir: 'Runter', path: 'Zufällig', interact: ['Ordnen', null, 'Zusammen bilden die Körner eine Chladni-Figur.'] },
+    5: { element: 'Punkt', count: 'Viele', layout: 'Rasterförmig', shapeFx: ['Vergrößern', 'Rhythmus', 'Wellenringe laufen durchs Raster; in Schlag 3 und 4 schwingen beide Quellen schneller und kräftiger.'], path: 'Kreisförmig', dir: 'Nach außen', appear: 'Einblenden', interact: ['Überlagern', null, 'Wo sich die Wellen treffen, entsteht ein Interferenzmuster.'] },
+  },
+  riser: {
+    0: { stroke: 'Dünn', shapeFx: ['Dehnen', null, 'Die Striche ziehen sich lang bis in die Mitte, dann wandert das äußere Ende hinterher.'], transform: ['Gruppierung', null, 'Alle bilden in der Mitte einen kleinen Punkt.'], path: 'Gerade', appear: 'Wachsen', vanish: ['Fade-out', null, 'Danach ziehen sie sich nach außen und verblassen von der Mitte aus.'] },
+    1: { stroke: 'Dünn', shapeFx: ['Drehen', 'Tonhöhe', 'Das Gebilde dreht sich mit dem steigenden Riser immer schneller; die Striche biegen sich.'], transform: ['Gruppierung', null, 'In der Mitte wickeln sie sich auf einen Kreis.'], path: 'Spiralförmig', appear: 'Wachsen', vanish: 'Fade-out' },
+  },
+  jagd: {
+    0: { element: 'Linie', count: 'Mehrere', layout: 'Linear', place: 'Unten', dir: ['Hoch', null, 'Von unten nach oben: der unterste am längsten, nach oben kürzer und enger.'], path: 'Gerade', speed: 'Schnell', appear: 'Aufpoppen' },
+    1: { size: 'Riesig', fill: 'Ungefüllt', stroke: 'Dünn', shapeFx: ['Verkleinern', null, 'Zieht sich in 3 Schlägen von außerhalb des Bildes zu einem Punkt in der Mitte zusammen.'], dir: 'Zur Mitte', vanish: 'Schrumpfen', trail: ['Nachbild', null, 'Zieht eine Spur weiterer Kreise hinter sich her.'] },
+  },
+  drums: {
+    0: { element: 'Linie', count: 'Wenige', layout: ['Linear', null, 'Vier Linien am Bildrand, die sich an den Ecken nicht berühren.'], place: 'Vordergrund', appear: 'Einblenden', vanish: 'Ausblenden' },
+    1: { element: 'Fläche', char: 'Organisch', size: 'Mittel', shapeFx: ['Verzerren', 'Lautstärke', 'Auf jedem Schlag wirft die Form Wellen wie Gelee und schwingt nach.'], speed: 'Langsam' },
+    2: { element: 'Punkt', count: 'Viele', layout: 'Rasterförmig', shapeFx: ['Vergrößern', 'Lautstärke', 'Die Druckwelle macht die Punkte kurz größer und schiebt sie nach außen.'], colorFx: ['Heller', null, 'Die Punkte werden kurz heller.'], dir: 'Nach außen', path: 'Kreisförmig' },
+  },
+  ring: {
+    0: { layout: 'Gruppiert', dir: ['Zur Mitte', null, 'Je zwei Kugeln kommen von außen herein.'], vanish: ['Jump-out', 'Rhythmus', 'Im 4. Schlag fliegen sie in vier Gruppen raus (2 · 1 · 2 · 1).'] },
+    1: { layout: 'Rasterförmig', place: 'Oben', dir: 'Runter', vanish: ['Jump-out', null, 'Mit dem nächsten Takt ist wieder alles leer.'] },
+    2: { layout: ['Gruppiert', null, 'Am Ende steht ein symmetrisches Dreieck (1 · 2 · 3 · 4).'], vanish: 'Jump-out' },
+    3: { layout: 'Rasterförmig', dir: ['Rechts', null, 'Das Bild wandert über die 8 Takte von links nach rechts.'], vanish: ['Jump-out', 'Rhythmus', 'Im 4. Schlag verlassen die vier ältesten Kugeln das Bild.'] },
+    4: { element: 'Linie', count: 'Viele', layout: 'Linear', shapeFx: 'Dehnen', dir: 'Rechts', appear: ['Wachsen', 'Rhythmus', 'Eine Linie nach der anderen wächst aus der Mitte nach oben und unten.'], vanish: 'Jump-out' },
+    5: { element: 'Punkt', layout: ['Radial', null, '8 Dreiecke aus je 10 Punkten als Kranz, Spitze nach außen.'], path: 'Kreisförmig', dir: ['Rechts', null, 'Im Uhrzeigersinn, oben beginnend – ein Dreieck pro Takt.'], vanish: 'Ausblenden' },
+    6: { element: 'Punkt', layout: ['Radial', null, 'Großer Kreis aus 60 Punkten, füllt sich in 10 Takten.'], shapeFx: ['Verkleinern', null, 'Die großen Punkte werden auf dem Weg zur Mitte immer kleiner.'], dir: 'Zur Mitte', vanish: ['Schrumpfen', 'Rhythmus', 'Im 4. Schlag fallen vier Punkte wie in ein Loch.'] },
+    7: { element: 'Punkt', layout: 'Radial', path: 'Spiralförmig', dir: 'Zur Mitte', shapeFx: ['Verkleinern', null, 'Die Punkte werden nach innen kleiner.'], vanish: ['Ausblenden', 'Rhythmus', 'Im 4. Schlag rutschen die vier ältesten nach außen aus dem Bild.'] },
+    8: { element: 'Punkt', layout: 'Radial', path: 'Spiralförmig', dir: 'Nach außen', shapeFx: ['Vergrößern', null, 'Die Punkte werden nach außen größer.'], vanish: ['Schrumpfen', 'Rhythmus', 'Im 4. Schlag rutschen die vier ältesten zurück in die Mitte.'] },
+    9: { element: 'Punkt', layout: ['Rasterförmig', null, 'Raster aus 8 × 6 Feldern, Bahn für Bahn hin und her.'], path: 'Zickzack', dir: 'Rechts', vanish: ['Schrumpfen', 'Rhythmus', 'Im 4. Schlag schrumpfen die vier hintersten Punkte weg.'] },
+    10: { element: 'Punkt', layout: ['Radial', null, 'Kreis aus 80 Plätzen.'], path: 'Kreisförmig', dir: ['Rechts', 'Rhythmus', 'Abwechselnd im und gegen den Uhrzeigersinn, jeden Takt im Wechsel.'], vanish: 'Ausblenden' },
+  },
+};
+for (const k in KM) for (const i in KM[k]) {
+  const idea = IDEAS[k] && IDEAS[k][i]; if (!idea || idea.info) continue;
+  const spec = { ...KM_BASE, ...(KM_TRACK[k] || {}), ...KM[k][i] };
+  idea.info = { title: idea.title, map: KM_ROWS.map(([g, rows]) => ({ g, rows: rows.map(([key, n]) => { const v = spec[key], [vv, t, h] = Array.isArray(v) ? v : [v]; return { n, v: vv, ...(t ? { t } : {}), ...(h ? { h } : {}) }; }) })) };
+}

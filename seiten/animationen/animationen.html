@@ -125,6 +125,13 @@ header.nav .nc { justify-self: center; display: flex; align-items: center; }
 .box { display: grid; grid-template-rows: auto auto; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); overflow: hidden; min-width: 0; }
 .stage { position: relative; aspect-ratio: 4 / 3; background: var(--stage); }
 .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+/* Vollbild: Klick auf das Bild einer Idee */
+.box:not(.empty) .stage { cursor: zoom-in; }
+.stage .fsl { display: none; position: absolute; left: 16px; top: 14px; font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .02em; pointer-events: none; }
+.stage:fullscreen { aspect-ratio: auto; width: 100vw; height: 100vh; cursor: zoom-out; }
+.stage:-webkit-full-screen { aspect-ratio: auto; width: 100vw; height: 100vh; cursor: zoom-out; }
+.stage.full { position: fixed; inset: 0; z-index: 100; aspect-ratio: auto; width: 100vw; height: 100vh; cursor: zoom-out; }   /* falls der Browser kein echtes Vollbild kann */
+.stage:fullscreen .fsl, .stage:-webkit-full-screen .fsl, .stage.full .fsl { display: block; }
 .stage .tag { position: absolute; right: 8px; bottom: 8px; max-width: calc(100% - 16px); box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 9.5px; line-height: 1.5; font-weight: 600; letter-spacing: .02em; color: var(--muted); background: color-mix(in srgb, var(--panel) 85%, transparent); border: 1px solid var(--line); border-radius: 999px; padding: 0 7px; }
 .cap { padding: 10px 14px 13px; display: grid; gap: 2px; }
 .cap h3 { margin: 0; font-size: 14px; font-weight: 650; display: flex; align-items: center; gap: 8px; }
@@ -143,6 +150,13 @@ header.nav .nc { justify-self: center; display: flex; align-items: center; }
 /* i-Button & Pop-ups: Zuordnung zum morphologischen Kasten */
 .cap h3 .ibtn { margin-left: auto; flex: none; width: 22px; height: 22px; padding: 0; border-radius: 50%; border: 1px solid var(--line-2); background: var(--panel); color: var(--muted); font-family: inherit; font-weight: 700; font-size: 11px; line-height: 1; cursor: pointer; display: grid; place-items: center; }
 .cap h3 .ibtn:hover, .cap h3 .ibtn:focus-visible { color: var(--accent); border-color: var(--accent); outline: none; }
+/* Like-Button je Idee (im Browser gespeichert) */
+.cap h3 .like { margin-left: auto; flex: none; width: 22px; height: 22px; padding: 0; border: 0; background: transparent; color: var(--muted); cursor: pointer; display: grid; place-items: center; border-radius: 50%; }
+.cap h3 .like svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; transition: transform .15s; }
+.cap h3 .like:hover, .cap h3 .like:focus-visible { color: var(--accent); outline: none; }
+.cap h3 .like[aria-pressed="true"] { color: var(--accent); } .cap h3 .like[aria-pressed="true"] svg { fill: currentColor; }
+.cap h3 .like:active svg { transform: scale(.85); }
+.cap h3 .like + .ibtn { margin-left: 0; }
 .infotip { position: fixed; z-index: 90; width: min(340px, calc(100vw - 16px)); padding: 12px 14px; border-radius: 10px; background: var(--ink); color: var(--bg); font-size: 11.5px; line-height: 1.5; box-shadow: 0 10px 30px rgba(0,0,0,.35); pointer-events: none; }
 .infotip[hidden], .imodal[hidden] { display: none; }
 .infotip h4 { margin: 0 0 6px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; opacity: .7; }
@@ -335,7 +349,7 @@ function buildGrid() {
   for (let i = 0; i < Math.max(BOXES, ideas.length + 1); i++) {   // immer mindestens ein freier Kasten
     const it = ideas[i];
     html += it
-      ? `<article class="box" data-i="${i}"><div class="stage"><canvas></canvas>${it.tag ? `<span class="tag">${esc(it.tag)}</span>` : ''}</div><div class="cap"><h3><span class="n">${i + 1}</span>${esc(it.title)}${it.info ? `<button class="ibtn" data-i="${i}" aria-label="Morphologischen Kasten anzeigen" title="Morphologischer Kasten">M</button>` : ''}</h3><div class="pbar" title="Fortschritt im aktuellen Takt"><i></i></div>${it.info && cur === 'flute' && vList(i).length ? `<div class="vchips">${vList(i).map((v, k) => `<button class="vchip" data-i="${i}" data-v="${k}" title="${esc(vLabel(i, v.P))}">${esc(v.name)}</button>`).join('')}</div>` : ''}</div></article>`
+      ? `<article class="box" data-i="${i}"><div class="stage" title="Klicken für Vollbild"><canvas></canvas><span class="fsl">${i + 1} · ${esc(it.title)} — Esc oder Klick zum Beenden</span>${it.tag ? `<span class="tag">${esc(it.tag)}</span>` : ''}</div><div class="cap"><h3><span class="n">${i + 1}</span>${esc(it.title)}${likeBtn(it)}${it.info ? `<button class="ibtn" data-i="${i}" aria-label="Morphologischen Kasten anzeigen" title="Morphologischer Kasten">M</button>` : ''}</h3><div class="pbar" title="Fortschritt im aktuellen Takt"><i></i></div>${it.info && cur === 'flute' && vList(i).length ? `<div class="vchips">${vList(i).map((v, k) => `<button class="vchip" data-i="${i}" data-v="${k}" title="${esc(vLabel(i, v.P))}">${esc(v.name)}</button>`).join('')}</div>` : ''}</div></article>`
       : `<article class="box empty" data-i="${i}"><div class="stage"><span class="plus" aria-hidden="true">+</span></div><div class="cap"><h3><span class="n">${i + 1}</span>Idee ${i + 1} – noch frei</h3></div></article>`;
   }
   $('grid').innerHTML = html;
@@ -527,7 +541,28 @@ function labFrame(s) {   // zeichnet Original, Variante und gespeicherte Variant
   fitDraw($('labO'), s, fn, labor.O); fitDraw($('labV'), s, fn, labor.V);
   dlg.querySelectorAll('canvas[data-vc]').forEach(cv => { const v = vList(curI)[+cv.dataset.vc]; if (v) fitDraw(cv, s, fn, { ...FPC[curI].def, ...v.P }); });
 }
+/* ---------- Likes: je Idee ein Herz, gespeichert im Browser (über Spur + Titel, damit es beim Umnummerieren bleibt) ---------- */
+const LKEY = 'av-anim-likes';
+let LIKES = {}; try { LIKES = JSON.parse(localStorage.getItem(LKEY) || '{}') || {}; } catch (e) { LIKES = {}; }
+const likeId = it => cur + ':' + it.title;
+const HEART = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-9.2-9.4C1.7 7.9 3.8 4.5 7.2 4.5c2 0 3.6 1.1 4.8 2.8 1.2-1.7 2.8-2.8 4.8-2.8 3.4 0 5.5 3.4 4.4 6.6-1.7 4.8-9.2 9.4-9.2 9.4z"/></svg>';
+function likeBtn(it) { const on = !!LIKES[likeId(it)]; return `<button class="like" aria-pressed="${on}" aria-label="${on ? 'Gefällt mir entfernen' : 'Gefällt mir'}" title="${on ? 'Gefällt dir' : 'Gefällt mir'}">${HEART}</button>`; }
+/* ---------- Vollbild: Klick auf das Bild einer Idee (Esc oder erneuter Klick beendet es) ---------- */
+const fsEl = () => document.fullscreenElement || document.webkitFullscreenElement || document.querySelector('.stage.full');
+function toggleFull(st) {
+  const open = fsEl();
+  if (open) { if (open.classList.contains('full')) open.classList.remove('full'); else (document.exitFullscreen || document.webkitExitFullscreen).call(document); return; }
+  const req = st.requestFullscreen || st.webkitRequestFullscreen;
+  if (req) Promise.resolve(req.call(st)).catch(() => st.classList.add('full')); else st.classList.add('full');
+}
+window.addEventListener('keydown', e => { if (e.key === 'Escape') { const f = document.querySelector('.stage.full'); if (f) f.classList.remove('full'); } });
 $('grid').addEventListener('click', e => {
+  const st = e.target.closest('.stage'); if (st && !st.closest('.box.empty')) return toggleFull(st);
+  const lk = e.target.closest('.like');
+  if (lk) { const it = IDEAS[cur][+lk.closest('.box').dataset.i], id = likeId(it), on = !LIKES[id];
+    if (on) LIKES[id] = Date.now(); else delete LIKES[id];
+    try { localStorage.setItem(LKEY, JSON.stringify(LIKES)); } catch (e) {}
+    lk.setAttribute('aria-pressed', String(on)); lk.setAttribute('aria-label', on ? 'Gefällt mir entfernen' : 'Gefällt mir'); lk.title = on ? 'Gefällt dir' : 'Gefällt mir'; return; }
   const v = e.target.closest('.vchip'); if (v) return openInfo(+v.dataset.i, true, +v.dataset.v);
   const b = e.target.closest('.ibtn'); if (b) openInfo(+b.dataset.i, false);
 });

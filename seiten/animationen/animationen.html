@@ -141,7 +141,7 @@ header.nav .nc { justify-self: center; display: flex; align-items: center; }
 .note { margin: 0; color: var(--muted); font-size: 12.5px; }
 .note code { font: 12px/1.4 ui-monospace, "SF Mono", Menlo, monospace; color: var(--ink); }
 /* i-Button & Pop-ups: Zuordnung zum morphologischen Kasten */
-.cap h3 .ibtn { margin-left: auto; flex: none; width: 22px; height: 22px; padding: 0; border-radius: 50%; border: 1px solid var(--line-2); background: var(--panel); color: var(--muted); font: italic 700 12px/1 Georgia, "Times New Roman", serif; cursor: pointer; display: grid; place-items: center; }
+.cap h3 .ibtn { margin-left: auto; flex: none; width: 22px; height: 22px; padding: 0; border-radius: 50%; border: 1px solid var(--line-2); background: var(--panel); color: var(--muted); font-family: inherit; font-weight: 700; font-size: 11px; line-height: 1; cursor: pointer; display: grid; place-items: center; }
 .cap h3 .ibtn:hover, .cap h3 .ibtn:focus-visible { color: var(--accent); border-color: var(--accent); outline: none; }
 .infotip { position: fixed; z-index: 90; width: min(340px, calc(100vw - 16px)); padding: 12px 14px; border-radius: 10px; background: var(--ink); color: var(--bg); font-size: 11.5px; line-height: 1.5; box-shadow: 0 10px 30px rgba(0,0,0,.35); pointer-events: none; }
 .infotip[hidden], .imodal[hidden] { display: none; }
@@ -335,7 +335,7 @@ function buildGrid() {
   for (let i = 0; i < Math.max(BOXES, ideas.length + 1); i++) {   // immer mindestens ein freier Kasten
     const it = ideas[i];
     html += it
-      ? `<article class="box" data-i="${i}"><div class="stage"><canvas></canvas>${it.tag ? `<span class="tag">${esc(it.tag)}</span>` : ''}</div><div class="cap"><h3><span class="n">${i + 1}</span>${esc(it.title)}${it.info && cur === 'flute' ? `<button class="ibtn" data-i="${i}" aria-label="Zuordnung zum morphologischen Kasten anzeigen">i</button>` : ''}</h3><div class="pbar" title="Fortschritt im aktuellen Takt"><i></i></div>${it.info && cur === 'flute' && vList(i).length ? `<div class="vchips">${vList(i).map((v, k) => `<button class="vchip" data-i="${i}" data-v="${k}" title="${esc(vLabel(i, v.P))}">${esc(v.name)}</button>`).join('')}</div>` : ''}</div></article>`
+      ? `<article class="box" data-i="${i}"><div class="stage"><canvas></canvas>${it.tag ? `<span class="tag">${esc(it.tag)}</span>` : ''}</div><div class="cap"><h3><span class="n">${i + 1}</span>${esc(it.title)}${it.info ? `<button class="ibtn" data-i="${i}" aria-label="Morphologischen Kasten anzeigen" title="Morphologischer Kasten">M</button>` : ''}</h3><div class="pbar" title="Fortschritt im aktuellen Takt"><i></i></div>${it.info && cur === 'flute' && vList(i).length ? `<div class="vchips">${vList(i).map((v, k) => `<button class="vchip" data-i="${i}" data-v="${k}" title="${esc(vLabel(i, v.P))}">${esc(v.name)}</button>`).join('')}</div>` : ''}</div></article>`
       : `<article class="box empty" data-i="${i}"><div class="stage"><span class="plus" aria-hidden="true">+</span></div><div class="cap"><h3><span class="n">${i + 1}</span>Idee ${i + 1} – noch frei</h3></div></article>`;
   }
   $('grid').innerHTML = html;
@@ -467,12 +467,12 @@ function renderVars() {
 }
 function syncSaveBtn() { const b = dlg.querySelector('[data-save]'); if (b) b.textContent = labor.id != null ? 'Variante aktualisieren' : 'Als Variante speichern'; }
 function openInfo(i, lab, vid) {
-  infoEl.hidden = true; curI = i; const idea = IDEAS[cur][i], cfg = FPC[i];
+  infoEl.hidden = true; curI = i; const idea = IDEAS[cur][i], cfg = cur === 'flute' ? FPC[i] : null;   // einstellbar („Andere Parameter ausprobieren“) sind nur die Flöten-Ideen mit FPC
   if (!lab) {
     labor = null;
     dlg.innerHTML = `<div class="im-card"><div class="im-h"><div><span class="im-k">Zuordnung zum morphologischen Kasten</span><h3>${esc(idea.title)}</h3></div><button class="im-x" data-close aria-label="Schließen">${X_ICO}</button></div>
       <div class="im-b">${idea.info.map.map(g => `<div class="im-g">${esc(g.g)}</div>${g.rows.map(r => `<div class="im-r"><span class="im-n">${esc(r.n)}</span><span class="im-v ${r.v === 'Keine' ? 'none' : ''}">${esc(r.v)}</span>${r.t ? `<span class="im-t">← ${esc(r.t)}</span>` : '<span></span>'}<span class="im-hh">${esc(r.h || '')}</span></div>`).join('')}`).join('')}</div>
-      <div class="im-f"><span>Orange Pfeil = Auslöser: der Klangparameter, der diese Zeile steuert.</span><button class="im-go" data-lab>Andere Parameter ausprobieren →</button></div></div>`;
+      <div class="im-f"><span>Orange Pfeil = Auslöser: der Klangparameter, der diese Zeile steuert.</span>${cfg ? '<button class="im-go" data-lab>Andere Parameter ausprobieren →</button>' : ''}</div></div>`;
   } else {
     const L = vList(i), from = vid != null && L[vid] ? L[vid].P : null;
     labor = { O: { ...cfg.def }, V: { ...cfg.def, ...(from || {}) }, id: from ? vid : null };

@@ -13,6 +13,9 @@ const NBARS = Math.round((DUR - OFFSET) / BAR);
 const barStart = b => OFFSET + (b - 1) * BAR;
 const trackName = key => TBY[key].name;
 const ideaFile = id => { const key = id.split(':')[0]; return `${fileSafe(trackName(key) + '_' + ideaOf(id).title)}.mp4`; };
+let CLIPS = {};      // gemessene Sichtbarkeit der exportierten Clips (export/clip-sichtbarkeit.json, aus den fertigen MP4-Dateien ausgelesen)
+const clipWin = id => ((CLIPS[ideaFile(id)] || []).filter(([a, z]) => z - a >= .2));
+const mergeGaps = (W, g) => W.reduce((m, w) => { const l = m[m.length - 1]; if (l && w[0] - l[1] < g) l[1] = Math.max(l[1], w[1]); else m.push([...w]); return m; }, []);
 const mapName = m => m.name || describe(m).when;
 const layerLbl = id => id === '*' ? 'alle Ebenen' : (layerById(id) ? layerName(layerById(id)) : '?');
 
@@ -140,6 +143,8 @@ function layerBlock(t) {
   h += `<tr><th>Animation</th><td><b>${esc(idea.title)}</b> <span class="mu">(Katalog-Nr. ${esc(id)}${idea.tag ? ' · ' + esc(idea.tag) : ''})</span></td></tr>`
     + `<tr><th>Beschreibung</th><td>${esc(idea.text || '–')}</td></tr>`
     + `<tr><th>Ebene</th><td>${L.on ? 'eingeschaltet' : '<b>ausgeschaltet</b> (nicht im Gesamtbild)'} · Zeichenfarbe: ${L.tint ? `Spurfarbe (<span class="sw" style="background:${TCOL[t.key]}"></span> ${TCOL[t.key]})` : 'Weiß auf Schwarz (Theme)'}</td></tr>`;
+  const cw = clipWin(id);
+  if (cw.length) h += `<tr><th>Im Clip sichtbar</th><td>${cw.map(([a, z]) => `<div>${rng(a, z)}</div>`).join('')}<span class="mu">gemessen an der exportierten MP4-Datei; außerhalb dieser Zeiten ist der Clip schwarz</span></td></tr>`;
   const sicht = [`Die Ebene wird nur gezeichnet, solange die Spur klingt (Zeitfenster oben)${idea.tail ? `, <b>zuzüglich ${idea.tail} Schläge (${n1(idea.tail * BEAT, 2)} s) Auslaufzeit</b> nach dem Ende jedes Fensters` : ''}.`];
   if (t.key === 'drums' || t.key === 'ring') sicht.push(`<b>Sonderregel:</b> Die Animation beginnt erst mit <b>Takt 25 (${n1(OFFSET + 24 * BAR, 2)} s)</b>, obwohl die Spur schon früher klingt – so legt es die Rangfolge der Spuren in der Klanghierarchie fest. Bei „durchgehend“ exportierten Videos entfällt diese Regel.`);
   h += `<tr><th>Sichtbarkeit</th><td>${sicht.join('<br>')}</td></tr>`;
@@ -233,6 +238,36 @@ function appendix() {
 }
 const presetMap = p => { const d = Sig.BY[p.m.src]; return { id: 'preset:' + p.id, name: '', layer: '*', on: true, hi: d.dhi, ...p.m }; };
 
+
+function secKurz() {
+  const ls = TRACKS.map(t => layerById('track:' + t.key)).filter(l => l && l.on && l.anim);
+  const wins = ls.map(l => ({ l, w: mergeGaps(clipWin(l.anim), 1.2) }));
+  const cuts = [...new Set([0, DUR, ...wins.flatMap(x => x.w.flat())].map(v => +v.toFixed(2)))].sort((a, b) => a - b);
+  const segs = [];
+  for (let i = 0; i < cuts.length - 1; i++) {
+    const a = cuts[i], z = cuts[i + 1], mid = (a + z) / 2, set = wins.filter(x => x.w.some(([p, q]) => mid >= p && mid < q)).map(x => x.l.key);
+    const k = set.join(); const last = segs[segs.length - 1];
+    if (last && last.k === k) last.z = z; else segs.push({ a, z, k, set });
+  }
+  const rows = segs.map(sg => `<tr><td>${n1(sg.a, 1)} – ${n1(sg.z, 1)} s</td><td>${posOf(sg.a)}</td><td>${sg.set.length ? sg.set.map(k => `<i class="dot" style="background:${TCOL[k]}"></i>${esc(trackName(k))}`).join(' &nbsp; ') : '<span class="mu">nichts (schwarz)</span>'}</td></tr>`).join('');
+  const clips = ls.map(l => { const cw = clipWin(l.anim); return `<tr><td><code>${esc(ideaFile(l.anim))}</code></td><td><i class="dot" style="background:${TCOL[l.key]}"></i>${esc(trackName(l.key))}</td><td>${esc(ideaOf(l.anim).title)}</td><td>${TCOL[l.key]}</td><td>${cw.length ? n1(cw[0][0], 1) + ' – ' + n1(cw[cw.length - 1][1], 1) + ' s' : '–'}</td></tr>`; }).join('');
+  return `<section><h2>0 · Kurzfassung für den Videoschnitt</h2>
+  <p><b>Die acht MP4-Clips sind fertig und werden unverändert benutzt – nichts davon neu zeichnen oder neu animieren.</b> Aufgabe ist nur, sie zu einem Video zusammenzusetzen und den Ton zu legen.</p>
+  <ul>
+  <li><b>Technik der Clips:</b> alle 1920 × 1080, ${EXP.fps} Bilder pro Sekunde, ${Math.ceil(DUR * EXP.fps)} Bilder = ${n1(Math.ceil(DUR * EXP.fps) / EXP.fps, 2)} s, ohne Ton, <b>reiner schwarzer Hintergrund (#000000)</b>. Jeder Clip beginnt bei 0:00 und läuft über die ganze Songlänge – alle Clips sind also bereits zeitgleich zueinander und zur Tonspur. <b>Nicht verschieben, schneiden oder dehnen.</b></li>
+  <li><b>Zusammensetzen:</b> alle Clips <b>deckungsgleich übereinanderlegen</b> (volle Bildgröße, Position 0/0). Weil der Hintergrund schwarz ist, den Überblendmodus „Aufhellen“ (Lighten) oder „Negativ multiplizieren“ (Screen) verwenden, sodass nur die hellen Formen sichtbar bleiben. Stapelreihenfolge von unten nach oben: ${ls.map(l => esc(trackName(l.key))).join(' → ')}.</li>
+  <li><b>Ein- und Ausblenden steckt schon in den Clips</b> (ein Clip ist nur dort hell, wo seine Tonspur klingt; sonst schwarz). Keine zusätzlichen Blenden, Überblendungen oder Effekte einfügen.</li>
+  <li><b>Ton:</b> ausschließlich die mitgelieferte Tonspur (<code>Tonspur_Synthwave-goose.m4a</code>, ${n1(DUR, 3)} s), unverändert, ab 0:00. Das Video am Ende auf die Länge der Tonspur kürzen.</li>
+  <li><b>Stil:</b> schlichtes flaches 2D, nur einfache geometrische Formen (Kreise, Punkte, Linien, Spiralen, Raster) auf Schwarz, keine Texte, Fotos, Texturen, Schatten oder Verläufe. Die Farbe jedes Clips ist seine feste Spurfarbe (Tabelle unten). Der Stil darf nicht verändert werden.</li>
+  <li><b>Keine zusätzliche Klangreaktion:</b> ${P.maps.some(m => m.on) ? 'siehe Abschnitt 5' : 'Im Projekt ist keine Parameter-Zuordnung eingeschaltet. Die Bewegung der Clips folgt allein Takt und Schlag der Animation (die Clips sind schon fertig berechnet). Nichts hinzufügen, was auf Lautstärke oder Tonhöhe reagiert.'}</li></ul>
+  <h3>Die acht Clips</h3>
+  <table class="t sm"><tr><th>Datei</th><th>Spur</th><th>Animation</th><th>Farbe</th><th>Sichtbar von – bis</th></tr>${clips}</table>
+  <h3>Ablauf: was wann im Bild ist</h3>
+  <p class="mu">Gemessen an den fertigen Clips; kurze Lücken innerhalb einer Animation (unter 1,2 s) sind zusammengefasst. Zeiten in Sekunden der Tonspur.</p>
+  <table class="t sm"><tr><th>Zeit</th><th>Takt, Schlag (Beginn)</th><th>Sichtbare Clips</th></tr>${rows}</table>
+  <p><b>Höhepunkt</b> (höchste Spannung, 9,5 von 10) bei etwa 49,4 s; mit Takt 25 (${n1(OFFSET + 24 * BAR, 2)} s) setzen Drums und Ringtone ein. Ab etwa 64 s beruhigt sich der Song, der Schluss ist ruhig.</p></section>`;
+}
+
 function secEinleitung() {
   const used = TRACKS.map(t => layerById('track:' + t.key)).filter(l => l && l.on && l.anim);
   return `<section><h2>1 · Überblick und Lieferumfang</h2>
@@ -250,8 +285,9 @@ function secEinleitung() {
 
 (async function () {
   await loadProject();
+  try { CLIPS = await (await fetch('export/clip-sichtbarkeit.json', { cache: 'no-store' })).json(); } catch (e) {}
   const d = new Date();
   $('doc').innerHTML = `<header class="cover"><h1>Audio-Visualisierung – Beschreibung für das Video</h1><div class="mu">Synthwave goose – Blade Runner 2049 · Stand ${d.toLocaleDateString('de-DE')}</div></header>`
-    + secEinleitung() + secSong() + secAblauf() + secEbenen() + secMaps() + secReferenz() + secMesswerte() + appendix();
+    + secKurz() + secEinleitung() + secSong() + secAblauf() + secEbenen() + secMaps() + secReferenz() + secMesswerte() + appendix();
   document.body.dataset.ready = '1';
 })();

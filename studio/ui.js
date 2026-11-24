@@ -3,7 +3,7 @@
    Studio – Oberfläche: Layout mit Trennern, Vorschau, Zuordnungsliste, Inspektor,
    Zeitleiste, Player, Menüs. (Das Labor steht in labor.js, der Start in start.js.)
    ═══════════════════════════════════════════════════════════════════════════ */
-const UI = Object.assign({ onlyUsed: false, ws: 'studio', sel: null, view: 'mix', gate: true, idle: true, tlSig: true, lay: { lw: 0, pw: 0, th: 250 }, hide: {}, lf: 'alle', lt: '' }, lsGet(LS_U, {}));
+const UI = Object.assign({ onlyUsed: false, ws: 'studio', sel: null, view: 'mix', gate: true, idle: true, tlSig: true, lay: { lw: 0, pw: 0, th: 250 }, hide: {}, lf: 'alle', lt: '', mp4gate: true, mp4res: '1080' }, lsGet(LS_U, {}));
 UI.lay = Object.assign({ lw: 0, pw: 0, th: 250 }, UI.lay); delete UI.lay.iw; UI.hide = UI.hide || {};
 const defLay = () => ({ lw: Math.round(Math.max(300, Math.min(480, innerWidth * .28))), pw: Math.round(Math.max(360, Math.min(760, innerWidth * .42))), th: 250 });
 if (!UI.lay.lw) UI.lay.lw = defLay().lw; if (!UI.lay.pw || UI.lay.pw < 300) UI.lay.pw = defLay().pw;
@@ -446,6 +446,7 @@ const toggleTheme = () => { const n = root.dataset.theme === 'dark' ? 'light' : 
 function readWaveColors() { const cs = getComputedStyle(root); WC = { base: cs.getPropertyValue('--faint').trim(), play: cs.getPropertyValue('--accent').trim() }; }
 const MENUS = {
   datei: () => [{ t: 'Projekt speichern', k: '⌘S / Strg+S', f: saveProject }, { t: 'Projekt aus Datei laden …', f: loadFromFile }, { hr: 1 },
+    { t: 'Beschreibung als PDF (Seite öffnen, dann Drucken)', href: 'bericht.html' }, { t: 'Alle zugeordneten Animationen als MP4 laden', f: () => expRun(expProjectSpecs()) }, { hr: 1 },
     { t: 'Alle Zuordnungen als Text kopieren', f: async () => { try { await navigator.clipboard.writeText(textSummary()); toast('Zuordnungen kopiert'); } catch (e) { prompt('Zum Kopieren:', textSummary()); } } }, { hr: 1 },
     { t: 'Änderungen verwerfen (zurück zum Stand in projekt.json)', f: async () => { if (!confirm('Alle ungespeicherten Änderungen verwerfen?')) return; try { localStorage.removeItem(LS_P); } catch (e) {} await loadProject(); UI.sel = null; uiAll(); toast('Zurückgesetzt'); } }],
   ansicht: () => [{ h: 'Bereich' }, { t: 'Studio', ck: UI.ws === 'studio', f: () => setWs('studio') }, { t: 'Labor', ck: UI.ws === 'labor', f: () => setWs('labor') }, { hr: 1 }, { h: 'Fenster ein- / ausblenden' },

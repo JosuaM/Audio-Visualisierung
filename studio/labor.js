@@ -16,7 +16,10 @@ const trackSelect = (cls, first) => `<select data-a="${cls}"><option value="">${
 function renderLabor() {
   const lf = UI.lf, lt = UI.lt; labCards = [];
   $('lfilter').innerHTML = [['alle', 'Alles'], ['anim', 'Animationen der Tonspuren'], ['fx', 'Effekte'], ['map', 'Parameter-Zuordnungen']].map(([k, n]) => `<button class="fchip${lf === k ? ' on' : ''}" data-lf="${k}">${n}</button>`).join('')
-    + `<span style="flex:1"></span><span class="lb">Tonspur</span><select id="ltrk" aria-label="Nur Animationen dieser Tonspur"><option value="">Alle Spuren</option>${TRACKS.map(t => `<option value="${t.key}"${lt === t.key ? ' selected' : ''}>${esc(t.name)}</option>`).join('')}</select>`;
+    + `<span style="flex:1"></span><label class="chk" title="Die Animation ist im Video nur dort zu sehen, wo ihre Tonspur im Song klingt (wie im Studio). Aus = durchgehend sichtbar."><input type="checkbox" id="mp4gate"${UI.mp4gate !== false ? ' checked' : ''}> MP4 nur wo Spur klingt</label>`
+    + `<select id="mp4res" aria-label="Auflösung der MP4-Videos" title="Auflösung der MP4-Videos"><option value="1080"${UI.mp4res !== '720' ? ' selected' : ''}>MP4 1920×1080</option><option value="720"${UI.mp4res === '720' ? ' selected' : ''}>MP4 1280×720</option></select>`
+    + `<button class="btn sm" id="mp4all" title="Je ein MP4 für jede Tonspur-Animation und jeden Effekt, die gerade im Studio zugeordnet sind">Alle zugeordneten als MP4</button>`
+    + `<span class="lb">Tonspur</span><select id="ltrk" aria-label="Nur Animationen dieser Tonspur"><option value="">Alle Spuren</option>${TRACKS.map(t => `<option value="${t.key}"${lt === t.key ? ' selected' : ''}>${esc(t.name)}</option>`).join('')}</select>`;
   let h = '', ci = 0; const add = c => { labCards.push(c); return ci++; };
   if (lf === 'alle' || lf === 'anim') {
     for (const t of TRACKS) {
@@ -27,7 +30,7 @@ function renderLabor() {
         const id = t.key + ':' + i, used = P.layers.filter(l => l.kind === 'track' && l.anim === id), n = add({ kind: 'anim', id, tr: t });
         h += `<article class="lc2" data-ci="${n}"><div class="cv"><canvas></canvas>${d.tag ? `<span class="tg2">${esc(d.tag)}</span>` : ''}</div><div class="cp"><h4>${i + 1} · ${esc(d.title)}</h4><p class="clamp">${esc(d.text || '')}</p>`
           + `<div class="zu">${used.length ? used.map(l => pill(layerName(l), colorOf(l), (Object.keys(l.P).length ? ' · angepasst' : '') + (mapCount(l.id) ? ` · ${mapCount(l.id)} Parameter` : ''))).join('') : '<span class="none">nicht zugeordnet</span>'}</div>`
-          + `<div class="acts">${trackSelect('assign', 'Zuordnen zu Tonspur …')}<button class="btn sm" data-a="open" title="Im Studio bearbeiten">Im Studio öffnen</button></div></div></article>`;
+          + `<div class="acts">${trackSelect('assign', 'Zuordnen zu Tonspur …')}<button class="btn sm" data-a="open" title="Im Studio bearbeiten">Im Studio öffnen</button><button class="btn sm" data-a="mp4" title="Als MP4 über die ganze Songlänge herunterladen">MP4 laden</button></div></div></article>`;
       });
       h += '</div></section>';
     }
@@ -39,7 +42,7 @@ function renderLabor() {
         const id = 'fx:' + f.nr, on = layerById(id), n = add({ kind: 'fx', f, id });
         h += `<article class="lc2" data-ci="${n}"><div class="cv"><canvas></canvas><span class="tg2">${esc(f.tag || '')}</span></div><div class="cp"><h4>${esc(f.title)} <small>L${f.nr}</small></h4><p class="clamp">${esc(f.text || '')}</p>`
           + `<div class="zu">${on ? pill('Ebene im Studio', 'var(--accent)', on.on ? '' : ' · aus') + (mapCount(id) ? pill(mapCount(id) + ' Parameter-Zuordnung', 'var(--accent)') : '') : '<span class="none">nicht im Studio</span>'}</div>`
-          + `<div class="acts"><button class="btn sm${on ? ' on' : ''}" data-a="fx">${on ? 'Als Ebene entfernen' : '+ Als Ebene hinzufügen'}</button></div></div></article>`;
+          + `<div class="acts"><button class="btn sm${on ? ' on' : ''}" data-a="fx">${on ? 'Als Ebene entfernen' : '+ Als Ebene hinzufügen'}</button><button class="btn sm" data-a="mp4" title="Als MP4 über die ganze Songlänge herunterladen">MP4 laden</button></div></div></article>`;
       }
       h += '</div></section>';
     }
@@ -69,7 +72,12 @@ function renderLabor() {
   requestAnimationFrame(() => labCards.forEach(c => sizeCv(c.cv)));
 }
 $('lfilter').addEventListener('click', ev => { const b = ev.target.closest('[data-lf]'); if (b) { UI.lf = b.dataset.lf; saveUI(); renderLabor(); } });
-$('lfilter').addEventListener('change', ev => { if (ev.target.id === 'ltrk') { UI.lt = ev.target.value; saveUI(); renderLabor(); } });
+$('lfilter').addEventListener('change', ev => {
+  if (ev.target.id === 'ltrk') { UI.lt = ev.target.value; saveUI(); renderLabor(); }
+  else if (ev.target.id === 'mp4gate') { UI.mp4gate = ev.target.checked; saveUI(); }
+  else if (ev.target.id === 'mp4res') { UI.mp4res = ev.target.value; saveUI(); }
+});
+$('lfilter').addEventListener('click', ev => { if (ev.target.closest('#mp4all')) expRun(expProjectSpecs()); });
 function labCtl(ev, redraw) {                       // Farbe / Stärke einer Vorlage direkt auf der Karte einstellen
   const el = ev.target, f = el.dataset.f; if (!f) return false; const card = el.closest('.lc2'); if (!card) return false; const c = labCards[+card.dataset.ci]; if (!c || !c.preset) return false;
   setMapField(c.m, f, el.value); const dd = describe(c.m); card.querySelector('.when').innerHTML = `<b>${esc(dd.when)}</b><br>→ ${esc(dd.then)}`;
@@ -84,7 +92,8 @@ $('lgrid').addEventListener('change', ev => {
 });
 $('lgrid').addEventListener('click', ev => {
   const b = ev.target.closest('button[data-a]'); if (!b) return; const c = labCards[+b.closest('.lc2').dataset.ci];
-  if (b.dataset.a === 'fx') toggleFx(c.f.nr);
+  if (b.dataset.a === 'mp4') expRun([c.kind === 'fx' ? expSpecFx(c.f) : expSpecAnim(c.id)]);
+  else if (b.dataset.a === 'fx') toggleFx(c.f.nr);
   else if (b.dataset.a === 'use') { addMap(c.preset.id, undefined, { a: c.m.a, b: c.m.b, str: c.m.str }); toast('Zuordnung im Studio angelegt – dort kannst du sie einstellen'); }
   else if (b.dataset.a === 'edit') { setWs('studio'); select(c.m.id); }
   else if (b.dataset.a === 'open') { const L = P.layers.find(l => l.kind === 'track' && l.anim === c.id) || layerById('track:' + c.tr.key); if (L.anim !== c.id) { L.anim = c.id; L.P = {}; refresh('lvit'); } setWs('studio'); select(L.id); }

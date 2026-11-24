@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Beschreibung – Audio-Visualisierung</title>
+<style>
+  @page { size: A4; margin: 14mm 12mm 16mm; }
+  * { box-sizing: border-box; }
+  body { font: 10pt/1.45 -apple-system, "Helvetica Neue", Arial, sans-serif; color: #1b1b1b; background: #fff; margin: 0; }
+  #doc { max-width: 190mm; margin: 0 auto; padding: 12mm 0; }
+  .bar { position: sticky; top: 0; background: #fff8ef; border-bottom: 1px solid #e8d7bd; padding: 8px 14px; font-size: 13px; display: flex; gap: 12px; align-items: center; z-index: 5; }
+  .bar button { font: inherit; padding: 5px 12px; border-radius: 6px; border: 1px solid #c4560a; background: #ff8a2a; color: #fff; cursor: pointer; }
+  h1 { font-size: 20pt; margin: 0 0 2mm; } h2 { font-size: 14pt; margin: 0 0 3mm; padding-bottom: 1.5mm; border-bottom: 2px solid #ff8a2a; break-after: avoid; }
+  h3 { font-size: 10.5pt; margin: 5mm 0 2mm; break-after: avoid; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  section { margin-bottom: 9mm; } section.pb { break-before: page; } section + section:not(.pb) { break-before: auto; }
+  p { margin: 0 0 2.5mm; } ul { margin: 0 0 3mm; padding-left: 5mm; } code { font: 8.5pt ui-monospace, Menlo, monospace; background: #f1efe9; padding: 0 3px; border-radius: 3px; word-break: break-all; }
+  .mu { color: #6b6b6b; } .small { font-size: 8.5pt; margin: 2mm 0 1mm; } .cover { margin-bottom: 8mm; }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; border: 1px solid #0003; flex: none; } .sw { display: inline-block; width: 9px; height: 9px; border: 1px solid #0004; vertical-align: -1px; }
+  table.t { width: 100%; border-collapse: collapse; margin: 0 0 3mm; font-size: 9pt; } table.t.sm { font-size: 8pt; } table.t.c td, table.t.c th { text-align: center; } table.t.c td.l { text-align: left; }
+  .t th, .t td { border: 1px solid #ddd9cd; padding: 1.2mm 2mm; text-align: left; vertical-align: top; } .t th { background: #f6f5f1; font-weight: 600; } .t td.r { text-align: right; white-space: nowrap; }
+  table.kv th { width: 30mm; } tr { break-inside: avoid; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; } .two table { margin: 0; }
+  .tl { margin: 0; padding-left: 4mm; } .chart { width: 100%; height: auto; margin: 3mm 0; }
+  .blk { break-inside: auto; margin: 0 0 6mm; padding: 3mm 3.5mm; border: 1px solid #e3dfd2; border-radius: 6px; } .blk > h3 { margin-top: 0; } .blk.off { background: #fbfaf7; }
+  .badge { font-size: 7.5pt; font-weight: 700; padding: 0 6px; border-radius: 9px; } .badge.on { background: #dff5e8; color: #17703f; } .badge.offb { background: #fde6dd; color: #a43a10; }
+  .km th { background: #fff3e4; } .rea { color: #a84a05; font-weight: 600; } tr.cur td { background: #fff8ef; } table.cat td:first-child { width: 9mm; }
+  @media print { .bar { display: none; } #doc { padding: 0; } }
+</style>
+</head>
+<body>
+<div class="bar"><b>Beschreibung als PDF</b><span>Zum Speichern: Drucken (⌘P / Strg+P) → „Als PDF sichern“ – Hintergrundgrafiken einschalten.</span><button onclick="print()">Drucken / PDF</button></div>
+<div id="doc"><p>Wird berechnet …</p></div>
+<script src="assets/analysis.js"></script>
+<script src="assets/data.js"></script>
+<script src="seiten/animationen/ideen.js"></script>
+<script src="seiten/animationen/effekte.js"></script>
+<script src="studio/spannung.js"></script>
+<script src="studio/signale.js"></script>
+<script src="studio/wirkung.js"></script>
+<script src="studio/kern.js"></script>
+<script src="studio/export.js"></script>
+<script src="studio/bericht.js"></script>
+</body>
+</html>

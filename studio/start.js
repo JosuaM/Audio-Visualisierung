@@ -2,7 +2,9 @@
 /* Start des Studios: Projekt laden, Oberfläche aufbauen, Bildschleife */
 let lastFrameP = performance.now();
 function frame() {
-  const p = performance.now(), dt = Math.min(.1, (p - lastFrameP) / 1000); lastFrameP = p; frN0++;
+  const p = performance.now(), dt = Math.min(.1, (p - lastFrameP) / 1000); lastFrameP = p;
+  if (window.EXPORTING) { requestAnimationFrame(frame); return; }          // während eines MP4-Exports steht die Vorschau still
+  frN0++;
   const t = nowT(), playing = !audio.paused, shown = playing ? t : (audio.currentTime || 0);
   const env = { t, shown, dt, fr: frN0, gate: UI.gate };
   if (UI.ws === 'studio') {

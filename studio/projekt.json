@@ -5,7 +5,7 @@
    "id": "track:flute",
    "kind": "track",
    "key": "flute",
-   "anim": "flute:15",
+   "anim": "flute:0",
    "P": {},
    "on": true,
    "tint": true
@@ -23,7 +23,7 @@
    "id": "track:frog",
    "kind": "track",
    "key": "frog",
-   "anim": "frog:2",
+   "anim": "frog:0",
    "P": {},
    "on": true,
    "tint": true
@@ -41,7 +41,7 @@
    "id": "track:riser",
    "kind": "track",
    "key": "riser",
-   "anim": "riser:1",
+   "anim": "riser:0",
    "P": {},
    "on": true,
    "tint": true
@@ -68,7 +68,7 @@
    "id": "track:ring",
    "kind": "track",
    "key": "ring",
-   "anim": "ring:10",
+   "anim": "ring:0",
    "P": {},
    "on": true,
    "tint": true

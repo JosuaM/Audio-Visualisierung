@@ -43,9 +43,9 @@ function initSplitters() {
 function resizeAll() { fitStage(); cells.forEach(c => sizeCv(c.cv)); drawTimelineCanvases(); waveKey = ''; }
 function setWs(ws) {
   UI.ws = ws; saveUI();
-  $('ws-studio').hidden = ws !== 'studio'; $('ws-labor').classList.toggle('on', ws === 'labor');
-  $('nav-studio').classList.toggle('on', ws === 'studio'); $('nav-labor').classList.toggle('on', ws === 'labor');
-  if (ws === 'labor') renderLabor(); else requestAnimationFrame(resizeAll);
+  $('ws-studio').hidden = ws !== 'studio'; $('ws-labor').classList.toggle('on', ws === 'labor'); $('ws-anim').classList.toggle('on', ws === 'anim');
+  ['studio', 'labor', 'anim'].forEach(k => $('nav-' + k).classList.toggle('on', ws === k));
+  if (ws === 'labor') renderLabor(); else if (ws === 'anim') renderAnim(); else requestAnimationFrame(resizeAll);
 }
 
 /* ═══════════ Vorschau ═══════════ */
@@ -148,7 +148,7 @@ function refresh(parts = 'lit') {         // l = Liste, i = Inspektor, t = Zeitl
   if (parts.includes('l')) renderList();
   if (parts.includes('i')) renderInsp();
   if (parts.includes('t')) renderTimeline();
-  if (UI.ws === 'labor') renderLabor();
+  if (UI.ws === 'labor') renderLabor(); else if (UI.ws === 'anim' && UI.av !== 'edit') renderAnim();
 }
 const uiAll = () => { renderViewSel(); renderList(); renderInsp(); renderTimeline(); if (UI.ws === 'labor') renderLabor(); updateDirty(); };
 
@@ -473,7 +473,8 @@ function showHelp() {
 const isTyping = el => /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) && el.type !== 'range';
 window.addEventListener('keydown', ev => {
   if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 's') { ev.preventDefault(); saveProject(); return; }
-  if (isTyping(ev.target) || ev.ctrlKey || ev.metaKey || ev.altKey || ev.target.id === 'wave') return;
+  const tg = ev.composedPath()[0] || ev.target;           // auch Eingabefelder in der Hülle des Animations-Editors erkennen
+  if (isTyping(tg) || ev.ctrlKey || ev.metaKey || ev.altKey || tg.id === 'wave' || (ev.composedPath().includes($('ws-anim')) && /^(INPUT|SELECT|TEXTAREA|BUTTON|SUMMARY)$/.test(tg.tagName))) return;
   if ((ev.code === 'Space' || ev.key === ' ') && ev.target.tagName !== 'BUTTON') { ev.preventDefault(); if (!ev.repeat) togglePlay(); }
   else if (ev.key === 'Home') { ev.preventDefault(); seek(0); }
   else if (ev.key === 'f' || ev.key === 'F') { const st = $('stage'); if (document.fullscreenElement) document.exitFullscreen(); else if (st.requestFullscreen && UI.ws === 'studio' && UI.view !== 'grid') st.requestFullscreen(); }

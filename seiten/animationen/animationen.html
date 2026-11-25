@@ -194,6 +194,28 @@ header.nav .nc { justify-self: center; display: flex; align-items: center; }
 .im-sel label { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: center; font-size: 12px; color: var(--muted); }
 .im-sel select { height: 26px; padding: 0 8px; border: 1px solid var(--line-2); border-radius: 7px; background: var(--panel); color: var(--ink); font: inherit; }
 @media (max-width: 860px) { .im-lab { grid-template-columns: 1fr 1fr; } .im-ctl { grid-column: 1 / -1; grid-row: auto; } .im-vars { grid-column: 1 / -1; } .im-r { grid-template-columns: 1fr 1fr; } .im-hh { grid-column: 1 / -1; } }
+/* Animations-Editor (Ansicht „Editor“ auf der Seite Animationsideen) */
+.vsw { display: inline-flex; border: 1px solid var(--line-2); border-radius: 9px; overflow: hidden; background: var(--panel); flex: none; }
+.vsw button { height: 30px; padding: 0 14px; border: 0; background: transparent; color: var(--muted); font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.vsw button:hover { color: var(--ink); }
+.vsw button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.vsw button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.ttlrow { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
+
+body[data-view="grid"] #editor { display: none; }
+
+
+/* Ansichten: Editor (alles auf einem Bildschirm) oder Übersicht (Raster) */
+body[data-view="edit"] #grid, body[data-view="edit"] #gridNote, body[data-view="edit"] .ttl, body[data-view="edit"] .hier, body[data-view="edit"] .hierbtn { display: none; }
+body[data-view="grid"] #editor { display: none; }
+.pick .row .vsw { margin-left: auto; }
+body[data-view="edit"] { height: 100vh; overflow: hidden; display: flex; flex-direction: column; padding-bottom: 12px; }
+body[data-view="edit"] header.nav { padding: 8px 20px; flex: none; }
+body[data-view="edit"] .wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; padding-top: 10px; gap: 8px; }
+body[data-view="edit"] .pick { padding: 7px 12px; flex: none; }
+body[data-view="edit"] .player { position: static; padding: 5px 12px 5px 8px; box-shadow: none; flex: none; }
+body[data-view="edit"] .playb { width: 34px; height: 34px; }
+body[data-view="edit"] #editor { flex: 1; min-height: 0; display: block; }
 </style>
 </head>
 <body>
@@ -207,7 +229,8 @@ header.nav .nc { justify-self: center; display: flex; align-items: center; }
   <h2 class="ttl">Wie könnte <span id="ttlName">Flute</span> aussehen?</h2>
 
   <div class="panel pick">
-    <div class="row" role="group" aria-label="Tonspur auswählen"><span class="lb">Tonspur</span><span id="trks" style="display:contents"></span></div>
+    <div class="row" role="group" aria-label="Tonspur auswählen"><span class="lb">Tonspur</span><span id="trks" style="display:contents"></span>
+      <div class="vsw" role="group" aria-label="Ansicht"><button type="button" data-v="edit" aria-pressed="true" title="Eine Animation groß, mit Reglern für alles">Editor</button><button type="button" data-v="grid" aria-pressed="false" title="Alle Ideen der Spur nebeneinander">Übersicht</button></div></div>
     <div class="hier">
       <div class="hh"><span class="lb" id="stripLb">Klanghierarchie</span><span class="src" id="hierSrc"></span><span class="info" id="stripInfo"></span></div>
       <svg id="stripSvg" role="img" aria-label="Wo die Spur im Song vorkommt und auf welchem Rang – klicken springt dorthin"></svg>
@@ -227,14 +250,17 @@ header.nav .nc { justify-self: center; display: flex; align-items: center; }
     <button class="eye" id="eye" type="button" aria-pressed="true" aria-label="Animationen anzeigen" title="Animationen anzeigen / ausblenden"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path class="slash" d="M4 4l16 16" style="display:none"/></svg></button>
   </div>
 
+  <div class="ed" id="editor"></div>
   <div class="grid" id="grid"></div>
-  <p class="note">Die Animationen laufen im Takt des Songs – auch bei Pause (dann im Songtempo weiter). Beim Abspielen sind sie genau mit der Musik synchron. <b>Leertaste</b> = Play/Pause. Neue Ideen werden in <code>animationen.html</code> im Abschnitt „✎ HIER NEUE ANIMATIONEN EINTRAGEN“ ergänzt.</p>
+  <p class="note" id="gridNote">Die Animationen laufen im Takt des Songs – auch bei Pause (dann im Songtempo weiter). Beim Abspielen sind sie genau mit der Musik synchron. <b>Leertaste</b> = Play/Pause. Neue Ideen werden in <code>animationen.html</code> im Abschnitt „✎ HIER NEUE ANIMATIONEN EINTRAGEN“ ergänzt.</p>
 </main>
 <audio id="audio" src="../../assets/song.m4a" preload="metadata"></audio>
 
 <script src="../../assets/analysis.js"></script>
 <script src="../../assets/data.js"></script>
 <script src="ideen.js"></script>
+<script src="editor-engine.js"></script>
+<script src="editor-ui.js"></script>
 <script>
 'use strict';
 
@@ -333,12 +359,13 @@ $('trks').innerHTML = TRACKS.map(t => `<button class="trk" data-k="${t.key}" sty
 $('trks').addEventListener('click', ev => { const b = ev.target.closest('.trk'); if (b) setTrack(b.dataset.k); });
 function setTrack(k) {
   cur = k; try { localStorage.setItem('av-anim-track', k); } catch (e) {}
-  history.replaceState(null, '', '?spur=' + k);
   document.querySelectorAll('.trk').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.k === k)));
   const t = TBY[k]; $('ttlName').textContent = t.name;
   $('stripLb').textContent = `Klanghierarchie · ${t.name}`;
   renderHier();
-  buildGrid();
+  edI = 0; try { edI = +localStorage.getItem('av-anim-idea:' + k) || 0; } catch (e) {}
+  if (firstLoad && urlIdea != null) edI = urlIdea; firstLoad = false;
+  refreshView();
 }
 
 /* ---------- Kästen ---------- */
@@ -411,6 +438,7 @@ function frame() {
     s.w = b.w; s.h = b.h;
     c.save(); try { b.idea.draw(c, s); } catch (e) { console.error(e); } c.restore();
   }
+  if (view === 'edit') Editor.frame({ t: tt, fg: COL.fg, bg: COL.bg, col: COL.col });
   labFrame(s);
   ui(t);
   requestAnimationFrame(frame);
@@ -442,8 +470,8 @@ $('stripSvg').addEventListener('click', ev => { const r = $('stripSvg').getBound
   r.onchange = () => { resync(now()); apply(); try { localStorage.setItem('av-rate', r.value); } catch (e) {} };
 }
 // Leertaste = immer Play/Pause, nie scrollen
-window.addEventListener('keydown', ev => { if ((ev.code === 'Space' || ev.key === ' ') && !/^(INPUT|TEXTAREA)$/.test(ev.target.tagName)) { ev.preventDefault(); ev.stopPropagation(); if (!ev.repeat) togglePlay(); } }, true);
-window.addEventListener('keyup', ev => { if ((ev.code === 'Space' || ev.key === ' ') && !/^(INPUT|TEXTAREA)$/.test(ev.target.tagName)) { ev.preventDefault(); ev.stopPropagation(); } }, true);
+window.addEventListener('keydown', ev => { if ((ev.code === 'Space' || ev.key === ' ') && !/^(INPUT|TEXTAREA|SELECT)$/.test((ev.composedPath()[0] || ev.target).tagName)) { ev.preventDefault(); ev.stopPropagation(); if (!ev.repeat) togglePlay(); } }, true);
+window.addEventListener('keyup', ev => { if ((ev.code === 'Space' || ev.key === ' ') && !/^(INPUT|TEXTAREA|SELECT)$/.test((ev.composedPath()[0] || ev.target).tagName)) { ev.preventDefault(); ev.stopPropagation(); } }, true);
 function ui(t) {
   const playing = !audio.paused, shown = playing ? t : (audio.currentTime || 0);
   $('tCur').textContent = fmt(shown);
@@ -520,10 +548,10 @@ dlg.addEventListener('click', e => {
   else if (e.target.closest('[data-save]')) {
     const L = vList(curI), P = { ...labor.V };
     if (labor.id != null && L[labor.id]) L[labor.id].P = P; else { L.push({ name: 'Variante ' + (L.length + 1), P }); labor.id = L.length - 1; }
-    vSave(); renderVars(); syncSaveBtn(); buildGrid();
+    vSave(); renderVars(); syncSaveBtn(); refreshView();
     const b = dlg.querySelector('[data-save]'); b.textContent = 'Gespeichert ✓'; setTimeout(syncSaveBtn, 1300);
   }
-  else if (del) { const L = vList(curI), k = +del.dataset.del; L.splice(k, 1); L.forEach((v, j) => { if (/^Variante \d+$/.test(v.name)) v.name = 'Variante ' + (j + 1); }); labor.id = labor.id === k ? null : labor.id > k ? labor.id - 1 : labor.id; vSave(); renderVars(); syncSaveBtn(); buildGrid(); }
+  else if (del) { const L = vList(curI), k = +del.dataset.del; L.splice(k, 1); L.forEach((v, j) => { if (/^Variante \d+$/.test(v.name)) v.name = 'Variante ' + (j + 1); }); labor.id = labor.id === k ? null : labor.id > k ? labor.id - 1 : labor.id; vSave(); renderVars(); syncSaveBtn(); refreshView(); }
   else { const t = e.target.closest('[data-var]'); if (t) { const P = vList(curI)[+t.dataset.var].P; labor.V = { ...FPC[curI].def, ...P }; labor.id = +t.dataset.var; dlg.querySelectorAll('select[data-k]').forEach(sl => sl.value = labor.V[sl.dataset.k]); renderVars(); syncSaveBtn(); } }
 });
 dlg.addEventListener('keydown', e => { const t = e.target.closest && e.target.closest('[data-var]'); if (t && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); t.click(); } });
@@ -570,6 +598,46 @@ $('grid').addEventListener('mouseover', e => { const b = e.target.closest('.ibtn
 $('grid').addEventListener('mouseout', e => { if (e.target.closest('.ibtn')) infoEl.hidden = true; });
 $('grid').addEventListener('focusin', e => { const b = e.target.closest('.ibtn'); if (b) tipShow(b, IDEAS[cur][+b.dataset.i]); });
 $('grid').addEventListener('focusout', () => { infoEl.hidden = true; });
+
+/* ---------- Ansicht: Editor (Standard) oder Übersicht ---------- */
+let view = 'edit', edI = 0, firstLoad = true, urlIdea = null, edHost = null;
+try { const v = localStorage.getItem('av-anim-view'); if (v === 'grid' || v === 'edit') view = v; const q = new URLSearchParams(location.search); if (q.get('ansicht') === 'grid' || q.get('ansicht') === 'edit') view = q.get('ansicht'); if (q.get('idee') != null) urlIdea = +q.get('idee') || 0; } catch (e) {}
+function refreshView() {
+  document.body.dataset.view = view;
+  document.querySelectorAll('.vsw button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === view)));
+  const q = new URLSearchParams(); q.set('spur', cur); if (view === 'edit') q.set('idee', edI); if (view === 'grid') q.set('ansicht', 'grid');
+  history.replaceState(null, '', '?' + q.toString());
+  readColors();
+  if (view === 'grid') { buildGrid(); return; }
+  boxes = []; $('grid').innerHTML = '';
+  buildEditorTop();
+}
+function buildEditorTop() {
+  const ideas = IDEAS[cur] || []; edI = clamp(edI, 0, Math.max(0, ideas.length - 1));
+  try { localStorage.setItem('av-anim-idea:' + cur, String(edI)); } catch (e) {}
+  const q = new URLSearchParams(location.search); q.set('idee', edI); history.replaceState(null, '', '?' + q.toString());
+  const it = ideas[edI];
+  edHost.chips.innerHTML = ideas.map((x, i) => `<button type="button" class="ed-chip" data-i="${i}" aria-pressed="${i === edI}" title="${esc(x.title)}"><span class="n">${i + 1}</span><span class="t">${esc(x.title)}</span></button>`).join('') || '<span class="lb">Für diese Spur gibt es noch keine Animationen.</span>';
+  if (!it) { edHost.act.innerHTML = ''; Editor.load(cur + ':-', { title: '-', draw() {} }); return; }
+  edHost.act.innerHTML = (it.info && cur === 'flute' && vList(edI).length ? vList(edI).map((v, k) => `<button class="vchip" data-i="${edI}" data-v="${k}" title="${esc(vLabel(edI, v.P))}">${esc(v.name)}</button>`).join('') : '')
+    + likeBtn(it).replace('class="like"', 'class="like" data-i="' + edI + '"') + (it.info ? `<button class="ibtn" data-i="${edI}" aria-label="Morphologischen Kasten anzeigen" title="Morphologischer Kasten">M</button>` : '');
+  const act = edHost.chips.querySelector('.ed-chip[aria-pressed="true"]'); if (act) edHost.chips.scrollLeft = act.offsetLeft - edHost.chips.clientWidth / 2 + act.offsetWidth / 2;
+  Editor.load(cur + ':' + it.title, it);
+}
+function setView(v) { view = v; try { localStorage.setItem('av-anim-view', v); } catch (e) {} refreshView(); }
+document.querySelector('.vsw').addEventListener('click', e => { const b = e.target.closest('button'); if (b && b.dataset.v !== view) setView(b.dataset.v); });
+edHost = Editor.mount($('editor'));
+edHost.chips.addEventListener('click', e => { const b = e.target.closest('.ed-chip'); if (b) { edI = +b.dataset.i; buildEditorTop(); } });
+edHost.act.addEventListener('click', e => {
+  const lk = e.target.closest('.like');
+  if (lk) { const it = IDEAS[cur][+lk.dataset.i], id = likeId(it), on = !LIKES[id]; if (on) LIKES[id] = Date.now(); else delete LIKES[id];
+    try { localStorage.setItem(LKEY, JSON.stringify(LIKES)); } catch (e) {}
+    lk.setAttribute('aria-pressed', String(on)); lk.setAttribute('aria-label', on ? 'Gefällt mir entfernen' : 'Gefällt mir'); lk.title = on ? 'Gefällt dir' : 'Gefällt mir'; return; }
+  const v = e.target.closest('.vchip'); if (v) return openInfo(+v.dataset.i, true, +v.dataset.v);
+  const b = e.target.closest('.ibtn'); if (b) openInfo(+b.dataset.i, false);
+});
+edHost.act.addEventListener('mouseover', e => { const b = e.target.closest('.ibtn'); if (b) tipShow(b, IDEAS[cur][+b.dataset.i]); });
+edHost.act.addEventListener('mouseout', e => { if (e.target.closest('.ibtn')) infoEl.hidden = true; });
 
 /* ---------- Start ---------- */
 $('tDur').textContent = fmt(DUR); $('prog').setAttribute('aria-valuemax', DUR.toFixed(1));

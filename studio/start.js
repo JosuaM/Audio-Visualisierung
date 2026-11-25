@@ -12,7 +12,8 @@ function frame() {
     if (vs.kind === 'grid') cells.forEach(c => drawStage(c.cv, [c.L], { ...env, gate: vs.gate }, vs.filter));
     else drawStage($('cv'), vs.layers, { ...env, gate: vs.gate }, vs.filter);
     updateLive(shown); drawInspGraph(shown);
-  } else laborFrame(dt);
+  } else if (UI.ws === 'anim') animFrame();
+  else laborFrame(dt);
   updatePlayer(shown);
   requestAnimationFrame(frame);
 }
@@ -24,7 +25,7 @@ function frame() {
   $('idle').onchange = () => { UI.idle = $('idle').checked; saveUI(); resync(audio.currentTime || 0); };
   $('viewSel').onchange = () => setView($('viewSel').value);
   $('save').onclick = saveProject;
-  $('nav-studio').onclick = () => setWs('studio'); $('nav-labor').onclick = () => setWs('labor');
+  $('nav-studio').onclick = () => setWs('studio'); $('nav-labor').onclick = () => setWs('labor'); $('nav-anim').onclick = () => setWs('anim');
   $('theme').onclick = toggleTheme;
   $('fs').onclick = () => { const st = $('stage'); if (document.fullscreenElement) document.exitFullscreen(); else if (st.requestFullscreen) { if (UI.view === 'grid') setView('mix'); st.requestFullscreen(); } };
   document.addEventListener('fullscreenchange', () => { fitStage(); sizeCv($('cv')); });

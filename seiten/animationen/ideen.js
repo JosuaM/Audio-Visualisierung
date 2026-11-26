@@ -755,6 +755,12 @@ const IDEAS = {
       tag: '2 Arme im Wechsel · +1 Kugel / Takt',
       draw(c, s) { rectSpiral2(c, s, FPC[18].def); },  // voll einstellbar: siehe rectSpiral2 / FPC[18]
     },
+    {
+      title: 'Zwei runde Spiralen',
+      text: 'Wie die zwei rechteckigen Spiralen, nur rund: Zwei Spiralen winden sich um die Bildmitte ineinander – eine beginnt oben links, die andere genau gegenüber unten rechts, um eine halbe Windung versetzt, sodass sie sich nie berühren. Pro halben Takt rückt jede Kugel gut eine Drittel-Drehung weiter nach innen (8 Nachbilder im 16tel auf dem Bogen) – so verteilen sich die Kugeln entlang der ganzen Spirale. Neue Kugeln kommen im Wechsel: oben links, einen halben Takt Pause, unten rechts, Pause …; mit jedem Platz wird eine Kugel ein Stück kleiner.',
+      tag: '2 Arme im Wechsel · ⅓ Drehung / ½ Takt',
+      draw(c, s) { roundSpiral2(c, s, FPC[19].def); },  // voll einstellbar: siehe roundSpiral2 / FPC[19]
+    },
   ],
   trumpet: [
     {
@@ -2045,6 +2051,10 @@ function spiralOut(c, s, P) {         // Idee 17: Spirale nach außen – voll e
 const rectSpiralCache = {};
 function rectSpiralPath(w, h, dens) {
   const key = w + 'x' + h + dens; if (rectSpiralCache[key]) return rectSpiralCache[key];
+  if (h > w) {                                       // Hochformat: im Querformat bauen und an der Diagonale spiegeln – sonst endet die Spirale in einer Sackgasse
+    const q = rectSpiralPath(h, w, dens);
+    return (rectSpiralCache[key] = { pts: q.pts.map(([x, y]) => [y, x]), g: q.g });
+  }
   const m0 = Math.min(w, h), mg = m0 * .09;
   const E = { Wenige: 12, Mehrere: 16, Viele: 20 }[dens] || 16;   // Anzahl Kanten = Sprünge bis zur Mitte (16 = die 16 halben Takte der Flöte)
   // Bahn: rechts → runter → links → hoch; nach jeder Kante rückt der Rand um g nach innen – als Kontur berühren sich die Windungen nie
@@ -2106,7 +2116,11 @@ function rectSpiralRun(c, s, P, path, two) {
     const segD = (p, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], q = clamp(((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy || 1), 0, 1); return Math.hypot(p[0] - a[0] - q * dx, p[1] - a[1] - q * dy); };
     const segs = []; for (let k = 0; k < L - 1; k++) segs.push([pts[k], pts[k + 1]]);   // eigene Bahn ohne die letzte Kante (an die schließt das Endstück an)
     if (two) for (let k = -1; k < L; k++) { const a = k < 0 ? p0 : pts[k], b = pts[k + 1]; segs.push([[s.w - a[0], s.h - a[1]], [s.w - b[0], s.h - b[1]]]); }
-    const ok = v => { for (let q = 1; q <= 12; q++) { const p = [pts[L][0] + dn[0] * v * q / 12, pts[L][1] + dn[1] * v * q / 12]; for (const [a, b] of segs) if (segD(p, a, b) < g * .95) return false; } return true; };
+    const ok = v => {
+      const e = [pts[L][0] + dn[0] * v, pts[L][1] + dn[1] * v], me = [[s.w - pts[L][0], s.h - pts[L][1]], [s.w - e[0], s.h - e[1]]];   // me = Endstück des gespiegelten Arms
+      for (let q = 1; q <= 12; q++) { const p = [pts[L][0] + dn[0] * v * q / 12, pts[L][1] + dn[1] * v * q / 12]; for (const [a, b] of segs) if (segD(p, a, b) < g * .95) return false; if (two && segD(p, me[0], me[1]) < g * .95) return false; }
+      return true;
+    };
     let v = Math.max(0, el - (two ? 2 : 1) * g); while (v > 1 && !ok(v)) v *= .9;
     path.end = v;
   }
@@ -2140,6 +2154,47 @@ function rectSpiralRun(c, s, P, path, two) {
         if (t < t0 || t >= t0 + D) continue;
         const p = (t - t0) / D;
         dot(to - 1 + p * p * (3 - 2 * p), A, b);
+      }
+    }
+  }
+  c.globalAlpha = 1;
+}
+// Idee 20: zwei runde Spiralen – wie Idee 19, nur rund: Arm A kommt von oben links, Arm B genau gegenüber (um die Mitte gedreht);
+// die beiden archimedischen Spiralen liegen um eine halbe Windung versetzt ineinander und berühren sich nie
+function roundSpiral2(c, s, P) {
+  const N = 8, T = s.bar / 2, step = T / N, D = T * SPEEDF[P.speed];
+  const E = { Wenige: 8, Mehrere: 12, Viele: 16 }[P.count] || 12;   // Sprünge pro Arm bis zur Mitte
+  // Ein Sprung = etwas mehr als eine Drittel-Drehung: Zwischen zwei Kugeln desselben Arms liegen 4 Sprünge = 1,38 Drehungen (Goldener Schnitt) –
+  // so verteilen sich die Kugeln sichtbar entlang der Spirale, statt alle auf demselben Strahl zu stehen (das wäre bei genau ¼ Drehung so)
+  const F = .3455, turns = E * F;
+  const cx = s.w / 2, cy = s.h / 2, Rmax = Math.min(s.w, s.h) * .5 * .9;
+  const q = Rmax / (2 * turns + .5);               // Abstand zwischen den beiden Armen (halbe Windung) – pro Windung rückt jeder Arm 2q nach innen
+  const far = Math.hypot(cx, cy) + q;              // Einstieg: von außerhalb des Bildes in die Spirale hinein
+  const L = E - 1, SH = .45;                       // Plätze 0 … L (Platz 0 = erste Vierteldrehung nach dem Hereinkommen)
+  const A = { Undurchsichtig: 1, Halbtransparent: .4, Transparent: .2 }[P.alpha], col = fpColor(P, s.fg), sz = SIZEF[P.size] / SIZEF.Mittel, r0 = q * .3 * sz;
+  const pos = u => {                               // Platz u → Punkt auf Arm A (Winkel wächst im Uhrzeigersinn, Radius nimmt gleichmäßig ab)
+    const k = u + 1, a = -Math.PI * 3 / 4 + k * F * Math.PI * 2;
+    const R = k >= 0 ? Rmax - k * F * 2 * q : Rmax + (-k) * (far - Rmax);
+    return [cx + Math.cos(a) * Math.max(0, R), cy + Math.sin(a) * Math.max(0, R)];
+  };
+  const dot = (u, al, i) => {
+    let rr = r0 * Math.pow(SH, clamp(u, 0, L) / L);
+    if (u > L) rr *= Math.max(0, 1 - (u - L) ** 2);  // nach dem letzten Platz läuft sie die Spirale weiter zur Mitte und schrumpft weg
+    if (rr < .3 || al <= 0) return;
+    const [x, y] = pos(u);
+    if ((i / 2) % 2) fpShape(c, P, s.w - x, s.h - y, rr, col, al, i);   // im Wechsel: Kugel 0, 4, 8 … oben links, 2, 6, 10 … gegenüber unten rechts
+    else fpShape(c, P, x, y, rr, col, al, i);
+  };
+  const t = s.t, n = Math.floor(t / T);
+  const landed = m => clamp(Math.floor((t - m * T) / step) + 1, 0, N), departed = m => clamp(Math.floor((t - m * T + D) / step) + 1, 0, N);
+  for (let b = Math.max(0, n - L - 3); b <= n + 1; b++) {
+    if (b % 2) continue;                           // nur jeden zweiten halben Takt kommt eine neue Kugel – dazwischen ein halber Takt Pause
+    for (let m = Math.max(b, n - 1); m <= n + 1; m++) {
+      const to = m - b, o = (landed(m) - departed(m + 1)) / N;
+      if (o > 0) dot(to, Math.min(1, o) * Math.min(1, A / .4), b);
+      for (let i = 0; i < N; i++) {                // Nachbilder laufen auf dem Bogen der Spirale, nicht auf der Geraden
+        const t0 = m * T + i * step - D; if (t < t0 || t >= t0 + D) continue;
+        const p = (t - t0) / D; dot(to - 1 + p * p * (3 - 2 * p), A, b);
       }
     }
   }
@@ -2180,6 +2235,14 @@ const MAP18 = MAP17.map(g => g.rows ? { ...g, rows: g.rows.map(r => ({
   'Erscheinungsverhalten': { ...r, h: 'Neue Kugeln kommen im Wechsel links oben und rechts unten herein.' },
   'Interaktion zwischen Elementen': r,
 }[r.n] || r)) } : g);
+const MAP19 = MAP18.map(g => g.rows ? { ...g, rows: g.rows.map(r => ({
+  Formcharakter: { ...r, h: 'Exakter Kreis; die Bahn ist rund – zwei Spiralen, die sich ineinander winden.' },
+  Anzahl: { ...r, h: 'Jeden ganzen Takt kommt eine Kugel dazu (dazwischen ein halber Takt Pause) – im Wechsel oben links und unten rechts. „Anzahl“ stellt die Sprünge pro Arm ein (Wenige 8 ≈ 3 Windungen, Mehrere 12 ≈ 4, Viele 16 ≈ 5½).' },
+  Anordnung: { ...r, v: 'Radial', h: 'Zwei archimedische Spiralen um die Bildmitte, um eine halbe Windung versetzt: eine beginnt oben links, die andere unten rechts.' },
+  'Bewegungsbahn': { ...r, v: 'Spiralförmig', h: 'Pro Sprung gut eine Drittel-Drehung auf dem Bogen der Spirale nach innen; die beiden Arme halten immer denselben Abstand und überlappen nie.' },
+  'Beschleunigung': { ...r, h: 'Pro halbem Takt gut eine Drittel-Drehung weiter, dazwischen weich abgebremst.' },
+  'Spur': { ...r, h: '8 halbtransparente Nachbilder ziehen auf dem Bogen der Spirale von Platz zu Platz.' },
+}[r.n] || r)) } : g);
 // Konfiguration je Idee (Index in IDEAS.flute): Zeichenfunktion, Standardwerte, Reihenfolge der Auswahlfelder
 const FPC = {
   0: { map: FLUTE_MAP, draw: fluteFall, def: { ...LOOK, count: 'Mehrere', layout: 'Linear', place: 'Mitte', dir: 'Runter', path: 'Gerade', speed: 'Moderat', accel: 'Zunehmend' },
@@ -2193,6 +2256,8 @@ const FPC = {
   16: { map: MAP15, draw: spiralOut, def: { ...LOOK, size: 'Mittel', speed: 'Moderat' },
     groups: [['Erscheinung', [...LOOK_KEYS.filter(k => k !== 'count'), 'dim', 'fill', 'stroke']], ['Verhalten', ['speed']]] },
   18: { map: MAP18, draw: rectSpiral2, def: { ...LOOK, size: 'Mittel', count: 'Mehrere', speed: 'Moderat' }, opts: { count: ['Wenige', 'Mehrere', 'Viele'] },
+    groups: [['Erscheinung', [...LOOK_KEYS, 'dim', 'fill', 'stroke']], ['Verhalten', ['speed']]] },
+  19: { map: MAP19, draw: roundSpiral2, def: { ...LOOK, size: 'Mittel', count: 'Mehrere', speed: 'Moderat' }, opts: { count: ['Wenige', 'Mehrere', 'Viele'] },
     groups: [['Erscheinung', [...LOOK_KEYS, 'dim', 'fill', 'stroke']], ['Verhalten', ['speed']]] },
   17: { map: MAP17, draw: rectSpiral, def: { ...LOOK, size: 'Mittel', count: 'Mehrere', speed: 'Moderat' }, opts: { count: ['Wenige', 'Mehrere', 'Viele'] },
     groups: [['Erscheinung', [...LOOK_KEYS, 'dim', 'fill', 'stroke']], ['Verhalten', ['speed']]] },

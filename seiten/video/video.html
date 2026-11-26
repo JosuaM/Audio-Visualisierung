@@ -186,12 +186,41 @@ header.nav .nc { justify-self: center; display: flex; align-items: center; }
 .vstage .lab i { width: 8px; height: 8px; border-radius: 50%; background: var(--tc); }
 .vstage .lab em { font-style: normal; color: var(--muted); font-weight: 500; }
 .vr.dis .r2 { opacity: .4; pointer-events: none; }
+/* Auswahl-Knopf statt Dropdown: öffnet die Übersicht der Animationsideen als Pop-up */
+.vr .pick { flex: 1; min-width: 0; height: 30px; padding: 0 28px 0 10px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--panel); color: var(--ink); font: inherit; font-size: 12.5px; text-align: left; cursor: pointer; position: relative; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vr .pick::after { content: ""; position: absolute; right: 11px; top: 50%; width: 9px; height: 9px; margin-top: -5px; border: 1.6px solid var(--muted); border-radius: 2px; }
+.vr .pick:hover { border-color: var(--muted); } .vr .pick:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.vr .pick.none { color: var(--muted); }
+dialog.ap { width: min(1180px, calc(100vw - 32px)); max-height: calc(100vh - 32px); padding: 0; border: 1px solid var(--line-2); border-radius: 14px; background: var(--bg); color: var(--ink); box-shadow: 0 20px 60px rgba(0,0,0,.45); overflow: hidden; }
+dialog.ap[open] { display: flex; flex-direction: column; }
+dialog.ap::backdrop { background: rgba(0,0,0,.55); }
+.ap .aph { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 14px 16px 12px; border-bottom: 1px solid var(--line); background: var(--panel); }
+.ap .aph h2 { margin: 0; font-size: 15px; font-weight: 650; display: flex; align-items: center; gap: 8px; }
+.ap .aph h2 i { width: 11px; height: 11px; border-radius: 50%; background: var(--tc); }
+.ap .aph .sp { flex: 1; }
+.ap .trk { display: flex; flex-wrap: wrap; gap: 4px; }
+.ap .trk button { height: 26px; padding: 0 10px; border: 1px solid var(--line-2); border-radius: 999px; background: transparent; color: var(--muted); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.ap .trk button i { width: 8px; height: 8px; border-radius: 50%; background: var(--tc); }
+.ap .trk button[aria-pressed="true"] { color: var(--ink); border-color: var(--tc); background: color-mix(in srgb, var(--tc) 14%, transparent); }
+.ap .x { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--panel); color: var(--ink); font-size: 18px; line-height: 1; cursor: pointer; }
+.ap .apb { overflow: auto; padding: 14px 16px 18px; }
+.ap .apg { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 12px; }
+.ap .at { display: grid; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); overflow: hidden; cursor: pointer; text-align: left; padding: 0; font: inherit; color: inherit; }
+.ap .at:hover { border-color: var(--muted); } .ap .at:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ap .at.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.ap .at .st { position: relative; aspect-ratio: 4 / 3; background: var(--stage); }
+.ap .at canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.ap .at .tg { position: absolute; right: 8px; bottom: 8px; max-width: calc(100% - 16px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 9.5px; font-weight: 600; color: var(--muted); }
+.ap .at .ok { position: absolute; left: 8px; top: 8px; font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--accent-ink); background: var(--accent); border-radius: 999px; padding: 1px 8px; }
+.ap .at .cp { padding: 9px 12px 11px; font-size: 13px; font-weight: 650; display: flex; gap: 8px; align-items: center; }
+.ap .at .cp .n { font-size: 10.5px; width: 19px; height: 19px; border-radius: 50%; display: grid; place-items: center; background: var(--ink); color: var(--bg); flex: none; }
+.ap .at.no .st { display: grid; place-items: center; color: var(--muted); font-size: 13px; background: transparent; border-bottom: 1px dashed var(--line-2); }
 
 </style>
 </head>
 <body>
 <header class="nav">
-  <div class="nl"><a class="home" href="../../alt.html" title="Hauptmenü" aria-label="Zum Hauptmenü"><svg viewBox="0 0 24 24"><path d="M3.5 11 12 4l8.5 7"/><path d="M6 9.5V20h12V9.5"/><path d="M10 20v-5h4v5"/></svg></a><div class="pt"><span class="pk">Videovisualisierung</span><h1>Tonspuren zusammengeführt</h1></div></div>
+  <div class="nl"><a class="home" href="../../index.html" title="Hauptmenü" aria-label="Zum Hauptmenü"><svg viewBox="0 0 24 24"><path d="M3.5 11 12 4l8.5 7"/><path d="M6 9.5V20h12V9.5"/><path d="M10 20v-5h4v5"/></svg></a><div class="pt"><span class="pk">Videovisualisierung</span><h1>Tonspuren zusammengeführt</h1></div></div>
   <div class="nc"></div>
   <button id="theme" title="Dark / Light" aria-label="Dark / Light umschalten"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/></svg></button>
 </header>
@@ -230,7 +259,7 @@ header.nav .nc { justify-self: center; display: flex; align-items: center; }
         <button class="btn" id="fromZ" title="Alle Spuren auf die Auswahl der Seite Animations-Zuordnung zurücksetzen">Wie Zuordnung</button></div>
     </aside>
   </div>
-  <p class="note">Hier werden die Animationen aller Tonspuren übereinander auf einer großen Bühne abgespielt – jede nur dann, wenn ihre Spur im Song klingt. Standard ist die Auswahl aus der <a href="../animationen/zuordnung.html" style="color:var(--accent)">Animations-Zuordnung</a>; pro Spur kann hier jede Animation gewählt oder ausgeblendet werden. Der Kreis neben der Auswahl schaltet zwischen Weiß und Spurfarbe um. <b>Leertaste</b> = Play/Pause, <b>F</b> = Vollbild.</p>
+  <p class="note">Hier werden die Animationen aller Tonspuren übereinander auf einer großen Bühne abgespielt – jede nur dann, wenn ihre Spur im Song klingt. Standard ist die Auswahl aus der <a href="../animationen/zuordnung.html" style="color:var(--accent)">Animations-Zuordnung</a>; pro Spur kann hier jede Animation gewählt oder ausgeblendet werden – ein Klick auf die Auswahl öffnet die Übersicht der Animationsideen, dort einfach auf die gewünschte klicken. Der Kreis neben der Auswahl schaltet zwischen Weiß und Spurfarbe um. <b>Leertaste</b> = Play/Pause, <b>F</b> = Vollbild.</p>
 </main>
 <audio id="audio" src="../../assets/song.m4a" preload="metadata"></audio>
 <script src="../../assets/analysis.js"></script>
@@ -351,10 +380,10 @@ function initState(useZ) {
 const persist = () => { try { localStorage.setItem(LS, JSON.stringify(ST)); } catch (e) {} };
 
 const MODES = [['none', 'nichts (einfach übereinander)'], ['over', 'drüber legen'], ['hide', 'verstecken'], ['push', 'abstoßen / ausweichen'], ['blend', 'verschmelzen']];
-const optsHtml = () => `<option value="">– keine Animation –</option>` + TRACKS.map(t => (IDEAS[t.key] || []).length ? `<optgroup label="${esc(t.name)}">${IDEAS[t.key].map((d, i) => `<option value="${t.key}:${i}">${i + 1} · ${esc(d.title)}</option>`).join('')}</optgroup>` : '').join('');
+const animLabel = (id, own) => { const it = ideaOf(id); if (!it) return '– keine Animation –'; const [k, i] = id.split(':'); return `${k !== own && TBY[k] ? TBY[k].name + ' · ' : ''}${+i + 1} · ${it.title}`; };   // Ideen einer anderen Spur mit deren Namen
 $('vs').innerHTML = TRACKS.map(t => `<div class="vr" data-k="${t.key}" style="--tc:${t.cssColor}">
   <div class="r1"><input type="checkbox" aria-label="${esc(t.name)} im Video zeigen"><i></i><b>${esc(t.name)}</b><span class="rk"></span><span class="act"></span></div>
-  <div class="r2"><select aria-label="Animation für ${esc(t.name)}">${optsHtml()}</select><button class="col" title="Farbe: Spurfarbe / Weiß" aria-label="Farbe umschalten" aria-pressed="true"></button></div>
+  <div class="r2"><button type="button" class="pick" aria-haspopup="dialog" aria-label="Animation für ${esc(t.name)} auswählen"></button><button class="col" title="Farbe: Spurfarbe / Weiß" aria-label="Farbe umschalten" aria-pressed="true"></button></div>
   <div class="r3"><span>Wenn andere klingen:</span><select class="mode" aria-label="Interaktion von ${esc(t.name)}">${MODES.map(([v, n]) => `<option value="${v}">${n}</option>`).join('')}</select></div>
   <span class="mod" hidden>mit Anpassungen aus der Zuordnung</span></div>`).join('');
 $('lanes').innerHTML = TRACKS.map(t => `<div class="lane" data-k="${t.key}" style="--tc:${t.cssColor}"><span>${esc(t.name)}</span><div class="bar">${t.raw.map(([a, z]) => `<i style="left:${a / DUR * 100}%;width:${(z - a) / DUR * 100}%"></i>`).join('')}</div></div>`).join('');
@@ -363,7 +392,9 @@ const lanes = Object.fromEntries(TRACKS.map(t => [t.key, document.querySelector(
 function refreshUi() {
   for (const t of TRACKS) {
     const st = ST[t.key], r = rows[t.key];
-    r.querySelector('input').checked = st.on; r.querySelector('.r2 select').value = st.anim;
+    r.querySelector('input').checked = st.on;
+    const pk = r.querySelector('.pick'), lb = animLabel(st.anim, t.key);
+    if (pk.textContent !== lb) pk.textContent = lb; pk.title = lb + ' – klicken zum Auswählen'; pk.classList.toggle('none', !ideaOf(st.anim));
     r.querySelector('select.mode').value = st.mode || 'none'; r.querySelector('.col').setAttribute('aria-pressed', String(st.tint));
     r.classList.toggle('dis', !st.on); lanes[t.key].classList.toggle('off', !st.on || !st.anim);
     r.querySelector('.mod').hidden = !Object.keys(st.P).length;
@@ -372,10 +403,10 @@ function refreshUi() {
 }
 $('vs').addEventListener('change', ev => {
   const r = ev.target.closest('.vr'); if (!r) return; const st = ST[r.dataset.k];
-  if (ev.target.type === 'checkbox') st.on = ev.target.checked; else if (ev.target.classList.contains('mode')) st.mode = ev.target.value; else { st.anim = ev.target.value; st.P = {}; }
+  if (ev.target.type === 'checkbox') st.on = ev.target.checked; else if (ev.target.classList.contains('mode')) st.mode = ev.target.value; else return;
   persist(); refreshUi();
 });
-$('vs').addEventListener('click', ev => { const b = ev.target.closest('.col'); if (!b) return; const st = ST[b.closest('.vr').dataset.k]; st.tint = !st.tint; persist(); refreshUi(); });
+$('vs').addEventListener('click', ev => { const pk = ev.target.closest('.pick'); if (pk) { openPicker(pk.closest('.vr').dataset.k); return; } const b = ev.target.closest('.col'); if (!b) return; const st = ST[b.closest('.vr').dataset.k]; st.tint = !st.tint; persist(); refreshUi(); });
 $('fromZ').onclick = () => { initState(true); persist(); refreshUi(); };
 $('onlyAct').checked = (() => { try { return localStorage.getItem('av-video-only') !== '0'; } catch (e) { return true; } })();
 $('onlyAct').onchange = () => { try { localStorage.setItem('av-video-only', $('onlyAct').checked ? '1' : '0'); } catch (e) {} };
@@ -431,7 +462,52 @@ window.addEventListener('keydown', ev => { if ((ev.key === 'f' || ev.key === 'F'
   w.addEventListener('pointerup', () => { drag = false; });
 }
 
+/* ---------- Pop-up: Übersicht der Animationsideen zum Auswählen (läuft animiert, Klick übernimmt) ---------- */
+const dlg = document.createElement('dialog'); dlg.className = 'ap'; document.body.appendChild(dlg);
+let pickFor = null, pickTrack = null, pTiles = [], pClock = null;
+function openPicker(k) {
+  pickFor = k; const cur = ST[k].anim; pickTrack = cur && TBY[cur.split(':')[0]] ? cur.split(':')[0] : k;
+  pClock = { perf: performance.now(), t: now() };      // eigene Uhr: im Pop-up laufen die Animationen immer, auch wenn der Song pausiert
+  buildPicker(); dlg.showModal();
+  const on = dlg.querySelector('.at.on'); if (on) on.scrollIntoView({ block: 'nearest' });
+}
+function buildPicker() {
+  const t = TBY[pickFor], cur = ST[pickFor].anim, ideas = IDEAS[pickTrack] || [];
+  dlg.style.setProperty('--tc', t.cssColor);
+  dlg.innerHTML = `<div class="aph"><h2><i></i>Animation für ${esc(t.name)}</h2><span class="sp"></span>
+      <div class="trk" role="group" aria-label="Ideen welcher Tonspur?">${TRACKS.filter(x => (IDEAS[x.key] || []).length).map(x => `<button type="button" data-t="${x.key}" style="--tc:${x.cssColor}" aria-pressed="${x.key === pickTrack}"><i></i>${esc(x.name)}</button>`).join('')}</div>
+      <button type="button" class="x" aria-label="Schließen" title="Schließen (Esc)">×</button></div>
+    <div class="apb"><div class="apg">
+      ${ideas.map((d, i) => { const id = pickTrack + ':' + i; return `<button type="button" class="at${id === cur ? ' on' : ''}" data-id="${id}"><div class="st"><canvas></canvas>${id === cur ? '<span class="ok">gewählt</span>' : ''}${d.tag ? `<span class="tg">${esc(d.tag)}</span>` : ''}</div><div class="cp"><span class="n">${i + 1}</span>${esc(d.title)}</div></button>`; }).join('')}
+      <button type="button" class="at no${!ideaOf(cur) ? ' on' : ''}" data-id=""><div class="st">keine Animation</div><div class="cp">– keine Animation –</div></button>
+    </div></div>`;
+  pTiles = [...dlg.querySelectorAll('.at[data-id]:not(.no)')].map(el => ({ id: el.dataset.id, cv: el.querySelector('canvas') }));
+}
+dlg.addEventListener('click', ev => {
+  if (ev.target === dlg || ev.target.closest('.x')) { dlg.close(); return; }       // Klick daneben oder × schließt
+  const tb = ev.target.closest('.trk button'); if (tb) { pickTrack = tb.dataset.t; buildPicker(); return; }
+  const at = ev.target.closest('.at'); if (!at) return;
+  const st = ST[pickFor]; if (st.anim !== at.dataset.id) { st.anim = at.dataset.id; st.P = {}; }
+  if (st.anim) st.on = true;
+  persist(); refreshUi(); dlg.close();
+});
+dlg.addEventListener('close', () => { pTiles = []; dlg.innerHTML = ''; });
+function drawPicker() {
+  if (!dlg.open || !pTiles.length) return;
+  const t = pClock.t + (performance.now() - pClock.perf) / 1000 * rate() - OFFSET, dpr = Math.min(2, window.devicePixelRatio || 1);
+  const s = { t, bar: BAR, beat: BEAT, phase: ((t / BAR) % 1 + 1) % 1, ...COL, col: COL.fg };
+  const gate = window.IDEEN_GATE; window.IDEEN_GATE = false;    // in der Übersicht alles zeigen, nicht nur wenn die Spur klingt
+  for (const p of pTiles) {
+    const r = p.cv.getBoundingClientRect(); if (r.bottom < 0 || r.top > innerHeight || !r.width) continue;   // nur sichtbare Kästen zeichnen
+    const W = Math.round(r.width * dpr), H = Math.round(r.height * dpr); if (p.cv.width !== W || p.cv.height !== H) { p.cv.width = W; p.cv.height = H; }
+    const c = p.cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, r.width, r.height);
+    c.save(); try { drawAnim(c, { ...s, w: r.width, h: r.height }, { anim: p.id, P: {} }); } catch (e) { console.error(e); } c.restore(); c.globalAlpha = 1;
+  }
+  window.IDEEN_GATE = gate;
+}
+
 function frame() {
+  drawPicker();
   const t = now(), tt = t - OFFSET, playing = !audio.paused, shown = playing ? t : (audio.currentTime || 0);
   const s0 = { t: tt, bar: BAR, beat: BEAT, phase: ((tt / BAR) % 1 + 1) % 1, ...COL }, only = $('onlyAct').checked;
   window.IDEEN_GATE = only;

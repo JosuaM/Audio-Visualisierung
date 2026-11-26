@@ -745,9 +745,15 @@ const IDEAS = {
     },
     {
       title: 'Rechteckige Spirale',
-      text: 'Wie die Spirale nach innen, nur eckig: Die Bahn läuft immer geradeaus bis zur nächsten Ecke, knickt im rechten Winkel ab und windet sich so bis zur Mitte – die Windungen berühren sich nie. Jeden halben Takt kommt oben links eine Kugel dazu, alle springen zwei Plätze weiter (8 Nachbilder im 16tel), besetzt ist also immer jeder zweite Platz. Mit jedem Platz Richtung Mitte wird eine Kugel ein kleines Stück kleiner.',
-      tag: '2 Plätze · +1 Kugel / ½ Takt',
+      text: 'Wie die Spirale nach innen, nur eckig: Die Bahn läuft immer geradeaus bis zur nächsten Ecke, knickt im rechten Winkel ab und windet sich so bis zur Mitte – die Windungen berühren sich nie. Pro halben Takt springt jede Kugel eine ganze Kante weiter bis zur nächsten Ecke (8 Nachbilder im 16tel): rechts, runter, links, hoch. Oben links kommt im Wechsel einen halben Takt lang eine neue Kugel, dann ist einen halben Takt Pause – auf der Bahn liegen also immer zwei Ecken zwischen zwei Kugeln. Mit jeder Ecke Richtung Mitte wird eine Kugel ein kleines Stück kleiner; nach 16 Kanten ist die erste in der Mitte.',
+      tag: '1 Kante / ½ Takt · +1 Kugel / Takt',
       draw(c, s) { rectSpiral(c, s, FPC[17].def); },  // voll einstellbar: siehe rectSpiral / FPC[17]
+    },
+    {
+      title: 'Zwei rechteckige Spiralen',
+      text: 'Wie die rechteckige Spirale, aber mit zwei Armen: Einer kommt von oben links, der andere gespiegelt von unten rechts. Jede Kante läuft bis kurz vor den Punkt, an dem der andere Arm hereingekommen ist, dann knickt sie ab – so greifen die beiden Spiralen bis zur Mitte ineinander, ohne sich je zu überlappen. Pro halben Takt springt jede Kugel eine Kante weiter (8 Nachbilder im 16tel). Die neuen Kugeln kommen im Wechsel: oben links, einen halben Takt Pause, unten rechts, einen halben Takt Pause, wieder oben links …; mit jeder Ecke wird sie ein Stück kleiner.',
+      tag: '2 Arme im Wechsel · +1 Kugel / Takt',
+      draw(c, s) { rectSpiral2(c, s, FPC[18].def); },  // voll einstellbar: siehe rectSpiral2 / FPC[18]
     },
   ],
   trumpet: [
@@ -2035,60 +2041,105 @@ function spiralOut(c, s, P) {         // Idee 17: Spirale nach außen – voll e
   }
   c.globalAlpha = 1;
 }
-// Idee 18: Rechteckige Spirale – Plätze auf einem Raster, die Bahn läuft gerade bis zur Ecke, knickt ab und windet sich bis zur Mitte
+// Idee 18: Rechteckige Spirale – die Plätze sind die Ecken: die Bahn läuft gerade bis zur nächsten Ecke, knickt ab und windet sich bis zur Mitte
 const rectSpiralCache = {};
 function rectSpiralPath(w, h, dens) {
   const key = w + 'x' + h + dens; if (rectSpiralCache[key]) return rectSpiralCache[key];
-  const m0 = Math.min(w, h), mg = m0 * .09, iw = w - 2 * mg, ih = h - 2 * mg;
-  const rows = { Wenige: 4, Mehrere: 6, Viele: 8 }[dens] || 6;               // Rasterschritte über die kurze Bildseite (gerade → die Bahn endet sauber in der Mitte)
-  const cell = Math.min(iw, ih) / rows, even = v => Math.max(2, 2 * Math.round(v / cell / 2));
-  const nx = even(iw), ny = even(ih), gx = iw / nx, gy = ih / ny;
-  // Bahn: rechts → runter → links → hoch, nach jeder Seite rückt der Rand 2 Rasterschritte nach innen –
-  // als Kontur würden sich die Windungen nie berühren, der Abstand zwischen den Windungen = Abstand zweier Kugeln
-  let c0 = 0, c1 = nx, r0 = 0, r1 = ny, x = 0, y = 0, dir = 0; const pts = [[0, 0]];
-  for (let e = 0; e < 400 && c0 <= c1 && r0 <= r1; e++) {
-    let tx = x, ty = y; if (dir === 0) tx = c1; else if (dir === 1) ty = r1; else if (dir === 2) tx = c0; else ty = r0;
-    const k = Math.abs(tx - x) + Math.abs(ty - y); if (k < 1) break;
-    for (let i = 1; i <= k; i++) pts.push([x + Math.sign(tx - x) * i, y + Math.sign(ty - y) * i]);
-    x = tx; y = ty;
-    if (dir === 0) r0 += 2; else if (dir === 1) c1 -= 2; else if (dir === 2) r1 -= 2; else c0 += 2;
-    dir = (dir + 1) % 4;
-  }
-  return (rectSpiralCache[key] = { pts: pts.map(([i, j]) => [mg + i * gx, mg + j * gy]), g: Math.min(gx, gy), gx });
+  const m0 = Math.min(w, h), mg = m0 * .09;
+  const E = { Wenige: 12, Mehrere: 16, Viele: 20 }[dens] || 16;   // Anzahl Kanten = Sprünge bis zur Mitte (16 = die 16 halben Takte der Flöte)
+  // Bahn: rechts → runter → links → hoch; nach jeder Kante rückt der Rand um g nach innen – als Kontur berühren sich die Windungen nie
+  const build = g => {
+    let L = mg, R = w - mg, T = mg, B = h - mg, x = L, y = T; const pts = [[x, y]];
+    for (let e = 0; e < E; e++) {
+      const d = e % 4;
+      if (d === 0) { x = R; T += g; } else if (d === 1) { y = B; R -= g; } else if (d === 2) { x = L; B -= g; } else { y = T; L += g; }
+      const p = pts[pts.length - 1]; if (Math.abs(x - p[0]) + Math.abs(y - p[1]) < g * .999) return null;   // Kante kürzer als der Windungsabstand → zu eng
+      pts.push([x, y]);
+    }
+    return pts;
+  };
+  let lo = 0, hi = m0;                               // größter Windungsabstand, bei dem alle Kanten noch Platz haben → die Spirale reicht genau bis zur Mitte
+  for (let i = 0; i < 40; i++) { const g = (lo + hi) / 2; if (build(g)) lo = g; else hi = g; }
+  return (rectSpiralCache[key] = { pts: build(lo), g: lo });
 }
-function rectSpiral(c, s, P) {
-  const N = 8, T = s.bar / 2, step = T / N, K = 2;  // 8 Nachbilder pro halben Takt; jede Kugel rückt 2 Plätze weiter → besetzt ist immer jeder zweite Platz
+function rectSpiral(c, s, P) { rectSpiralRun(c, s, P, rectSpiralPath(s.w, s.h, P.count), false); }
+function rectSpiral2(c, s, P) { rectSpiralRun(c, s, P, rectSpiral2Path(s.w, s.h, P.count), true); }
+// Idee 19: zwei rechteckige Spiralen – Arm A von oben links, Arm B gespiegelt (um die Bildmitte gedreht) von unten rechts.
+// Jede Kante stoppt kurz vor dem Startpunkt bzw. der Bahn des anderen Arms – die beiden Spiralen greifen ineinander, ohne sich je zu berühren.
+function rectSpiral2Path(w, h, dens) {
+  const key = '2:' + w + 'x' + h + dens; if (rectSpiralCache[key]) return rectSpiralCache[key];
+  if (h > w) {                                       // Hochformat: im Querformat bauen und an der Diagonale spiegeln (startet oben links, läuft zuerst nach unten)
+    const q = rectSpiral2Path(h, w, dens);
+    return (rectSpiralCache[key] = { pts: q.pts.map(([x, y]) => [y, x]), g: q.g });
+  }
+  const m0 = Math.min(w, h), mg = m0 * .09, W = w - 2 * mg, H = h - 2 * mg;
+  const E = { Wenige: 8, Mehrere: 12, Viele: 16 }[dens] || 12;   // Kanten pro Arm = Sprünge bis zur Mitte
+  // Kantenlängen von Arm A: rechts W, runter H − g, links W − g, hoch H − 3g, rechts W − 3g, runter H − 5g …
+  const len = (k, g) => k === 0 ? W : k % 2 ? H - k * g : W - (k - 1) * g;
+  const build = g => {
+    let x = mg, y = mg; const pts = [[x, y]];
+    for (let k = 0; k < E; k++) {
+      const l = len(k, g); if (l < g * .999) return null;
+      const d = k % 4; if (d === 0) x += l; else if (d === 1) y += l; else if (d === 2) x -= l; else y -= l;
+      pts.push([x, y]);
+    }
+    return pts;
+  };
+  let lo = 0, hi = m0;                               // größter Abstand g zwischen den beiden Armen, bei dem alle Kanten noch Platz haben
+  for (let i = 0; i < 40; i++) { const g = (lo + hi) / 2; if (build(g)) lo = g; else hi = g; }
+  return (rectSpiralCache[key] = { pts: build(lo), g: lo });
+}
+function rectSpiralRun(c, s, P, path, two) {
+  const N = 8, T = s.bar / 2, step = T / N;        // 8 Nachbilder pro halben Takt
   const D = T * SPEEDF[P.speed];                   // Flugzeit eines Nachbilds (Moderat = 30 % eines halben Takts)
-  const { pts, g, gx } = rectSpiralPath(s.w, s.h, P.count), L = pts.length - 1;
-  const SH = .4;                                   // innen ist eine Kugel nur noch 40 % so groß wie außen – Platz für Platz gleichmäßig kleiner
+  const { g } = path, p0 = path.pts[0], p1 = path.pts[1];
+  const pts = path.pts.slice(1), L = pts.length - 1;   // die Startecke ist kein Halt: der erste Sprung läuft von außerhalb des Bildes über sie hinweg bis zur nächsten Ecke
+  const SH = .45;                                  // in der Mitte ist eine Kugel nur noch 45 % so groß wie außen – von Ecke zu Ecke gleichmäßig kleiner
   const A = { Undurchsichtig: 1, Halbtransparent: .4, Transparent: .2 }[P.alpha], col = fpColor(P, s.fg), sz = SIZEF[P.size] / SIZEF.Mittel;
-  const pos = u => {                               // Platz u (auch Zwischenwerte) → Punkt auf der Bahn; vor Platz 0 kommt sie von links herein
-    if (u <= 0) return [pts[0][0] + u * gx, pts[0][1]];
-    if (u >= L) return pts[L];
-    const i = Math.floor(u), f = u - i, a = pts[i], b = pts[i + 1];
+  const r0 = g * .3 * sz, hor = Math.abs(p1[0] - p0[0]) > Math.abs(p1[1] - p0[1]);
+  const start = hor ? [-r0 * 1.5, p0[1]] : [p0[0], -r0 * 1.5];   // Einstieg: in Verlängerung der ersten Kante außerhalb des Bildes
+  // Nach der letzten Ecke: noch eine kurze Kante weiter – im selben Drehsinn abgeknickt wie die Spirale –, auf der die Kugel wegschrumpft (statt auf der Stelle zu stehen)
+  const dir = (a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1; return [dx / l, dy / l]; };
+  const dl = dir(pts[L - 1], pts[L]), dp = dir(pts[L - 2], pts[L - 1]), cw = Math.abs(-dp[1] - dl[0]) + Math.abs(dp[0] - dl[1]) < .01;   // Drehsinn: Kante L−1 → L
+  const dn = cw ? [-dl[1], dl[0]] : [dl[1], -dl[0]], el = Math.hypot(pts[L - 1][0] - pts[L - 2][0], pts[L - 1][1] - pts[L - 2][1]);
+  if (!path.end) {                                 // Länge des Endstücks: so lang wie die nächste Kante wäre, aber nie näher als g an eine andere Bahn (auch nicht an den gespiegelten Arm)
+    const segD = (p, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], q = clamp(((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy || 1), 0, 1); return Math.hypot(p[0] - a[0] - q * dx, p[1] - a[1] - q * dy); };
+    const segs = []; for (let k = 0; k < L - 1; k++) segs.push([pts[k], pts[k + 1]]);   // eigene Bahn ohne die letzte Kante (an die schließt das Endstück an)
+    if (two) for (let k = -1; k < L; k++) { const a = k < 0 ? p0 : pts[k], b = pts[k + 1]; segs.push([[s.w - a[0], s.h - a[1]], [s.w - b[0], s.h - b[1]]]); }
+    const ok = v => { for (let q = 1; q <= 12; q++) { const p = [pts[L][0] + dn[0] * v * q / 12, pts[L][1] + dn[1] * v * q / 12]; for (const [a, b] of segs) if (segD(p, a, b) < g * .95) return false; } return true; };
+    let v = Math.max(0, el - (two ? 2 : 1) * g); while (v > 1 && !ok(v)) v *= .9;
+    path.end = v;
+  }
+  const vl = path.end, END = [pts[L][0] + dn[0] * vl, pts[L][1] + dn[1] * vl];
+  const pos = u => {                               // Platz u (auch Zwischenwerte) → Punkt auf der Bahn
+    if (u >= L) { const f = Math.min(1, u - L); return [pts[L][0] + (END[0] - pts[L][0]) * f, pts[L][1] + (END[1] - pts[L][1]) * f]; }
+    const i = Math.floor(u), f = u - i, a = i < 0 ? start : pts[i], b = pts[i + 1];
     return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
   };
   const dot = (u, al, i) => {
-    let rr = g * .3 * sz * Math.pow(SH, clamp(u, 0, L) / L);
-    if (u > L) rr *= Math.max(0, 1 - (u - L) / K);  // in der Mitte angekommen: auf dem nächsten Schritt wegschrumpfen
-    if (u < 0) al *= clamp(1 + u / K, 0, 1);        // von außen einblenden
+    let rr = r0 * Math.pow(SH, clamp(u, 0, L) / L);
+    if (u > L) rr *= Math.max(0, 1 - (u - L) ** 2);  // in der Mitte angekommen: läuft die letzte kurze Kante weiter und schrumpft dabei weg
     if (rr < .3 || al <= 0) return;
-    const [x, y] = pos(u); fpShape(c, P, x, y, rr, col, al, i);
+    const [x, y] = pos(u);
+    if (two && (i / 2) % 2) fpShape(c, P, s.w - x, s.h - y, rr, col, al, i);   // zwei Arme im Wechsel: Kugel 0, 4, 8 … oben links, 2, 6, 10 … gespiegelt von unten rechts
+    else fpShape(c, P, x, y, rr, col, al, i);
   };
   const t = s.t, n = Math.floor(t / T);
   const landed = m => clamp(Math.floor((t - m * T) / step) + 1, 0, N);
   const departed = m => clamp(Math.floor((t - m * T + D) / step) + 1, 0, N);
-  // Kugel b kommt im halben Takt b dazu: im halben Takt m springt sie von Platz K·(m − b − 1) nach K·(m − b), mit 8 Nachbildern im 16tel
-  for (let b = Math.max(0, n - Math.ceil(L / K) - 3); b <= n + 1; b++) {
+  // Kugel b kommt im halben Takt b dazu: im halben Takt m springt sie eine ganze Kante weiter, von Ecke (m − b − 1) nach (m − b),
+  // mit 8 Nachbildern im 16tel. Neue Kugeln kommen nur in geraden halben Takten – dazwischen ist immer ein halber Takt Pause.
+  for (let b = Math.max(0, n - L - 3); b <= n + 1; b++) {
+    if (b % 2) continue;                           // nur jeden zweiten halben Takt kommt eine neue Kugel – dazwischen ein halber Takt Pause
     for (let m = Math.max(b, n - 1); m <= n + 1; m++) {
-      const to = K * (m - b);
+      const to = m - b;
       const o = (landed(m) - departed(m + 1)) / N;
       if (o > 0) dot(to, Math.min(1, o) * Math.min(1, A / .4), b);
       for (let i = 0; i < N; i++) {
         const t0 = m * T + i * step - D;
         if (t < t0 || t >= t0 + D) continue;
         const p = (t - t0) / D;
-        dot(to - K + K * p * p * (3 - 2 * p), A, b);
+        dot(to - 1 + p * p * (3 - 2 * p), A, b);
       }
     }
   }
@@ -2098,30 +2149,37 @@ const MAP17 = [
   { g: 'Kasten 1 · Visuelle Erscheinung', rows: [
     { n: 'Grundelement', v: 'Kreis', h: 'Jede Kugel ist ein Kreis.' },
     { n: 'Formcharakter', v: 'Geometrisch', h: 'Exakter Kreis; die Bahn dagegen ist eckig – nur gerade Strecken und rechte Winkel.' },
-    { n: 'Größe', v: 'Mittel', h: 'Außen am Rand mittelgroß, nach innen Platz für Platz ein kleines Stück kleiner – in der Mitte noch 40 %.' },
+    { n: 'Größe', v: 'Mittel', h: 'Außen am Rand mittelgroß, nach innen von Ecke zu Ecke ein kleines Stück kleiner – in der Mitte noch 45 %.' },
     { n: 'Farbtemperatur', v: 'Neutral', h: 'Weder warm noch kalt.' },
     { n: 'Helligkeit', v: 'Hell', h: 'Im Dark Mode weiß auf schwarz. Im Light Mode kehrt es sich um (schwarz auf weiß), die Rolle bleibt „Kontrastfarbe“.' },
     { n: 'Farbton', v: 'Unbunt', h: 'Schwarz-weiß, kein Farbton.' },
     { n: 'Sättigung', v: 'Entsättigt', h: 'Keine Farbe – passt zu „unbunt“.' },
     { n: 'Transparenz', v: 'Halbtransparent', h: 'Die Nachbilder haben 40 % Deckkraft; die Kugel auf ihrem Platz wird mit jedem Nachbild kräftiger.' },
-    { n: 'Anzahl', v: 'Viele', h: 'Jeden halben Takt kommt oben links eine Kugel dazu – die Spirale füllt sich. „Anzahl“ stellt ein, wie fein das Raster ist (Wenige = 2 Windungen, Viele = 4).' },
-    { n: 'Anordnung', v: 'Rasterförmig', h: 'Auf einer rechteckigen Spirale über einem Raster; jeder zweite Platz ist besetzt.' },
+    { n: 'Anzahl', v: 'Viele', h: 'Jeden ganzen Takt kommt oben links eine Kugel dazu (dazwischen ein halber Takt Pause) – auf jeder zweiten Ecke sitzt eine. „Anzahl“ stellt die Kanten bis zur Mitte ein (Wenige 12, Mehrere 16 = die 16 halben Takte, Viele 20).' },
+    { n: 'Anordnung', v: 'Linear', h: 'Auf den Ecken einer rechteckigen Spirale, die sich bis zur Mitte windet.' },
     { n: 'Dimensionalität', v: '2D', h: 'Flach, ohne Schatten oder Tiefe.' },
     { n: 'Füllung', v: 'Gefüllt', h: 'Vollflächig in der Vordergrundfarbe.' },
     { n: 'Kontur', v: 'Keine' }, { n: 'Oberflächenbeschaffenheit', v: 'Glatt' }] },
   { g: 'Kasten 2 · Visuelles Verhalten', rows: [
-    { n: 'Formveränderung', v: 'Verkleinern', t: 'Tonhöhe', h: 'Mit jedem Platz Richtung Mitte wird die Kugel ein bisschen kleiner – feste, gleichmäßige Abstufung.' },
+    { n: 'Formveränderung', v: 'Verkleinern', t: 'Tonhöhe', h: 'Mit jeder Ecke Richtung Mitte wird die Kugel ein bisschen kleiner – feste, gleichmäßige Abstufung.' },
     { n: 'Formtransformation', v: 'Keine' },
     { n: 'Farbveränderung', v: 'Keine', h: 'Nur die Deckkraft ändert sich, nicht die Farbe.' },
     { n: 'Position im Raum', v: 'Mitte', h: 'Die Spirale füllt das Bild und läuft zur Bildmitte zusammen.' },
     { n: 'Bewegungsrichtung', v: 'Zur Mitte', t: 'Lautstärke', h: 'Wie bei der Spirale nach innen: Die Flöte wird leiser, die Kugeln wandern Windung für Windung zur Mitte.' },
-    { n: 'Bewegungsbahn', v: 'Gerade', h: 'Immer geradeaus bis zur nächsten Ecke, dort im rechten Winkel weiter – im Uhrzeigersinn nach innen.' },
+    { n: 'Bewegungsbahn', v: 'Gerade', h: 'Pro Sprung eine ganze Kante geradeaus bis zur nächsten Ecke: rechts, runter, links, hoch – im Uhrzeigersinn nach innen.' },
     { n: 'Geschwindigkeit', v: 'Moderat', t: 'Rhythmus', h: 'Richtet sich nach dem Rhythmus: 8 Töne pro halbem Takt, ein Nachbild braucht 30 % eines halben Takts.' },
-    { n: 'Beschleunigung', v: 'Stufenweise', h: 'Pro halbem Takt zwei Plätze weiter, dazwischen weich abgebremst.' },
-    { n: 'Rhythmus', v: 'Regelmäßig', t: 'Rhythmus', h: '8 Nachbilder im 16tel, ein Sprung pro halbem Takt.' },
+    { n: 'Beschleunigung', v: 'Stufenweise', h: 'Pro halbem Takt eine Ecke weiter, dazwischen weich abgebremst.' },
+    { n: 'Rhythmus', v: 'Regelmäßig', t: 'Rhythmus', h: '8 Nachbilder im 16tel, ein Sprung pro halbem Takt; neue Kugeln kommen jeden ganzen Takt, dazwischen ein halber Takt Pause.' },
     { n: 'Erscheinungsverhalten', v: 'Einblenden', h: 'Neue Kugeln kommen links herein und blenden dabei auf.' },
     { n: 'Verschwindeverhalten', v: 'Schrumpfen', h: 'In der Mitte angekommen schrumpfen sie weg.' },
-    { n: 'Spur', v: 'Nachbild', h: '8 halbtransparente Nachbilder ziehen von Platz zu Platz – auch um die Ecken.' }] }, NONE3];
+    { n: 'Spur', v: 'Nachbild', h: '8 halbtransparente Nachbilder ziehen die Kante entlang von Ecke zu Ecke.' }] }, NONE3];
+const MAP18 = MAP17.map(g => g.rows ? { ...g, rows: g.rows.map(r => ({
+  Anzahl: { ...r, h: 'Jeden ganzen Takt kommt eine Kugel dazu (dazwischen ein halber Takt Pause) – im Wechsel oben links und unten rechts. „Anzahl“ stellt die Kanten pro Arm ein (Wenige 8, Mehrere 12, Viele 16).' },
+  Anordnung: { ...r, v: 'Symmetrisch', h: 'Zwei rechteckige Spiralen, punktsymmetrisch um die Bildmitte: eine von oben links, eine von unten rechts, ineinander verschränkt.' },
+  'Bewegungsbahn': { ...r, h: 'Pro Sprung eine Kante geradeaus; jede Kante stoppt kurz vor dem Startpunkt bzw. der Bahn des anderen Arms – die Spiralen überlappen nie.' },
+  'Erscheinungsverhalten': { ...r, h: 'Neue Kugeln kommen im Wechsel links oben und rechts unten herein.' },
+  'Interaktion zwischen Elementen': r,
+}[r.n] || r)) } : g);
 // Konfiguration je Idee (Index in IDEAS.flute): Zeichenfunktion, Standardwerte, Reihenfolge der Auswahlfelder
 const FPC = {
   0: { map: FLUTE_MAP, draw: fluteFall, def: { ...LOOK, count: 'Mehrere', layout: 'Linear', place: 'Mitte', dir: 'Runter', path: 'Gerade', speed: 'Moderat', accel: 'Zunehmend' },
@@ -2134,6 +2192,8 @@ const FPC = {
     groups: [['Erscheinung', [...LOOK_KEYS.filter(k => k !== 'count'), 'dim', 'fill', 'stroke']], ['Verhalten', ['speed']]] },
   16: { map: MAP15, draw: spiralOut, def: { ...LOOK, size: 'Mittel', speed: 'Moderat' },
     groups: [['Erscheinung', [...LOOK_KEYS.filter(k => k !== 'count'), 'dim', 'fill', 'stroke']], ['Verhalten', ['speed']]] },
+  18: { map: MAP18, draw: rectSpiral2, def: { ...LOOK, size: 'Mittel', count: 'Mehrere', speed: 'Moderat' }, opts: { count: ['Wenige', 'Mehrere', 'Viele'] },
+    groups: [['Erscheinung', [...LOOK_KEYS, 'dim', 'fill', 'stroke']], ['Verhalten', ['speed']]] },
   17: { map: MAP17, draw: rectSpiral, def: { ...LOOK, size: 'Mittel', count: 'Mehrere', speed: 'Moderat' }, opts: { count: ['Wenige', 'Mehrere', 'Viele'] },
     groups: [['Erscheinung', [...LOOK_KEYS, 'dim', 'fill', 'stroke']], ['Verhalten', ['speed']]] },
 };

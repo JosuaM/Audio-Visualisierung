@@ -452,7 +452,7 @@ const MENUS = {
   ansicht: () => [{ h: 'Bereich' }, { t: 'Studio', ck: UI.ws === 'studio', f: () => setWs('studio') }, { t: 'Labor', ck: UI.ws === 'labor', f: () => setWs('labor') }, { hr: 1 }, { h: 'Fenster ein- / ausblenden' },
     { t: 'Vorschau', ck: !UI.hide.preview, f: () => togHide('preview') }, { t: 'Zuordnungen', ck: !UI.hide.list, f: () => togHide('list') }, { t: 'Bearbeiten', ck: !UI.hide.insp, f: () => togHide('insp') }, { t: 'Zeitleiste', ck: !UI.hide.timeline, f: () => togHide('timeline') }, { hr: 1 },
     { t: 'Layout zurücksetzen', f: () => { UI.hide = {}; UI.lay = defLay(); saveUI(); applyLayout(); requestAnimationFrame(resizeAll); } }, { t: 'Hell / Dunkel', f: toggleTheme }],
-  gehe: () => [{ t: 'Alte Ansicht – Hauptmenü mit allen bisherigen Seiten', href: 'alt.html' }, { h: 'Einzelne alte Seiten' },
+  gehe: () => [{ t: 'Hauptmenü mit allen Seiten', href: 'index.html' }, { h: 'Einzelne alte Seiten' },
     { t: 'Animations-Zuordnung', href: 'seiten/animationen/zuordnung.html' }, { t: 'Tonspuren zusammengeführt (Video)', href: 'seiten/video/video.html' }, { t: 'Labor (alt)', href: 'seiten/animationen/labor.html' },
     { t: 'Animationsideen', href: 'seiten/animationen/animationen.html' }, { t: 'Morphologischer Kasten – Klangparameter', href: 'seiten/morphologischer-kasten/parameter.html' }, { t: 'Klanghierarchie', href: 'seiten/hierarchie/hierarchie.html' }, { t: 'Tonspuren (Zeitleiste)', href: 'seiten/tonspuren/original.html' }],
   hilfe: () => [{ t: 'Kurzanleitung & Tastenkürzel', f: showHelp }],

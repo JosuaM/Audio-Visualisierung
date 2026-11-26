@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>/* Hell/Dunkel sofort setzen, bevor die Seite gezeichnet wird */
+try { document.documentElement.dataset.theme = localStorage.getItem('av-theme') || 'dark'; } catch (e) { document.documentElement.dataset.theme = 'dark'; }</script>
+<title>Studio – Audio-Visualisierung</title>
+<link rel="stylesheet" href="studio/studio.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- Menüleiste -->
+  <header class="menubar">
+    <div class="brand"><i></i>Audio-Visualisierung</div>
+    <button class="mb" data-menu="datei">Datei</button>
+    <button class="mb" data-menu="ansicht">Ansicht</button>
+    <button class="mb" data-menu="gehe">Gehe zu</button>
+    <button class="mb" data-menu="hilfe">Hilfe</button>
+    <span class="mbsp"></span>
+    <span class="ptitle">Synthwave goose – Blade Runner 2049</span>
+    <span class="dirty" id="dirty"></span>
+    <button class="btn sm go" id="save" title="Projekt speichern (Strg/⌘ + S)">Speichern</button>
+  </header>
+
+  <!-- Seitenleiste -->
+  <nav class="rail" aria-label="Bereiche">
+    <button id="nav-studio" class="on" data-tip="Studio" aria-label="Studio"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M10 9v11"/></svg></button>
+    <button id="nav-labor" data-tip="Labor – alle Animationen &amp; Zuordnungen" aria-label="Labor"><svg class="i" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5.5 9.5A1.6 1.6 0 0 0 5.9 21h12.2a1.6 1.6 0 0 0 1.4-2.5L14 9V3"/><path d="M7.5 15h9"/></svg></button>
+    <button id="nav-anim" data-tip="Animationen – Editor, alle Fenster, Zuordnung" aria-label="Animationen"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M10 9.2v5.6l4.8-2.8z"/></svg></button>
+    <span class="sp"></span>
+    <a href="index.html" data-tip="Hauptmenü mit allen Seiten" aria-label="Hauptmenü"><svg class="i" viewBox="0 0 24 24"><path d="M3.5 11 12 4l8.5 7"/><path d="M6 9.5V20h12V9.5"/><path d="M10 20v-5h4v5"/></svg></a>
+    <button id="theme" data-tip="Hell / Dunkel" aria-label="Hell / Dunkel umschalten"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/></svg></button>
+  </nav>
+
+  <!-- Arbeitsbereich 1: Studio -->
+  <main class="ws" id="ws-studio">
+    <section class="panel" id="p-preview" style="grid-column:1;grid-row:1">
+      <div class="ph"><b>Vorschau</b>
+        <select id="viewSel" aria-label="Was wird gezeigt?" title="Was zeigt die Vorschau?" style="flex:1;min-width:120px;max-width:340px"></select>
+        <span class="sp"></span>
+        <button class="btn ic" id="fs" title="Vollbild (F)" aria-label="Vollbild"><svg class="i" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+      </div>
+      <div class="pb">
+        <div id="stagewrap"><div id="stage"><canvas id="cv"></canvas><span class="tagv" id="tagv"></span></div></div>
+        <div id="gridwrap" hidden></div>
+        <div class="meters" id="meters"></div>
+        <div class="meters opts"><label class="chk" title="Eine Ebene erscheint nur dort, wo ihre Tonspur im Song klingt (nur in der Gesamtansicht)"><input type="checkbox" id="gate"> nur wenn Spur klingt</label>
+          <label class="chk" title="Bei Pause laufen die Animationen weiter, damit man beim Einstellen etwas sieht"><input type="checkbox" id="idle"> läuft in Pause weiter</label></div>
+      </div>
+    </section>
+
+    <div class="splitter v" data-s="pw" style="grid-column:2;grid-row:1" title="Ziehen = Breite ändern"></div>
+
+    <section class="panel" id="p-insp" style="grid-column:3;grid-row:1">
+      <div class="ph"><b>Bearbeiten</b><span class="sp"></span></div>
+      <div class="pb" id="insp"></div>
+    </section>
+
+    <div class="splitter v" data-s="lw" style="grid-column:4;grid-row:1 / -1" title="Ziehen = Breite ändern"></div>
+    <section class="panel" id="p-list" style="grid-column:5;grid-row:1 / -1">
+      <div class="ph"><b>Zuordnungen</b><span class="sp"></span><button class="btn sm" id="addMap" title="Neue Parameter-Zuordnung">+ Parameter</button><button class="btn sm" id="addFx" title="Abstrakten Effekt aus dem Labor als Ebene hinzufügen">+ Effekt</button></div>
+      <div class="pb" id="list"></div>
+    </section>
+    <div class="splitter h" data-s="th" style="grid-column:1 / 4;grid-row:2" title="Ziehen = Höhe ändern"></div>
+
+    <section class="panel" id="p-timeline" style="grid-column:1 / 4;grid-row:3">
+      <div class="ph"><b>Zeitleiste</b><span class="note" style="margin-left:6px">Wann klingt welche Tonspur – Klick oder Ziehen springt im Song</span><span class="sp"></span>
+        <label class="chk"><input type="checkbox" id="tlSig"> Signalkurven</label></div>
+      <div class="pb" id="tl"></div>
+    </section>
+  </main>
+
+  <!-- Arbeitsbereich 2: Labor -->
+  <main class="ws" id="ws-labor">
+    <section class="panel">
+      <div class="ph"><b>Labor</b><span class="note" style="margin-left:6px">Alle Animationen, Effekte und Parameter-Zuordnungen auf einen Blick – die aktuelle Zuordnung steht jeweils dabei</span></div>
+      <div class="lt" id="lfilter"></div>
+      <div class="pb" id="lgrid"></div>
+    </section>
+  </main>
+
+  <!-- Arbeitsbereich 3: Animationen (Editor · Alle Animationen · Zuordnung) -->
+  <main class="ws" id="ws-anim">
+    <section class="panel">
+      <div class="ph"><b>Animationen</b><div class="avsw" id="avsw" role="group" aria-label="Ansicht"></div><span class="sp"></span><div class="atrk" id="atrk" role="group" aria-label="Tonspur"></div></div>
+      <div class="pb ab">
+        <div class="av" id="av-edit"></div><div class="av" id="av-all"></div><div class="av" id="av-zu"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Player -->
+  <footer class="player">
+    <div class="song"><div class="disc" id="disc"></div><div class="t"><b>Synthwave goose</b><span>Blade Runner 2049 · 116 BPM · 4/4</span></div></div>
+    <div class="tp">
+      <button id="toStart" title="Zum Anfang (Pos1)" aria-label="Zum Anfang"><svg viewBox="0 0 24 24"><path d="M6 5h2.4v14H6zM20 5.5v13L9.6 12z"/></svg></button>
+      <button class="play" id="play" title="Abspielen / Pause (Leertaste)" aria-label="Abspielen"><svg viewBox="0 0 24 24" id="playIco"><path d="M8 5.5v13l11-6.5z"/></svg></button>
+      <button class="st" id="stop" title="Stopp" aria-label="Stopp"><svg viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="1.5" fill="currentColor" stroke="none"/></svg></button>
+      <button class="lp" id="loop" title="Wiederholen" aria-label="Wiederholen"><svg viewBox="0 0 24 24"><path d="M17 3l3 3-3 3"/><path d="M4 11V9.5A3.5 3.5 0 0 1 7.5 6H20"/><path d="M7 21l-3-3 3-3"/><path d="M20 13v1.5a3.5 3.5 0 0 1-3.5 3.5H4"/></svg></button>
+    </div>
+    <div>
+      <div class="seek"><span class="tm cur" id="tCur">0:00,0</span><div id="wave" role="slider" tabindex="0" aria-label="Position im Song" aria-valuemin="0"><canvas id="waveCv"></canvas></div><span class="tm" id="tDur">1:06,1</span></div>
+      <div class="bn" id="bn"></div>
+    </div>
+    <div class="pr">
+      <select id="rate" aria-label="Wiedergabegeschwindigkeit" title="Geschwindigkeit – Tonhöhe bleibt gleich"><option value="0.25">0,25×</option><option value="0.5">0,5×</option><option value="0.75">0,75×</option><option value="1" selected>1×</option><option value="1.25">1,25×</option><option value="1.5">1,5×</option><option value="2">2×</option></select>
+      <div class="vol"><button id="mute" title="Ton aus" aria-label="Ton aus / an"><svg class="i" viewBox="0 0 24 24"><path d="M4 9.5v5h3.5L12 19V5L7.5 9.5z" fill="currentColor"/><path id="muteWave" d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg></button><input type="range" id="vol" min="0" max="1" step=".01" value=".9" aria-label="Lautstärke"></div>
+    </div>
+  </footer>
+</div>
+<div class="toast" id="toast" hidden></div>
+<audio id="audio" src="assets/song.m4a" preload="auto"></audio>
+
+<script src="assets/analysis.js"></script>
+<script src="assets/data.js"></script>
+<script>window.IDEEN_GATE = true;</script>
+<script src="seiten/animationen/ideen.js"></script>
+<script src="seiten/animationen/effekte.js"></script>
+<script src="studio/spannung.js"></script>
+<script src="studio/signale.js"></script>
+<script src="studio/wirkung.js"></script>
+<script src="studio/kern.js"></script>
+<script src="studio/ui.js"></script>
+<script src="assets/mp4-muxer.js"></script>
+<script src="studio/export.js"></script>
+<script src="studio/labor.js"></script>
+<script src="seiten/animationen/editor-engine.js"></script>
+<script src="seiten/animationen/editor-ui.js"></script>
+<script src="studio/animationen.js"></script>
+<script src="studio/start.js"></script>
+</body>
+</html>

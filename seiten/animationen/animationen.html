@@ -220,7 +220,7 @@ body[data-view="edit"] #editor { flex: 1; min-height: 0; display: block; }
 </head>
 <body>
 <header class="nav">
-  <div class="nl"><a class="home" href="../../alt.html" title="Hauptmenü" aria-label="Zum Hauptmenü"><svg viewBox="0 0 24 24"><path d="M3.5 11 12 4l8.5 7"/><path d="M6 9.5V20h12V9.5"/><path d="M10 20v-5h4v5"/></svg></a><div class="pt"><span class="pk">Visualisierung der Tonspuren</span><h1>Animationsideen</h1></div></div>
+  <div class="nl"><a class="home" href="../../index.html" title="Hauptmenü" aria-label="Zum Hauptmenü"><svg viewBox="0 0 24 24"><path d="M3.5 11 12 4l8.5 7"/><path d="M6 9.5V20h12V9.5"/><path d="M10 20v-5h4v5"/></svg></a><div class="pt"><span class="pk">Visualisierung der Tonspuren</span><h1>Animationsideen</h1></div></div>
   <div class="nc"><nav class="steps" aria-label="Seiten in dieser Kategorie"><span class="dot cur" aria-current="page" data-l="Animationsideen" title="Animationsideen"></span><span class="ln" aria-hidden="true"></span><a class="dot" href="zuordnung.html" data-l="Animations-Zuordnung" title="Animations-Zuordnung" aria-label="Zu Animations-Zuordnung"></a><span class="ln" aria-hidden="true"></span><a class="dot" href="labor.html" data-l="Labor" title="Labor" aria-label="Zu Labor"></a></nav></div>
   <button id="theme" title="Dark / Light" aria-label="Dark / Light umschalten"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/></svg></button>
 </header>
@@ -230,7 +230,7 @@ body[data-view="edit"] #editor { flex: 1; min-height: 0; display: block; }
 
   <div class="panel pick">
     <div class="row" role="group" aria-label="Tonspur auswählen"><span class="lb">Tonspur</span><span id="trks" style="display:contents"></span>
-      <div class="vsw" role="group" aria-label="Ansicht"><button type="button" data-v="edit" aria-pressed="true" title="Eine Animation groß, mit Reglern für alles">Editor</button><button type="button" data-v="grid" aria-pressed="false" title="Alle Ideen der Spur nebeneinander">Übersicht</button></div></div>
+      <div class="vsw" role="group" aria-label="Ansicht"><button type="button" data-v="grid" aria-pressed="true" title="Alle Ideen der Spur nebeneinander">Übersicht</button><button type="button" data-v="edit" aria-pressed="false" title="Eine Animation groß, mit Reglern für alles">Editor</button></div></div>
     <div class="hier">
       <div class="hh"><span class="lb" id="stripLb">Klanghierarchie</span><span class="src" id="hierSrc"></span><span class="info" id="stripInfo"></span></div>
       <svg id="stripSvg" role="img" aria-label="Wo die Spur im Song vorkommt und auf welchem Rang – klicken springt dorthin"></svg>
@@ -599,13 +599,14 @@ $('grid').addEventListener('mouseout', e => { if (e.target.closest('.ibtn')) inf
 $('grid').addEventListener('focusin', e => { const b = e.target.closest('.ibtn'); if (b) tipShow(b, IDEAS[cur][+b.dataset.i]); });
 $('grid').addEventListener('focusout', () => { infoEl.hidden = true; });
 
-/* ---------- Ansicht: Editor (Standard) oder Übersicht ---------- */
-let view = 'edit', edI = 0, firstLoad = true, urlIdea = null, edHost = null;
-try { const v = localStorage.getItem('av-anim-view'); if (v === 'grid' || v === 'edit') view = v; const q = new URLSearchParams(location.search); if (q.get('ansicht') === 'grid' || q.get('ansicht') === 'edit') view = q.get('ansicht'); if (q.get('idee') != null) urlIdea = +q.get('idee') || 0; } catch (e) {}
+/* ---------- Ansicht: Übersicht (Standard – beim Öffnen immer zuerst) oder Editor ---------- */
+let view = 'grid', edI = 0, firstLoad = true, urlIdea = null, edHost = null;
+// nur ein Link mit ?ansicht=edit öffnet direkt den Editor – sonst (auch nach Neuladen) startet die Seite in der Übersicht
+try { const q = new URLSearchParams(location.search); if (q.get('ansicht') === 'edit') view = 'edit'; if (q.get('idee') != null) urlIdea = +q.get('idee') || 0; } catch (e) {}
 function refreshView() {
   document.body.dataset.view = view;
   document.querySelectorAll('.vsw button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === view)));
-  const q = new URLSearchParams(); q.set('spur', cur); if (view === 'edit') q.set('idee', edI); if (view === 'grid') q.set('ansicht', 'grid');
+  const q = new URLSearchParams(); q.set('spur', cur); if (view === 'edit') { q.set('ansicht', 'edit'); q.set('idee', edI); }
   history.replaceState(null, '', '?' + q.toString());
   readColors();
   if (view === 'grid') { buildGrid(); return; }

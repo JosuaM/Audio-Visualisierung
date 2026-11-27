@@ -7,6 +7,5 @@ else
   echo "Python wurde nicht gefunden. Bitte von https://www.python.org/downloads/ installieren."
   read -n 1 -s -r -p "Taste druecken zum Beenden"; exit 1
 fi
-echo "Server laeuft auf http://localhost:$PORT - dieses Fenster zum Beenden schliessen (oder Strg+C)."
 (sleep 1; open "http://localhost:$PORT/index.html") &
-$PY -m http.server $PORT
+$PY serve.py $PORT

@@ -150,7 +150,13 @@ header.nav .nc { justify-self: center; display: flex; align-items: center; }
 /* i-Button & Pop-ups: Zuordnung zum morphologischen Kasten */
 .cap h3 .ibtn { margin-left: auto; flex: none; width: 22px; height: 22px; padding: 0; border-radius: 50%; border: 1px solid var(--line-2); background: var(--panel); color: var(--muted); font-family: inherit; font-weight: 700; font-size: 11px; line-height: 1; cursor: pointer; display: grid; place-items: center; }
 .cap h3 .ibtn:hover, .cap h3 .ibtn:focus-visible { color: var(--accent); border-color: var(--accent); outline: none; }
-/* Like-Button je Idee (im Browser gespeichert) */
+/* Like-Button je Idee (gespeichert in animationen.html, Block „likes-data“) */
+header.nav .nr { justify-self: end; display: flex; align-items: center; gap: 8px; }
+#likeSave { height: 30px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+#likeSave[hidden] { display: none; }
+#likeSave:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 8px; font-size: 13px; z-index: 60; max-width: calc(100vw - 32px); }
+.toast[hidden] { display: none; }
 .cap h3 .like { margin-left: auto; flex: none; width: 22px; height: 22px; padding: 0; border: 0; background: transparent; color: var(--muted); cursor: pointer; display: grid; place-items: center; border-radius: 50%; }
 .cap h3 .like svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; transition: transform .15s; }
 .cap h3 .like:hover, .cap h3 .like:focus-visible { color: var(--accent); outline: none; }
@@ -222,7 +228,8 @@ body[data-view="edit"] #editor { flex: 1; min-height: 0; display: block; }
 <header class="nav">
   <div class="nl"><a class="home" href="../../index.html" title="Hauptmenü" aria-label="Zum Hauptmenü"><svg viewBox="0 0 24 24"><path d="M3.5 11 12 4l8.5 7"/><path d="M6 9.5V20h12V9.5"/><path d="M10 20v-5h4v5"/></svg></a><div class="pt"><span class="pk">Visualisierung der Tonspuren</span><h1>Animationsideen</h1></div></div>
   <div class="nc"><nav class="steps" aria-label="Seiten in dieser Kategorie"><span class="dot cur" aria-current="page" data-l="Animationsideen" title="Animationsideen"></span><span class="ln" aria-hidden="true"></span><a class="dot" href="zuordnung.html" data-l="Animations-Zuordnung" title="Animations-Zuordnung" aria-label="Zu Animations-Zuordnung"></a><span class="ln" aria-hidden="true"></span><a class="dot" href="labor.html" data-l="Labor" title="Labor" aria-label="Zu Labor"></a></nav></div>
-  <button id="theme" title="Dark / Light" aria-label="Dark / Light umschalten"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/></svg></button>
+  <div class="nr"><button id="likeSave" type="button" hidden title="Likes in animationen.html speichern (danach committen &amp; pushen)">Likes speichern</button>
+  <button id="theme" title="Dark / Light" aria-label="Dark / Light umschalten"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/></svg></button></div>
 </header>
 
 <main class="wrap">
@@ -261,6 +268,9 @@ body[data-view="edit"] #editor { flex: 1; min-height: 0; display: block; }
 <script src="ideen.js"></script>
 <script src="editor-engine.js"></script>
 <script src="editor-ui.js"></script>
+<div class="toast" id="toast" hidden></div>
+<!-- Gelikte Animationsideen (Spur:Titel → Zeitpunkt). Wird beim Liken automatisch hier hineingeschrieben. -->
+<script id="likes-data">window.ANIM_LIKES={"t":0,"likes":{}};</script>
 <script>
 'use strict';
 
@@ -569,9 +579,86 @@ function labFrame(s) {   // zeichnet Original, Variante und gespeicherte Variant
   fitDraw($('labO'), s, fn, labor.O); fitDraw($('labV'), s, fn, labor.V);
   dlg.querySelectorAll('canvas[data-vc]').forEach(cv => { const v = vList(curI)[+cv.dataset.vc]; if (v) fitDraw(cv, s, fn, { ...FPC[curI].def, ...v.P }); });
 }
-/* ---------- Likes: je Idee ein Herz, gespeichert im Browser (über Spur + Titel, damit es beim Umnummerieren bleibt) ---------- */
-const LKEY = 'av-anim-likes';
-let LIKES = {}; try { LIKES = JSON.parse(localStorage.getItem(LKEY) || '{}') || {}; } catch (e) { LIKES = {}; }
+/* ---------- Likes: je Idee ein Herz (über Spur + Titel, damit es beim Umnummerieren bleibt).
+   Gespeichert in animationen.html (Block „likes-data“), damit sie für alle gelten – der Browser hält nur eine Zwischenkopie. ---------- */
+const LKEY = 'av-anim-likes-v2', LKEY_OLD = 'av-anim-likes';
+let LSAVED = window.ANIM_LIKES || { t: 0, likes: {} };
+let LIKES = { ...(LSAVED.likes || {}) };
+try { const l = JSON.parse(localStorage.getItem(LKEY) || 'null'); if (l && l.likes && (l.t || 0) > (LSAVED.t || 0)) LIKES = { ...l.likes }; } catch (e) {}
+try { const o = JSON.parse(localStorage.getItem(LKEY_OLD) || 'null'); if (o && typeof o === 'object') { for (const k in o) if (!(k in LIKES)) LIKES[k] = o[k]; } } catch (e) {} // alte, nur im Browser gespeicherte Likes übernehmen
+const likesDirty = () => JSON.stringify(Object.keys(LIKES).sort()) !== JSON.stringify(Object.keys(LSAVED.likes || {}).sort());
+const likeUi = () => { $('likeSave').hidden = !likesDirty(); };
+let toastT = 0;
+const toast = (m, ms = 3500) => { const t = $('toast'); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, ms); };
+const idb = (mode, fn) => new Promise(res => {
+  try {
+    const r = indexedDB.open('av-store', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('h');
+    r.onerror = () => res(null);
+    r.onsuccess = () => { const tx = r.result.transaction('h', mode), q = fn(tx.objectStore('h')); tx.oncomplete = () => res(q && q.result); tx.onerror = tx.onabort = () => res(null); };
+  } catch (e) { res(null); }
+});
+async function likesHandle() {
+  let h = await idb('readonly', s => s.get('html-animationen'));
+  if (h) { try { if (await h.queryPermission({ mode: 'readwrite' }) !== 'granted' && await h.requestPermission({ mode: 'readwrite' }) !== 'granted') h = null; } catch (e) { h = null; } }
+  if (!h) {
+    toast('Bitte die Datei seiten/animationen/animationen.html auswählen – dort werden die Likes gespeichert', 6000);
+    h = (await showOpenFilePicker({ types: [{ description: 'animationen.html', accept: { 'text/html': ['.html'] } }] }))[0];
+    if (await h.requestPermission({ mode: 'readwrite' }) !== 'granted') throw new Error('keine Schreibrechte');
+    idb('readwrite', s => s.put(h, 'html-animationen'));
+  }
+  return h;
+}
+const LDATA_RE = /<script id="likes-data">window\.ANIM_LIKES=([\s\S]*?);<\/script>/;
+const withLikes = (txt, data) => txt.replace(LDATA_RE, () => '<script id="likes-data">window.ANIM_LIKES=' + JSON.stringify(data).replace(/</g, '\\u003c') + ';<\/script>');
+let likeBusy = Promise.resolve();
+const viaServer = () => /^https?:$/.test(location.protocol);
+async function saveLikesServer(data) { // über serve.py (Start-Mac.command / Start-Windows.bat) – klappt in jedem Browser
+  let r;
+  try { r = await fetch('/__save/likes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); }
+  catch (e) { throw new Error('Server nicht erreichbar – bitte Start-Mac.command bzw. Start-Windows.bat starten'); }
+  if (r.status === 404 || r.status === 501) return false; // alter Server ohne Speicherfunktion
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || !j.ok) throw new Error(j.error || 'Fehler ' + r.status);
+  return true;
+}
+function saveLikes(download) {
+  const data = { t: Date.now(), likes: { ...LIKES } };
+  try { localStorage.setItem(LKEY, JSON.stringify(data)); localStorage.removeItem(LKEY_OLD); } catch (e) {}
+  likeUi();
+  likeBusy = likeBusy.then(async () => {
+    try {
+      if (viaServer() && await saveLikesServer(data)) toast('Gespeichert in animationen.html – jetzt committen & pushen');
+      else if (window.showOpenFilePicker) {
+        const h = await likesHandle(), txt = await (await h.getFile()).text();
+        if (h.name !== 'animationen.html' || !LDATA_RE.test(txt)) throw new Error('Das ist nicht die animationen.html dieses Projekts');
+        const wr = await h.createWritable(); await wr.write(withLikes(txt, data)); await wr.close();
+        toast('Gespeichert in animationen.html – jetzt committen & pushen');
+      } else if (!viaServer()) {
+        throw new Error('Seite bitte über Start-Mac.command bzw. Start-Windows.bat öffnen, nicht per Doppelklick');
+      } else if (!download) {
+        throw new Error('Server bitte neu starten (Start-Mac.command schließen und wieder öffnen)');
+      } else {
+        const txt = await (await fetch(location.href.split('#')[0].split('?')[0], { cache: 'no-store' })).text();
+        const a = document.createElement('a'); a.download = 'animationen.html';
+        a.href = URL.createObjectURL(new Blob([withLikes(txt, data)], { type: 'text/html' })); a.click();
+        toast('animationen.html heruntergeladen – im Ordner seiten/animationen ersetzen, dann committen & pushen', 6000);
+      }
+      LSAVED = data;
+    } catch (err) {
+      toast(err.name === 'AbortError' ? 'Likes nicht in der Datei gespeichert – oben auf „Likes speichern“ klicken und animationen.html wählen' : `Likes nicht gespeichert: ${err.message}. Sie bleiben vorerst im Browser.`, 8000);
+    }
+    likeUi();
+  });
+}
+function toggleLike(lk, it) {
+  const id = likeId(it), on = !LIKES[id];
+  if (on) LIKES[id] = Date.now(); else delete LIKES[id];
+  lk.setAttribute('aria-pressed', String(on)); lk.setAttribute('aria-label', on ? 'Gefällt mir entfernen' : 'Gefällt mir'); lk.title = on ? 'Gefällt dir' : 'Gefällt mir';
+  saveLikes(false);
+}
+$('likeSave').onclick = () => saveLikes(true);
+likeUi();
 const likeId = it => cur + ':' + it.title;
 const HEART = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-9.2-9.4C1.7 7.9 3.8 4.5 7.2 4.5c2 0 3.6 1.1 4.8 2.8 1.2-1.7 2.8-2.8 4.8-2.8 3.4 0 5.5 3.4 4.4 6.6-1.7 4.8-9.2 9.4-9.2 9.4z"/></svg>';
 function likeBtn(it) { const on = !!LIKES[likeId(it)]; return `<button class="like" aria-pressed="${on}" aria-label="${on ? 'Gefällt mir entfernen' : 'Gefällt mir'}" title="${on ? 'Gefällt dir' : 'Gefällt mir'}">${HEART}</button>`; }
@@ -587,10 +674,7 @@ window.addEventListener('keydown', e => { if (e.key === 'Escape') { const f = do
 $('grid').addEventListener('click', e => {
   const st = e.target.closest('.stage'); if (st && !st.closest('.box.empty')) return toggleFull(st);
   const lk = e.target.closest('.like');
-  if (lk) { const it = IDEAS[cur][+lk.closest('.box').dataset.i], id = likeId(it), on = !LIKES[id];
-    if (on) LIKES[id] = Date.now(); else delete LIKES[id];
-    try { localStorage.setItem(LKEY, JSON.stringify(LIKES)); } catch (e) {}
-    lk.setAttribute('aria-pressed', String(on)); lk.setAttribute('aria-label', on ? 'Gefällt mir entfernen' : 'Gefällt mir'); lk.title = on ? 'Gefällt dir' : 'Gefällt mir'; return; }
+  if (lk) return toggleLike(lk, IDEAS[cur][+lk.closest('.box').dataset.i]);
   const v = e.target.closest('.vchip'); if (v) return openInfo(+v.dataset.i, true, +v.dataset.v);
   const b = e.target.closest('.ibtn'); if (b) openInfo(+b.dataset.i, false);
 });
@@ -631,9 +715,7 @@ edHost = Editor.mount($('editor'));
 edHost.chips.addEventListener('click', e => { const b = e.target.closest('.ed-chip'); if (b) { edI = +b.dataset.i; buildEditorTop(); } });
 edHost.act.addEventListener('click', e => {
   const lk = e.target.closest('.like');
-  if (lk) { const it = IDEAS[cur][+lk.dataset.i], id = likeId(it), on = !LIKES[id]; if (on) LIKES[id] = Date.now(); else delete LIKES[id];
-    try { localStorage.setItem(LKEY, JSON.stringify(LIKES)); } catch (e) {}
-    lk.setAttribute('aria-pressed', String(on)); lk.setAttribute('aria-label', on ? 'Gefällt mir entfernen' : 'Gefällt mir'); lk.title = on ? 'Gefällt dir' : 'Gefällt mir'; return; }
+  if (lk) return toggleLike(lk, IDEAS[cur][+lk.dataset.i]);
   const v = e.target.closest('.vchip'); if (v) return openInfo(+v.dataset.i, true, +v.dataset.v);
   const b = e.target.closest('.ibtn'); if (b) openInfo(+b.dataset.i, false);
 });

@@ -10,5 +10,5 @@ where py >nul 2>nul && (set PY=py) || (where python >nul 2>nul && (set PY=python
 ))
 echo Server laeuft auf http://localhost:%PORT%  - dieses Fenster zum Beenden schliessen.
 start "" "http://localhost:%PORT%/index.html"
-%PY% -m http.server %PORT%
+%PY% serve.py %PORT%
 pause

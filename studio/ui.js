@@ -45,6 +45,7 @@ function setWs(ws) {
   UI.ws = ws; saveUI();
   $('ws-studio').hidden = ws !== 'studio'; $('ws-labor').classList.toggle('on', ws === 'labor'); $('ws-anim').classList.toggle('on', ws === 'anim');
   ['studio', 'labor', 'anim'].forEach(k => $('nav-' + k).classList.toggle('on', ws === k));
+  if (ws !== 'anim') editorChrome(false);
   if (ws === 'labor') renderLabor(); else if (ws === 'anim') renderAnim(); else requestAnimationFrame(resizeAll);
 }
 
@@ -380,18 +381,27 @@ $('tlSig').onchange = () => { UI.tlSig = $('tlSig').checked; saveUI(); renderTim
 /* ═══════════ Player ═══════════ */
 const PK = new Int8Array(Uint8Array.from(atob(SONG.peaks), c => c.charCodeAt(0)).buffer);
 let waveCols = [], waveKey = '', WC = { base: '#888', play: '#f80' };
+let WV = { a: 0, b: DUR };                       // sichtbarer Ausschnitt in Sekunden (im Editor folgt er dem Zoom der Keyframes)
+let WW = null;                                   // Arbeitsbereich [von, bis] des Editors
+function setWaveWork(w) { WW = w; waveKey = ''; }
+function setWaveView(a, b) { if (Math.abs(a - WV.a) < 1e-3 && Math.abs(b - WV.b) < 1e-3) return; WV = { a, b }; $('waveCv')._w = 0; waveKey = ''; }
 function buildWave() {
   const cv = $('waveCv'); sizeCv(cv); const W = cv._w, n = Math.max(20, Math.floor(W / 3)), np = PK.length >> 1; waveCols = [];
-  for (let i = 0; i < n; i++) { let mx = 0; const a = Math.floor(i / n * np), z = Math.max(a + 1, Math.floor((i + 1) / n * np)); for (let j = a; j < z; j++) mx = Math.max(mx, Math.abs(PK[2 * j]), Math.abs(PK[2 * j + 1])); waveCols.push(Math.pow(mx / 127, .75)); }
+  const from = WV.a / DUR * np, span = (WV.b - WV.a) / DUR * np;
+  for (let i = 0; i < n; i++) { let mx = 0; const a = Math.floor(from + i / n * span), z = Math.min(np, Math.max(a + 1, Math.floor(from + (i + 1) / n * span))); for (let j = a; j < z; j++) mx = Math.max(mx, Math.abs(PK[2 * j]), Math.abs(PK[2 * j + 1])); waveCols.push(Math.pow(mx / 127, .75)); }
 }
 function drawWave(shown) {
-  const cv = $('waveCv'); if (!cv._w) buildWave(); const key = cv._w + 'x' + cv._h + '|' + Math.round(shown / DUR * cv._w) + root.dataset.theme; if (key === waveKey) return; waveKey = key;
+  const cv = $('waveCv'); if (!cv._w) buildWave(); const key = cv._w + 'x' + cv._h + '|' + Math.round((shown - WV.a) / (WV.b - WV.a) * cv._w) + root.dataset.theme; if (key === waveKey) return; waveKey = key;
   const W = cv._w, H = cv._h, c = cv.getContext('2d'), n = waveCols.length, bw = W / n; c.setTransform(cv._dpr, 0, 0, cv._dpr, 0, 0); c.clearRect(0, 0, W, H);
-  const px = shown / DUR * W;
-  for (let i = 0; i < n; i++) { const h = Math.max(2, waveCols[i] * (H - 8)), x = i * bw; c.fillStyle = x + bw / 2 <= px ? WC.play : WC.base; c.globalAlpha = x + bw / 2 <= px ? 1 : .55; c.fillRect(x + .5, (H - h) / 2, Math.max(1, bw - 1.5), h); }
-  c.globalAlpha = 1; c.fillStyle = WC.play; c.fillRect(px - 1, 0, 2, H);
+  const px = (shown - WV.a) / (WV.b - WV.a) * W;
+  const X = t => (t - WV.a) / (WV.b - WV.a) * W, w0 = WW ? X(WW[0]) : 0, w1 = WW ? X(WW[1]) : W;
+  if (WW) { c.globalAlpha = .16; c.fillStyle = WC.play; c.fillRect(w0, 0, w1 - w0, H); }
+  for (let i = 0; i < n; i++) { const h = Math.max(2, waveCols[i] * (H - 8)), x = i * bw, m = x + bw / 2, inside = m >= w0 && m <= w1; c.fillStyle = m <= px ? WC.play : WC.base; c.globalAlpha = (m <= px ? 1 : .55) * (inside ? 1 : .3); c.fillRect(x + .5, (H - h) / 2, Math.max(1, bw - 1.5), h); }
+  c.globalAlpha = 1; c.fillStyle = WC.play;
+  if (WW) for (const [x, d] of [[w0, 1], [w1, -1]]) { const l = d > 0 ? x : x - 3; c.fillRect(l, 0, 3, H); c.fillRect(d > 0 ? x : x - 9, 0, 9, 3); c.fillRect(d > 0 ? x : x - 9, H - 3, 9, 3); }   // Klammern an Anfang und Ende
+  c.fillStyle = WW ? COL.fg : WC.play; c.fillRect(px - 1, 0, 2, H);
 }
-{ let drag = false; const w = $('wave'), at = ev => { const r = w.getBoundingClientRect(); return clamp((ev.clientX - r.left) / r.width, 0, 1) * DUR; };
+{ let drag = false; const w = $('wave'), at = ev => { const r = w.getBoundingClientRect(); return WV.a + clamp((ev.clientX - r.left) / r.width, 0, 1) * (WV.b - WV.a); };
   w.addEventListener('pointerdown', ev => { drag = true; w.setPointerCapture(ev.pointerId); seek(at(ev)); });
   w.addEventListener('pointermove', ev => { if (drag) seek(at(ev)); }); w.addEventListener('pointerup', () => { drag = false; });
   w.addEventListener('keydown', ev => { const d = ev.key === 'ArrowRight' ? 1 : ev.key === 'ArrowLeft' ? -1 : 0; if (d) { ev.preventDefault(); seek(nowT() + d * (ev.shiftKey ? 5 : 1)); } }); }
@@ -401,9 +411,6 @@ $('loop').onclick = () => { audio.loop = !audio.loop; $('loop').classList.toggle
 audio.loop = !!lsGet('av-studio-loop', false); $('loop').classList.toggle('on', audio.loop);
 const setPlayUi = () => { const p = !audio.paused; $('playIco').innerHTML = p ? '<rect x="6.5" y="5" width="4" height="14" rx="1"/><rect x="13.5" y="5" width="4" height="14" rx="1"/>' : '<path d="M8 5.5v13l11-6.5z"/>'; $('play').setAttribute('aria-label', p ? 'Pause' : 'Abspielen'); $('disc').classList.toggle('spin', p); };
 audio.addEventListener('play', setPlayUi); audio.addEventListener('pause', () => { setPlayUi(); resync(audio.currentTime); }); audio.addEventListener('ended', () => { setPlayUi(); resync(0); });
-{ const r = $('rate'); let v = lsGet('av-rate-s', 1); if (typeof v !== 'number') v = 1; r.value = String(v); if (r.value !== String(v)) r.value = '1';
-  const apply = () => { audio.preservesPitch = true; audio.playbackRate = +r.value; r.classList.toggle('on', r.value !== '1'); }; apply(); audio.addEventListener('loadedmetadata', apply);
-  r.onchange = () => { resync(nowT()); apply(); lsSet('av-rate-s', +r.value); }; }
 { const v = $('vol'), mu = $('mute'); v.value = lsGet('av-studio-vol', .9); audio.volume = +v.value;
   const ic = () => $('muteWave').style.display = audio.muted || +v.value === 0 ? 'none' : '';
   v.oninput = () => { audio.volume = +v.value; audio.muted = false; lsSet('av-studio-vol', +v.value); ic(); }; mu.onclick = () => { audio.muted = !audio.muted; ic(); }; ic(); }
@@ -442,13 +449,19 @@ function openMenu(anchor, items) {
 }
 document.addEventListener('pointerdown', ev => { if (openEl && !ev.target.closest('.menu') && !ev.target.closest('.mb') && ev.target !== openEl._a && !openEl._a.contains(ev.target)) closeMenu(); }, true);
 const togHide = k => { UI.hide[k] = !UI.hide[k]; saveUI(); applyLayout(); requestAnimationFrame(resizeAll); };
+function setFocus(on) {                           // Leisten oben ein-/ausklappen
+  UI.focus = on; saveUI(); closeMenu(); $('app').classList.toggle('focus', on);
+  const b = $('focus'), t = on ? 'Leisten oben wieder ausklappen' : 'Leisten oben einklappen – mehr Platz';
+  b.setAttribute('aria-pressed', String(on)); b.dataset.tip = t; b.setAttribute('aria-label', t);
+  requestAnimationFrame(resizeAll);
+}
 const toggleTheme = () => { const n = root.dataset.theme === 'dark' ? 'light' : 'dark'; root.dataset.theme = n; try { localStorage.setItem('av-theme', n); } catch (e) {} readColors(); readWaveColors(); waveKey = ''; drawTimelineCanvases(); };
 function readWaveColors() { const cs = getComputedStyle(root); WC = { base: cs.getPropertyValue('--faint').trim(), play: cs.getPropertyValue('--accent').trim() }; }
 const MENUS = {
-  datei: () => [{ t: 'Projekt speichern', k: '⌘S / Strg+S', f: saveProject }, { t: 'Projekt aus Datei laden …', f: loadFromFile }, { hr: 1 },
+  datei: () => [{ t: 'In Projektordner speichern', k: '⌘S / Strg+S', f: saveProject }, { t: 'Projekt aus Datei laden …', f: loadFromFile }, { hr: 1 },
     { t: 'Beschreibung als PDF (Seite öffnen, dann Drucken)', href: 'bericht.html' }, { t: 'Alle zugeordneten Animationen als MP4 laden', f: () => expRun(expProjectSpecs()) }, { hr: 1 },
     { t: 'Alle Zuordnungen als Text kopieren', f: async () => { try { await navigator.clipboard.writeText(textSummary()); toast('Zuordnungen kopiert'); } catch (e) { prompt('Zum Kopieren:', textSummary()); } } }, { hr: 1 },
-    { t: 'Änderungen verwerfen (zurück zum Stand in projekt.json)', f: async () => { if (!confirm('Alle ungespeicherten Änderungen verwerfen?')) return; try { localStorage.removeItem(LS_P); } catch (e) {} await loadProject(); UI.sel = null; uiAll(); toast('Zurückgesetzt'); } }],
+    { t: 'Änderungen verwerfen (zurück zum Stand in projekt.json)', f: async () => { if (!confirm('Alle Änderungen verwerfen, die noch nicht im Projektordner gespeichert sind – auch neue Vorlagen?')) return; clearTimeout(saveT); try { localStorage.removeItem(LS_P); } catch (e) {} await loadProject(true); UI.sel = null; uiAll(); if (UI.ws === 'anim') renderAnim(); toast('Zurückgesetzt'); } }],
   ansicht: () => [{ h: 'Bereich' }, { t: 'Studio', ck: UI.ws === 'studio', f: () => setWs('studio') }, { t: 'Labor', ck: UI.ws === 'labor', f: () => setWs('labor') }, { hr: 1 }, { h: 'Fenster ein- / ausblenden' },
     { t: 'Vorschau', ck: !UI.hide.preview, f: () => togHide('preview') }, { t: 'Zuordnungen', ck: !UI.hide.list, f: () => togHide('list') }, { t: 'Bearbeiten', ck: !UI.hide.insp, f: () => togHide('insp') }, { t: 'Zeitleiste', ck: !UI.hide.timeline, f: () => togHide('timeline') }, { hr: 1 },
     { t: 'Layout zurücksetzen', f: () => { UI.hide = {}; UI.lay = defLay(); saveUI(); applyLayout(); requestAnimationFrame(resizeAll); } }, { t: 'Hell / Dunkel', f: toggleTheme }],
@@ -466,7 +479,7 @@ function showHelp() {
     <li><b>Bearbeiten</b> (rechts): Einstellungen der Auswahl – ohne dass die Vorschau verschwindet.</li>
     <li><b>Zeitleiste</b> (unten): wann welche Tonspur klingt, dazu Kurven für Lautstärke, Tonhöhe usw. Klick = springen.</li></ul>
     <h4>Parameter-Zuordnung</h4><p>Auslöser → Wirkung, z. B. <i>Lautstärke ab −9 dB → Farbe Orange</i> oder <i>Tonhöhe stufenlos → Position unten … oben</i>. In der Kurve im Inspektor kann man die Schwelle direkt anklicken. Gemessen wird der fertige Mix – einzelne Tonspuren liegen nicht getrennt vor.</p>
-    <h4>Tasten</h4><p><kbd>Leertaste</kbd> Play/Pause · <kbd>Pos1</kbd> zum Anfang · <kbd>F</kbd> Vollbild · <kbd>←</kbd> <kbd>→</kbd> ±1 s (mit <kbd>Shift</kbd> ±5 s) · <kbd>Strg/⌘ S</kbd> Speichern</p>
+    <h4>Tasten</h4><p><kbd>Leertaste</kbd> Play/Pause · <kbd>Pos1</kbd> zum Anfang · <kbd>F</kbd> Vollbild · <kbd>←</kbd> <kbd>→</kbd> ±1 s (mit <kbd>Shift</kbd> ±5 s) · <kbd>Strg/⌘ S</kbd> In Projektordner speichern</p>
     <p style="margin-top:12px"><button class="btn go" id="hx">Schließen</button></p></div>`;
   document.body.appendChild(d); d.onclick = ev => { if (ev.target === d || ev.target.id === 'hx') d.remove(); };
 }
@@ -474,7 +487,7 @@ const isTyping = el => /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) && el.type !
 window.addEventListener('keydown', ev => {
   if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 's') { ev.preventDefault(); saveProject(); return; }
   const tg = ev.composedPath()[0] || ev.target;           // auch Eingabefelder in der Hülle des Animations-Editors erkennen
-  if (isTyping(tg) || ev.ctrlKey || ev.metaKey || ev.altKey || tg.id === 'wave' || (ev.composedPath().includes($('ws-anim')) && /^(INPUT|SELECT|TEXTAREA|BUTTON|SUMMARY)$/.test(tg.tagName))) return;
+  if (isTyping(tg) || ev.ctrlKey || ev.metaKey || ev.altKey || tg.id === 'wave' || (ev.composedPath().some(n => n === $('ws-anim') || n === $('tlDock')) && /^(INPUT|SELECT|TEXTAREA|BUTTON|SUMMARY)$/.test(tg.tagName))) return;
   if ((ev.code === 'Space' || ev.key === ' ') && ev.target.tagName !== 'BUTTON') { ev.preventDefault(); if (!ev.repeat) togglePlay(); }
   else if (ev.key === 'Home') { ev.preventDefault(); seek(0); }
   else if (ev.key === 'f' || ev.key === 'F') { const st = $('stage'); if (document.fullscreenElement) document.exitFullscreen(); else if (st.requestFullscreen && UI.ws === 'studio' && UI.view !== 'grid') st.requestFullscreen(); }

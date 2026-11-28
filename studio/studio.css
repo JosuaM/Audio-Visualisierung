@@ -19,7 +19,7 @@ button { cursor: pointer; }
 [hidden] { display: none !important; }
 svg.i { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 
-#app { display: grid; grid-template-columns: 46px minmax(0, 1fr); grid-template-rows: 34px minmax(0, 1fr) auto; height: 100vh; height: 100dvh; }
+#app { display: grid; grid-template-columns: 46px minmax(0, 1fr); grid-template-rows: 34px minmax(0, 1fr) auto auto; height: 100vh; height: 100dvh; }
 
 /* ---------- Menüleiste oben ---------- */
 .menubar { grid-column: 1 / -1; display: flex; align-items: center; gap: 2px; padding: 0 8px; background: var(--panel); border-bottom: 1px solid var(--line); }
@@ -28,8 +28,8 @@ svg.i { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-widt
 .mb { height: 24px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: var(--ink); }
 .mb:hover, .mb.open { background: var(--line); }
 .mbsp { flex: 1; }
-.ptitle { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.dirty { color: var(--accent); font-weight: 600; font-size: 11.5px; margin: 0 8px; white-space: nowrap; }
+.savestat { color: var(--muted); font-size: 11.5px; margin: 0 8px; white-space: nowrap; }
+.savestat.dirty { color: var(--accent); font-weight: 600; }
 .menu { position: fixed; z-index: 200; min-width: 230px; padding: 5px; border-radius: 10px; background: var(--panel); border: 1px solid var(--line-2); box-shadow: var(--shadow); }
 .menu button, .menu a { display: flex; align-items: center; gap: 10px; width: 100%; padding: 6px 10px; border: 0; border-radius: 6px; background: transparent; text-align: left; color: var(--ink); text-decoration: none; font-size: 12.5px; }
 .menu button:hover, .menu a:hover { background: var(--accent); color: var(--accent-ink); }
@@ -190,8 +190,6 @@ canvas.graph { width: 100%; height: 74px; display: block; border-radius: 6px; ba
 .pr { display: flex; align-items: center; gap: 10px; }
 .pr .vol { width: 84px; display: flex; align-items: center; gap: 6px; color: var(--muted); }
 .pr .vol button { border: 0; background: transparent; color: inherit; padding: 0; display: grid; place-items: center; }
-.pr select { width: 74px; font-variant-numeric: tabular-nums; font-weight: 600; }
-.pr select.on { border-color: var(--accent); color: var(--accent); }
 
 /* ---------- Labor ---------- */
 #ws-labor { display: none; }
@@ -283,14 +281,63 @@ canvas.graph { width: 100%; height: 74px; display: block; border-radius: 6px; ba
 #ws-anim .panel { flex: 1; }
 #ws-anim .pb.ab { overflow: hidden; padding: 8px; position: relative; }
 .av { display: none; height: 100%; min-height: 0; } .av.on { display: block; }
-.avsw { display: inline-flex; border: 1px solid var(--line-2); border-radius: 7px; overflow: hidden; margin-left: 4px; }
-.avsw button { height: 22px; padding: 0 11px; border: 0; background: transparent; color: var(--muted); font-size: 11.5px; font-weight: 600; }
+/* Auswahl in Zeilen untereinander: Ansicht → Tonspur → Animation */
+.anav { flex: none; border-bottom: 1px solid var(--line); }
+.anr { display: grid; grid-template-columns: 96px minmax(0, 1fr); align-items: start; gap: 8px; padding: 7px 10px; border-top: 1px solid var(--line); }
+.anr.top { display: flex; padding: 6px 10px; border-top: 0; background: var(--panel2); }
+.anl { font-size: 10.5px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); line-height: 26px; }
+.antog { justify-self: start; display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 4px 0 1px; border: 0; border-radius: 6px; background: transparent; }
+.antog::before { content: ""; width: 5px; height: 5px; border: solid currentColor; border-width: 0 1.6px 1.6px 0; transform: rotate(45deg); margin: -3px 1px 0 1px; transition: transform .12s; }
+.antog[aria-expanded="false"]::before { transform: rotate(-45deg); margin-top: 0; }
+.antog:hover { color: var(--ink); }
+/* zugeklappt: die Zeile verschwindet, „Animation“ steht oben links neben dem Bild */
+#ws-anim.chips-closed #achiprow { position: absolute; z-index: 3; display: block; padding: 8px 10px; border: 0; }
+#ws-anim.chips-closed .antog { padding: 0 10px 0 8px; border: 1px solid var(--line-2); }
+.avsw { display: inline-flex; border: 1px solid var(--line-2); border-radius: 8px; overflow: hidden; }
+.avsw button { height: 28px; padding: 0 18px; border: 0; background: transparent; color: var(--muted); font-size: 12px; font-weight: 650; }
+.avsw button + button { border-left: 1px solid var(--line-2); }
 .avsw button:hover { color: var(--ink); } .avsw button.on { background: var(--accent); color: var(--accent-ink); }
-.atrk { display: flex; gap: 4px; overflow-x: auto; max-width: 60%; scrollbar-width: none; }
-.atp { flex: none; height: 22px; padding: 0 9px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line-2); border-radius: 999px; background: transparent; color: var(--muted); font-size: 11.5px; font-weight: 600; }
+.atrk { display: flex; flex-wrap: wrap; gap: 5px; min-width: 0; }
+.atp { flex: none; height: 26px; padding: 0 12px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line-2); border-radius: 999px; background: transparent; color: var(--muted); font-size: 11.5px; font-weight: 600; }
 .atp i { width: 8px; height: 8px; border-radius: 50%; background: var(--tc); } .atp:hover { color: var(--ink); border-color: var(--muted); }
 .atp.on { background: var(--tc); border-color: var(--tc); color: var(--pill-ink); } .atp.on i { background: var(--pill-ink); }
+.achips { position: relative; display: grid; grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: 5px; min-width: 0; max-height: 119px; overflow: auto; scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; }
+.ach { display: flex; align-items: center; gap: 7px; min-width: 0; height: 26px; padding: 0 8px 0 4px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel2); color: var(--muted); font-size: 11.5px; font-weight: 600; text-align: left; }
+.ach .n { flex: none; width: 18px; height: 18px; border-radius: 5px; display: grid; place-items: center; font-size: 10.5px; background: var(--line); color: var(--ink); }
+.ach .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ach em { flex: none; font-style: normal; font-weight: 800; color: var(--tc); }
+.ach:hover { color: var(--ink); border-color: var(--muted); }
+.ach.mine { border-color: var(--tc); color: var(--ink); }
+.ach[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.ach[aria-pressed="true"] .n { background: var(--bg); color: var(--ink); }
+@media (max-height: 780px) { .achips { max-height: 88px; } .anr { padding-top: 5px; padding-bottom: 5px; } }   /* kleine Bildschirme: mehr Platz für die Vorschau */
 #av-all { overflow: auto; }
+/* ---------- Editor-Ansicht: Wiedergabe links neben dem Bild, unten nur Zeit · Tonspur · Länge, darunter die Keyframes ---------- */
+.edtp { display: none; }
+#app.editing .pb.ab { padding-left: 116px; }
+#app.editing .edtp { position: absolute; left: 8px; top: 8px; width: 100px; display: grid; justify-items: center; align-content: start; gap: 14px; }
+#app.editing #ws-anim.chips-closed .edtp { top: 50px; }
+.edtp .tp { display: grid; grid-template-columns: repeat(3, 32px); gap: 6px 2px; justify-content: center; }
+.edtp .tp button { width: 32px; height: 32px; }
+.edtp .tp button.play { grid-column: 1 / -1; grid-row: 1; justify-self: center; width: 52px; height: 52px; }
+.edtp .tp .play svg { width: 24px; height: 24px; }
+.edtp .vol { width: 100px; display: flex; align-items: center; gap: 6px; color: var(--muted); }
+.edtp .vol button { flex: none; border: 0; background: transparent; color: inherit; padding: 0; display: grid; place-items: center; }
+.edtp .vol input { flex: 1; min-width: 0; }
+#app.editing .player { grid-template-columns: minmax(0, 1fr); gap: 0; padding: 6px 0; }
+#app.editing .player > .song, #app.editing .player > .pr, #app.editing .player .bn { display: none; }
+#app.editing .seek { grid-template-columns: 218px minmax(0, 1fr) 64px; gap: 0; }     /* Tonspur steht genau über der Zeitachse der Keyframes */
+#app.editing .seek .tm { padding: 0 12px; }
+#tlDock { grid-column: 1 / -1; min-width: 0; height: auto; }
+/* ---------- Eingeklappt: ohne Menüleiste, im Editor auch ohne Ansicht-, Tonspur- und Animationszeile ---------- */
+.rail hr { width: 20px; margin: 4px 0; border: 0; border-top: 1px solid var(--line-2); }
+.rail #focus[aria-pressed="true"] { color: var(--accent); background: var(--line); } .rail #focus[aria-pressed="true"] svg { transform: rotate(180deg); }
+#app.focus { grid-template-rows: 0 minmax(0, 1fr) auto auto; }
+#app.focus .menubar { visibility: hidden; min-height: 0; height: 0; overflow: hidden; border: 0; padding-top: 0; padding-bottom: 0; }
+#app.focus.editing .anav { display: none; }
+#app.focus.editing #ws-anim .edtp { top: 8px; }
+#app.focus.editing #av-edit { --side: 354px; --lab: 92px; }          /* schmalere Regler-Spalte, damit das Bild größer wird */
+#app.focus.editing #ws-anim { padding: 0; } #app.focus.editing #ws-anim > .panel { border: 0; border-radius: 0; }
 .agrid { display: grid; gap: 6px; align-content: start; }
 .at { min-width: 0; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; background: var(--panel2); cursor: pointer; }
 .at:hover { border-color: var(--tc); }
@@ -304,6 +351,5 @@ canvas.graph { width: 100%; height: 74px; display: block; border-radius: 6px; ba
 .zt .cv { position: relative; flex: 1; min-height: 0; background: var(--stage); cursor: pointer; } .zt:not(.live) .cv canvas { opacity: .55; }
 .zt .zf { flex: none; padding: 5px 7px; display: flex; } .zt select { flex: 1; min-width: 0; height: 24px; font-size: 11.5px; }
 
-.avsw.zm { margin-right: 6px; flex: none; }
 .at.wa .zb { padding: 4px 6px 6px; display: flex; } .at.wa .zb .btn { flex: 1; justify-content: center; height: 24px; } .at.wa .zb .btn:disabled { opacity: .55; cursor: default; }
 .at.mine { border-color: var(--tc); box-shadow: 0 0 0 1px var(--tc); }

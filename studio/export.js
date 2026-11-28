@@ -51,7 +51,7 @@ async function expRender(spec, res, prog) {
     if (err) throw err;
     const t = Math.min(DUR, i / fps), env = { t, shown: t, dt: i ? 1 / fps : 0, fr: 1e9 + i, gate: spec.gate };
     c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1; c.globalCompositeOperation = 'source-over'; c.fillStyle = COL.bg; c.fillRect(0, 0, W, H);
-    drawBg(c, W, H, env, filter); drawLayer(c, spec.L, W, H, 1, env, filter);
+    drawLookBg(c, W, H, [spec.L], env); drawBg(c, W, H, env, filter); drawLayer(c, spec.L, W, H, 1, env, filter);
     const fr = new VideoFrame(cv, { timestamp: Math.round(i * 1e6 / fps), duration: Math.round(1e6 / fps) });
     enc.encode(fr, { keyFrame: i % (fps * 2) === 0 }); fr.close();
     if (i % 6 === 5) {

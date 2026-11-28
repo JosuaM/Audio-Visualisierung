@@ -99,7 +99,7 @@ $('lgrid').addEventListener('click', ev => {
   else if (b.dataset.a === 'open') { const L = P.layers.find(l => l.kind === 'track' && l.anim === c.id) || layerById('track:' + c.tr.key); if (L.anim !== c.id) { L.anim = c.id; L.P = {}; refresh('lvit'); } setWs('studio'); select(L.id); }
 });
 
-const labT = () => audio.paused ? free.t + (performance.now() - free.perf) / 1000 * rate() : nowT();
+const labT = () => audio.paused ? free.t + (performance.now() - free.perf) / 1000 : nowT();
 function laborFrame(dt) {
   const t = labT(), tt = t - OFFSET, playing = !audio.paused, scan = (performance.now() / 1000 * 3) % DUR, shown = playing ? t : scan;
   const env = { t, shown, dt, fr: frN0, gate: false }; window.IDEEN_GATE = false;
@@ -114,7 +114,7 @@ function laborFrame(dt) {
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H); ctx.save();
     try {
-      if (c.kind === 'anim') drawAnim(ctx, { t: tt, bar: BAR, beat: BEAT, phase: ((tt / BAR) % 1 + 1) % 1, w: W, h: H, col: c.tr.col, fg: COL.fg, bg: COL.bg }, { anim: c.id, P: {} });
+      if (c.kind === 'anim') drawAnim(ctx, { t: tt, kt: shown, bar: BAR, beat: BEAT, phase: ((tt / BAR) % 1 + 1) % 1, w: W, h: H, col: c.tr.col, fg: COL.fg, bg: COL.bg }, { anim: c.id, P: {} });
       else { ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip(); c.f.draw(ctx, { t: tt, bar: BAR, beat: BEAT, w: W, h: H, fg: COL.fg, bg: COL.bg }); }
     } catch (e) { console.error(e); }
     ctx.restore();

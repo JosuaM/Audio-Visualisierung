@@ -53,10 +53,33 @@ function genericDraw(c, s, idea, Pm) {
   c.translate(-W / 2, -H / 2); c.globalAlpha = { Original: 1, Halbtransparent: .5, Transparent: .25 }[Pm.alpha];
   idea.draw(c, s2); c.restore();
 }
-function drawAnim(c, s, st) {
+function drawBase(c, s, st) {                     // die Animation ohne Änderungen aus dem Editor
   const idea = ideaOf(st.anim); if (!idea) return;
   const fp = fpCfg(st.anim);
   if (fp) fp.draw(c, s, { ...fp.def, ...st.P }); else genericDraw(c, s, idea, { ...GEN_DEF, ...st.P });
+}
+/* Der Editor und das Studio zeichnen dieselbe Grundlage – so wirken die Regler überall auf dieselben Objekte */
+const baseIdeas = new Map();
+function baseIdea(id, Pm) {
+  const k = id + '|' + JSON.stringify(Pm || {}); let b = baseIdeas.get(k);
+  if (!b) { const st = { anim: id, P: { ...(Pm || {}) } }; b = { title: (ideaOf(id) || {}).title || '-', draw: (c, s) => drawBase(c, s, st) }; baseIdeas.set(k, b); }
+  return b;
+}
+/* geltende Version einer Animation: die im Editor gespeicherte bzw. gewählte Vorlage (null = Original) */
+const lookOf = id => { const i = ideaOf(id); return i && window.Editor ? Editor.look(id.split(':')[0] + ':' + i.title) : null; };
+const lookPool = new Map();
+function lookRenderer(id, Pm) {
+  const k = id + '|' + JSON.stringify(Pm || {}); let o = lookPool.get(k);
+  if (!o) { o = { R: new AE.Renderer(), cv: document.createElement('canvas') }; o.R.setIdea(baseIdea(id, Pm)); lookPool.set(k, o); if (lookPool.size > 64) lookPool.delete(lookPool.keys().next().value); }
+  return o;
+}
+function drawAnim(c, s, st, layered) {
+  const look = lookOf(st.anim);
+  if (!look) return drawBase(c, s, st);
+  const m = c.getTransform(), dpr = Math.hypot(m.a, m.b) || 1, o = lookRenderer(st.anim, st.P), pw = Math.max(1, Math.round(s.w * dpr)), ph = Math.max(1, Math.round(s.h * dpr));
+  if (o.cv.width !== pw || o.cv.height !== ph) { o.cv.width = pw; o.cv.height = ph; }
+  o.R.render(o.cv, s.w, s.h, dpr, { t: s.t, kt: s.kt, fg: s.fg, bg: s.bg, col: s.col }, look, layered);
+  c.drawImage(o.cv, 0, 0, s.w, s.h);
 }
 const firstOf = k => (IDEAS[k] && IDEAS[k].length) ? k + ':0' : '';
 
@@ -68,8 +91,16 @@ const mapById = id => P.maps.find(m => m.id === id);
 const trackLayer = (t, anim, Pm) => ({ id: 'track:' + t.key, kind: 'track', key: t.key, anim: anim != null ? anim : firstOf(t.key), P: Pm || {}, on: true, tint: true });
 const fxLayer = n => ({ id: 'fx:' + n, kind: 'fx', fx: n, on: true });
 let P = { t: 0, layers: [], maps: [] };
+const sortKeys = v => v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.keys(v).sort().map(k => [k, sortKeys(v[k])])) : v;
+const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
+const cleanPresets = v => {                        // eigene Vorlagen des Animations-Editors: { Spur:Titel: { Name: { g, o } } }
+  const out = {};
+  for (const [k, p] of Object.entries(isObj(v) ? v : {})) { const ok = Object.entries(isObj(p) ? p : {}).filter(([, x]) => isObj(x)); if (ok.length) out[k] = Object.fromEntries(ok); }
+  return sortKeys(out);
+};
+const cleanActive = v => sortKeys(Object.fromEntries(Object.entries(isObj(v) ? v : {}).filter(([, c]) => /^[ub]:./.test(c))));   // geltende Vorlage je Animation
 function sanitize(p) {
-  p = p || {}; const out = { t: +p.t || 0, layers: [], maps: [] };
+  p = p || {}; const out = { t: +p.t || 0, layers: [], maps: [], vorlagen: cleanPresets(p.vorlagen), aktiv: cleanActive(p.aktiv) };
   for (const t of TRACKS) {
     const s = (p.layers || []).find(l => l.id === 'track:' + t.key);
     out.layers.push(s ? { ...trackLayer(t, s.anim === '' || ideaOf(s.anim) ? s.anim : firstOf(t.key), s.anim === '' || ideaOf(s.anim) ? { ...(s.P || {}) } : {}), on: s.on !== false, tint: s.tint !== false } : trackLayer(t));
@@ -83,23 +114,37 @@ function sanitize(p) {
   }
   return out;
 }
-const snapOf = p => JSON.stringify({ layers: p.layers, maps: p.maps });
+const snapOf = p => JSON.stringify({ layers: p.layers, maps: p.maps, vorlagen: cleanPresets(p.vorlagen), aktiv: cleanActive(p.aktiv) });
 let savedSnap = '';
 let ID_SEQ = 1;
 const newMapId = () => { while (P.maps.some(m => m.id === 'map:' + ID_SEQ)) ID_SEQ++; return 'map:' + ID_SEQ; };
-async function loadProject() {
+function takeEditor() {                           // P führt den Stand des Editors: eigene Vorlagen und welche je Animation gilt
+  P.vorlagen = cleanPresets(Editor.presets()); P.aktiv = cleanActive(Editor.active());
+}
+function applyToEditor(p, hasActive, replace) {  // Vorlagen aus einer Datei in den Editor übernehmen
+  Editor.addPresets(p.vorlagen, replace);
+  if (hasActive || replace) Editor.setActive(p.aktiv);
+}
+async function loadProject(discard) {
   let file = null, local = lsGet(LS_P, null);
   try { const r = await fetch('studio/projekt.json', { cache: 'no-store' }); if (r.ok) file = await r.json(); } catch (e) {}
   const fileP = sanitize(file);
   savedSnap = snapOf(fileP);
-  P = (local && (local.t || 0) > (fileP.t || 0)) ? sanitize(local) : fileP;
+  const useLocal = !!local && (local.t || 0) > (fileP.t || 0);
+  P = useLocal ? sanitize(local) : sanitize(file);
+  if (file && (discard || (!useLocal && Editor.stamp() <= fileP.t))) applyToEditor(fileP, !!file.aktiv, discard);
+  else if (useLocal && !local.vorlagen) Editor.addPresets(fileP.vorlagen);
+  takeEditor();
 }
 let saveT = 0;
 function touch() {                                   // nach jeder Änderung: merken (im Browser) und Anzeige aktualisieren
   P.t = Date.now(); clearTimeout(saveT); saveT = setTimeout(() => lsSet(LS_P, P), 250);
   updateDirty();
 }
-function updateDirty() { const d = snapOf(P) !== savedSnap, e = $('dirty'); if (e) e.textContent = d ? '● nicht im Projektordner gespeichert' : ''; }
+function updateDirty() {
+  const d = snapOf(P) !== savedSnap, e = $('dirty'), b = $('save'); if (!e) return;
+  e.textContent = d ? '● Nur im Browser gespeichert' : '✓ Im Projektordner gespeichert'; e.classList.toggle('dirty', d); b.hidden = !d;
+}
 const idb = (mode, fn) => new Promise(res => {
   try {
     const r = indexedDB.open('av-store', 1);
@@ -134,7 +179,7 @@ async function saveProject() {
 }
 function loadFromFile() {
   const f = document.createElement('input'); f.type = 'file'; f.accept = '.json,application/json';
-  f.onchange = async () => { try { P = sanitize(JSON.parse(await f.files[0].text())); touch(); UI.sel = null; uiAll(); toast('Projekt geladen'); } catch (e) { toast('Datei nicht lesbar: ' + e.message, 5000); } };
+  f.onchange = async () => { try { const raw = JSON.parse(await f.files[0].text()); P = sanitize(raw); applyToEditor(P, !!raw.aktiv); takeEditor(); touch(); UI.sel = null; uiAll(); toast('Projekt geladen'); } catch (e) { toast('Datei nicht lesbar: ' + e.message, 5000); } };
   f.click();
 }
 function textSummary() {
@@ -155,7 +200,6 @@ function readColors() {
 /* ---------- Uhr / Audio ---------- */
 const audio = $('audio');
 let free = { perf: performance.now(), t: 0 };
-const rate = () => +$('rate').value || 1;
 let lastCt = -1, lastP = 0, sT = 0, sP = 0, sOk = false;
 function nowT() {                   // Songzeit in Sekunden, bei Pause je nach Einstellung stehend oder weiterlaufend
   if (!audio.paused) {
@@ -167,7 +211,7 @@ function nowT() {                   // Songzeit in Sekunden, bei Pause je nach E
     return sT;
   }
   sOk = false;
-  return UI.idle ? free.t + (performance.now() - free.perf) / 1000 * rate() : (audio.currentTime || 0);
+  return UI.idle ? free.t + (performance.now() - free.perf) / 1000 : (audio.currentTime || 0);
 }
 const resync = t => { free = { perf: performance.now(), t }; };
 function seek(t, play) { t = clamp(t, 0, DUR); try { audio.currentTime = t; } catch (e) {} resync(t); if (play && audio.paused) audio.play().catch(() => {}); }
@@ -196,12 +240,23 @@ function layerMods(L, W, H, env, filter) {
   return mods;
 }
 /* eine Ebene mit allen Zuordnungen auf c zeichnen (c steht schon auf Gerätepixel-Maßstab) */
+function layerShows(L, env) {                     // hat die Ebene gerade etwas zu zeichnen?
+  if (L.kind !== 'track') return true;
+  if (!L.anim) return false;
+  if (!env.gate) return true;
+  const tr = TBY[L.key], tl = (ideaOf(L.anim) || {}).tail || 0;
+  return isOn(tr, env.shown) || !!(tl && tr.raw.some(([a, z]) => env.shown >= z && env.shown < z + tl * BEAT));
+}
+function drawLookBg(c, W, H, layers, env) {       // im Editor gesetzte Hintergrundfarben liegen unter allen Ebenen
+  for (const L of layers) {
+    if (L.kind !== 'track' || !layerShows(L, env)) continue;
+    const g = (lookOf(L.anim) || {}).g || {};
+    if (g.bgo) { c.fillStyle = (AE.isKf(g.bgc) ? AE.kfValue(g.bgc, env.shown) : g.bgc) || '#000000'; c.fillRect(0, 0, W, H); }
+  }
+}
 function drawLayer(c, L, W, H, dpr, env, filter) {
   const tr = L.kind === 'track' ? TBY[L.key] : null;
-  if (tr) {
-    if (!L.anim) return;
-    if (env.gate) { const on = isOn(tr, env.shown), tl = (ideaOf(L.anim) || {}).tail || 0; if (!(on || (tl && tr.raw.some(([a, z]) => env.shown >= z && env.shown < z + tl * BEAT)))) return; }
-  }
+  if (!layerShows(L, env)) return;
   const mods = layerMods(L, W, H, env, filter);
   if (mods.alpha <= .002) return;
   const o = getOff(W, H, dpr), oc = o.ctx, tt = env.t - OFFSET;
@@ -209,14 +264,15 @@ function drawLayer(c, L, W, H, dpr, env, filter) {
   window.IDEEN_GATE = env.gate;
   oc.save();
   try {
-    if (tr) drawAnim(oc, { t: tt, bar: BAR, beat: BEAT, phase: ((tt / BAR) % 1 + 1) % 1, w: W, h: H, col: tr.col, fg: L.tint ? tr.col : COL.fg, bg: COL.bg }, L);
+    if (tr) drawAnim(oc, { t: tt, kt: env.shown, bar: BAR, beat: BEAT, phase: ((tt / BAR) % 1 + 1) % 1, w: W, h: H, col: tr.col, fg: L.tint ? tr.col : COL.fg, bg: COL.bg }, L, true);
     else if (L.kind === 'demo') drawDemoShape(oc, W, H, COL.fg, tt);
     else { oc.beginPath(); oc.rect(0, 0, W, H); oc.clip(); FX[L.fx - 1].draw(oc, { t: tt, bar: BAR, beat: BEAT, w: W, h: H, fg: COL.fg, bg: COL.bg }); }
   } catch (e) { console.error(layerName(L), e); }
   oc.restore();
   for (const tn of mods.tints) { oc.save(); oc.globalCompositeOperation = 'source-atop'; oc.globalAlpha = clamp(tn.amt, 0, 1); oc.fillStyle = tn.c; oc.fillRect(0, 0, W, H); oc.restore(); }
   const sh = mods.shake * Math.min(W, H), q = Math.floor(env.shown * 40), jx = sh ? (hash1(q) - .5) * 2 * sh : 0, jy = sh ? (hash1(q + 99) - .5) * 2 * sh : 0;
-  c.save(); c.globalAlpha = clamp(mods.alpha, 0, 1);
+  const blend = tr && ((lookOf(L.anim) || {}).g || {}).blend;
+  c.save(); c.globalAlpha = clamp(mods.alpha, 0, 1); if (blend) c.globalCompositeOperation = blend;
   c.translate(W / 2 + mods.dx + jx, H / 2 + mods.dy + jy); c.rotate(mods.rot * Math.PI / 180); c.scale(mods.scale, mods.scale); c.translate(-W / 2, -H / 2);
   c.drawImage(o, 0, 0, W, H);
   c.restore();
@@ -230,7 +286,7 @@ function drawBg(c, W, H, env, filter) {
 function drawStage(cv, layers, env, filter) {
   const W = cv._w, H = cv._h, dpr = cv._dpr; if (!W || !H) return;
   const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, W, H);
-  drawBg(c, W, H, env, filter);
+  drawLookBg(c, W, H, layers, env); drawBg(c, W, H, env, filter);
   for (const L of layers) drawLayer(c, L, W, H, dpr, env, filter);
 }
 function sizeCv(cv) {

@@ -106,19 +106,12 @@ header.nav .nc { justify-self: center; display: flex; align-items: center; }
 .prog::before { content: ""; position: absolute; left: 0; right: 0; top: 14px; height: 6px; border-radius: 3px; background: var(--line-2); }
 .pfill { position: absolute; left: 0; top: 14px; height: 6px; border-radius: 3px; background: var(--accent); width: 0; }
 .pknob { position: absolute; top: 10px; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--panel); left: 0; }
-.rate { flex: none; display: flex; align-items: center; gap: 8px; }
-.rate .sel { position: relative; display: inline-flex; }
-.rate .sel::after { content: ""; position: absolute; right: 11px; top: 50%; width: 6px; height: 6px; margin-top: -5px; border: solid var(--muted); border-width: 0 1.6px 1.6px 0; transform: rotate(45deg); pointer-events: none; }
-.rate select { appearance: none; -webkit-appearance: none; height: 30px; padding: 0 28px 0 10px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--panel); color: var(--ink); font: 600 12.5px/1 "Inter", system-ui, sans-serif; font-variant-numeric: tabular-nums; cursor: pointer; }
-.rate select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.rate.on select { border-color: var(--accent); color: var(--accent); }
 /* Auge: Animationen an/aus */
 .eye { flex: none; width: 34px; height: 30px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--panel); color: var(--muted); display: grid; place-items: center; cursor: pointer; }
 .eye:hover { color: var(--ink); border-color: var(--muted); }
 .eye:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .eye[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
 .eye svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-@media (max-width: 760px) { .rate .lb { display: none; } }
 
 
 /* Seite „Videovisualisierung“: große Bühne, alle gewählten Animationen laufen zusammen im Takt des Songs */
@@ -231,9 +224,6 @@ dialog.ap::backdrop { background: rgba(0,0,0,.55); }
     <span class="tm cur" id="tCur">0:00,0</span>
     <div class="prog" id="prog" role="slider" tabindex="0" aria-label="Position im Song" aria-valuemin="0"><div class="pfill" id="pfill"></div><div class="pknob" id="pknob"></div></div>
     <span class="tm" id="tDur">1:06,1</span>
-    <label class="rate" title="Wiedergabegeschwindigkeit – Tonhöhe bleibt gleich"><span class="lb">Geschwindigkeit</span><span class="sel"><select id="rate" aria-label="Wiedergabegeschwindigkeit">
-      <option value="0.25">0,25×</option><option value="0.5">0,5×</option><option value="0.75">0,75×</option><option value="1" selected>1×</option><option value="1.25">1,25×</option><option value="1.5">1,5×</option><option value="1.75">1,75×</option><option value="2">2×</option>
-    </select></span></label>
   </div>
   <div class="vgrid">
     <div class="vmain">
@@ -316,7 +306,6 @@ function drawAnim(c, s, st) {
 
 const audio = $('audio');
 let free = { perf: performance.now(), t: 0 };
-const rate = () => { const el = $('rate'); return (el && +el.value) || 1; };
 let lastCt = -1, lastP = 0, sT = 0, sP = 0, sOk = false;
 function now() {
   if (!audio.paused) {
@@ -330,7 +319,7 @@ function now() {
   }
   sOk = false;
   // Pause/Stopp: mit Haken „nur animieren, wenn die Spur klingt“ steht die Zeit still (Animationen laufen erst bei Play), ohne Haken laufen sie im Songtempo weiter
-  return $('onlyAct').checked ? free.t : free.t + (performance.now() - free.perf) / 1000 * rate();
+  return $('onlyAct').checked ? free.t : free.t + (performance.now() - free.perf) / 1000;
 }
 const resync = t => { free = { perf: performance.now(), t }; };
 const eyeOn = true;   // Animationen werden gezeichnet; bei Pause stehen sie still
@@ -348,12 +337,6 @@ audio.addEventListener('ended', () => { setPlayUi(); resync(0); });
   p.addEventListener('pointermove', ev => { if (drag) seek(at(ev)); });
   p.addEventListener('pointerup', () => { drag = false; });
   p.addEventListener('keydown', ev => { const d = ev.key === 'ArrowRight' ? 1 : ev.key === 'ArrowLeft' ? -1 : 0; if (d) { ev.preventDefault(); seek(now() + d * (ev.shiftKey ? 5 : 1)); } });
-}
-{ const r = $('rate'); let v = 1; try { v = +localStorage.getItem('av-rate') || 1; } catch (e) {}
-  r.value = String(v); if (r.value !== String(v)) r.value = '1';
-  const apply = () => { audio.preservesPitch = true; audio.playbackRate = +r.value; r.closest('.rate').classList.toggle('on', r.value !== '1'); };
-  apply(); audio.addEventListener('loadedmetadata', apply);
-  r.onchange = () => { resync(now()); apply(); try { localStorage.setItem('av-rate', r.value); } catch (e) {} };
 }
 window.addEventListener('keydown', ev => { if ((ev.code === 'Space' || ev.key === ' ') && !/^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(ev.target.tagName)) { ev.preventDefault(); ev.stopPropagation(); if (!ev.repeat) togglePlay(); } }, true);
 const root = document.documentElement;
@@ -494,7 +477,7 @@ dlg.addEventListener('click', ev => {
 dlg.addEventListener('close', () => { pTiles = []; dlg.innerHTML = ''; });
 function drawPicker() {
   if (!dlg.open || !pTiles.length) return;
-  const t = pClock.t + (performance.now() - pClock.perf) / 1000 * rate() - OFFSET, dpr = Math.min(2, window.devicePixelRatio || 1);
+  const t = pClock.t + (performance.now() - pClock.perf) / 1000 - OFFSET, dpr = Math.min(2, window.devicePixelRatio || 1);
   const s = { t, bar: BAR, beat: BEAT, phase: ((t / BAR) % 1 + 1) % 1, ...COL, col: COL.fg };
   const gate = window.IDEEN_GATE; window.IDEEN_GATE = false;    // in der Übersicht alles zeigen, nicht nur wenn die Spur klingt
   for (const p of pTiles) {

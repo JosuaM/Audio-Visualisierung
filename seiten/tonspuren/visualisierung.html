@@ -49,8 +49,6 @@ header { display: flex; align-items: center; justify-content: space-between; gap
 .steps .dot::after { content: attr(data-l); position: absolute; top: 22px; left: 50%; transform: translateX(-50%); font-size: 11px; font-weight: 500; color: var(--bg); background: var(--ink); border-radius: 5px; padding: 2px 7px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .15s; }
 header.nav { position: relative; z-index: 30; }   /* Beschriftung der Punkte liegt über dem Inhalt */
 .steps .dot:hover::after, .steps .dot:focus-visible::after { opacity: 1; }
-.rate { display: flex; align-items: center; gap: 8px; }
-.rate select { height: 30px; }
 /* Kopfzeile auf allen Seiten gleich: links Home + wo man ist, Mitte Blättern, rechts Werkzeuge */
 header.nav { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 16px; padding: 0 4px; }
 header.nav > .right { justify-self: end; min-width: 0; }
@@ -237,9 +235,6 @@ kbd { font: 10.5px ui-monospace, Consolas, monospace; color: var(--muted); borde
     <span class="num" id="skEnd">0:00</span>
   </div>
   <div class="tr">
-<label class="rate" title="Wiedergabegeschwindigkeit"><span class="zl">Geschwindigkeit</span><span class="sel"><select id="rate" aria-label="Wiedergabegeschwindigkeit">
-      <option value="0.25">0,25×</option><option value="0.5">0,5×</option><option value="0.75">0,75×</option><option value="1" selected>1×</option><option value="1.25">1,25×</option><option value="1.5">1,5×</option><option value="1.75">1,75×</option><option value="2">2×</option>
-    </select></span></label>
     <span class="zl">Zoom</span><input id="zoom" type="range" min="0" max="100" value="0" aria-label="Zoom" title="Zoom">
     <button id="reset" title="Auf den zuletzt gespeicherten Stand zurücksetzen">Zurücksetzen</button>
     <button id="save" title="Zustand in visualisierung.html speichern (Strg+S)">Speichern</button>
@@ -622,12 +617,6 @@ audio.addEventListener('pause', () => { $('play').classList.remove('on'); tick(t
 audio.addEventListener('ended', () => $('play').classList.remove('on'));
 audio.addEventListener('seeked', () => tick(true));
 $('play').onclick = toggle; $('stop').onclick = () => seek(0);
-{ // Wiedergabegeschwindigkeit (gilt für alle Tonspur-Seiten, Tonhöhe bleibt gleich)
-  const r = $('rate'); let v = 1; try { v = +localStorage.getItem('av-rate') || 1; } catch {}
-  r.value = String(v); if (r.value !== String(v)) { v = 1; r.value = '1'; }
-  audio.preservesPitch = true; audio.playbackRate = v;
-  r.onchange = () => { audio.playbackRate = +r.value; try { localStorage.setItem('av-rate', r.value); } catch {} };
-}
 
 
 /* ---------- Zustand speichern ---------- */

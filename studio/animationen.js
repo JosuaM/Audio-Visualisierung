@@ -1,7 +1,7 @@
 'use strict';
 /* ═══════════════════════════════════════════════════════════════════════════
    Animationen (dritter Bereich links): drei Ansichten auf einem Bildschirm
-     • Editor            – eine Animation groß, daneben Regler für alles (seiten/animationen/editor-*.js)
+     • Editor            – oben Spur und Animation wählen, darunter die Animation groß, rechts Vorlage und Regler (seiten/animationen/editor-*.js)
      • Alle Animationen  – alle Fenster gleichzeitig, passend auf den Bildschirm
      • Zuordnung         – pro Tonspur die zugeordnete Animation live, hier umstellbar
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -16,33 +16,63 @@ UI.ai = +UI.ai || 0;
 const assignedIn = k => { const L = layerById('track:' + k); return L && L.anim ? L.anim : ''; };
 const assignTo = id => { const k = id.split(':')[0], L = layerById('track:' + k); if (!L || L.anim === id) return; L.anim = id; L.P = {}; refresh('lvit'); toast(`„${ideaOf(id).title}“ ist jetzt der Tonspur ${TBY[k].name} zugeordnet`); };
 
+/* Editor-Ansicht: Knöpfe und Lautstärke wandern links neben das Bild, unter den Player kommt die Keyframe-Zeitleiste */
+const moved = ['.player .tp', '.player .vol'].map(sel => { const el = document.querySelector(sel), home = document.createComment(sel); el.before(home); return { el, home }; });
+function editorChrome(on) {
+  if ($('app').classList.contains('editing') === on) return;
+  $('app').classList.toggle('editing', on); $('tlDock').hidden = !on;
+  if (!on) setWaveView(0, DUR);                    // außerhalb des Editors immer der ganze Song
+  setWaveWork(on ? Editor.work() : null);          // der Arbeitsbereich gilt nur im Editor
+  for (const m of moved) if (on) $('edtp').appendChild(m.el); else m.home.after(m.el);
+}
 function renderAnim() {
+  editorChrome(UI.av === 'edit');
   AVIEWS.forEach(([k]) => { const el = $('av-' + k); el.classList.toggle('on', UI.av === k); if (UI.av !== k && k !== 'edit') el.innerHTML = ''; });
   $('avsw').innerHTML = AVIEWS.map(([k, n]) => `<button type="button" data-v="${k}" class="${UI.av === k ? 'on' : ''}">${n}</button>`).join('');
-  const showPills = UI.av !== 'zu' || UI.zm === 'spur';
-  const pills = !showPills ? [] : (UI.av === 'all' ? [['', 'Alle Spuren']] : []).concat(aTracks().map(t => [t.key, t.name]));
-  $('atrk').innerHTML = (UI.av === 'zu' ? `<div class="avsw zm" id="zmsw" role="group" aria-label="Zuordnung für"><button type="button" data-z="spur" class="${UI.zm === 'spur' ? 'on' : ''}">Spur</button><button type="button" data-z="alle" class="${UI.zm === 'alle' ? 'on' : ''}">Alle</button></div>` : '')
-    + pills.map(([k, n]) => { const t = TBY[k]; return `<button type="button" class="atp${(UI.av === 'all' ? (UI.af || '') : UI.at) === k ? ' on' : ''}" data-k="${k}" style="--tc:${t ? t.cssColor : 'var(--ink)'}">${t ? '<i></i>' : ''}${esc(n)}</button>`; }).join('');
+  const cur = UI.av === 'all' ? (UI.af || '') : UI.av === 'zu' && UI.zm === 'alle' ? '' : UI.at;      // '' = alle Spuren
+  const pills = (UI.av === 'edit' ? [] : [['', 'Alle Spuren']]).concat(aTracks().map(t => [t.key, t.name]));
+  $('atrk').innerHTML = pills.map(([k, n]) => { const t = TBY[k]; return `<button type="button" class="atp${cur === k ? ' on' : ''}" data-k="${k}" aria-pressed="${cur === k}" style="--tc:${t ? t.cssColor : 'var(--ink)'}">${t ? '<i></i>' : ''}${esc(n)}</button>`; }).join('');
+  $('achiprow').hidden = UI.av !== 'edit';
+  showChips();
   if (UI.av === 'edit') buildEdit(); else if (UI.av === 'all') buildAll($('av-all'), UI.af || '', false); else if (UI.zm === 'spur') buildAll($('av-zu'), UI.at, true); else buildZu();
 }
 
 /* ---------- Editor ---------- */
-function updateAssign() {
-  const id = UI.at + ':' + UI.ai, mine = assignedIn(UI.at) === id, has = !!ideasOf(UI.at)[UI.ai];
-  edHost.assign.innerHTML = has ? `<button type="button" class="btn go" data-a="assign" ${mine ? 'disabled' : ''} title="${mine ? 'Diese Animation läuft im Studio bereits auf dieser Tonspur' : 'Diese Animation im Studio der Tonspur ' + esc(TBY[UI.at].name) + ' zuweisen'}">${mine ? '✓ ' : ''}Zuweisen</button>` : '';
+function showChips() {            // Animationsliste auf- oder zugeklappt – zugeklappt steht nur „Animation“ links neben dem Bild
+  const open = UI.achips !== false, tog = $('achiptog');
+  $('ws-anim').classList.toggle('chips-closed', UI.av === 'edit' && !open);
+  $('achips').hidden = !open; tog.setAttribute('aria-expanded', String(open)); tog.title = open ? 'Animationen zuklappen – mehr Platz für das Bild' : 'Animationen aufklappen';
+}
+function renderChips() {          // alle Animationen der gewählten Spur; die zugeordnete trägt einen Haken
+  const box = $('achips'), mine = assignedIn(UI.at), top = box.scrollTop;
+  box.style.setProperty('--tc', TBY[UI.at].cssColor);
+  box.innerHTML = ideasOf(UI.at).map((x, i) => { const m = mine === UI.at + ':' + i; return `<button type="button" class="ach${m ? ' mine' : ''}" data-i="${i}" aria-pressed="${i === UI.ai}" title="${esc(x.title)}${m ? ' – dieser Tonspur zugewiesen' : ''}"><span class="n">${i + 1}</span><span class="t">${esc(x.title)}</span>${m ? '<em>✓</em>' : ''}</button>`; }).join('');
+  box.scrollTop = top;
+  const a = box.querySelector('[aria-pressed="true"]');          // gewählte Animation sichtbar halten
+  if (a && (a.offsetTop < box.scrollTop || a.offsetTop + a.offsetHeight > box.scrollTop + box.clientHeight)) box.scrollTop = a.offsetTop - (box.clientHeight - a.offsetHeight) / 2;
+}
+function updateAssign() {          // großer Knopf rechts oben, über den Vorlagen
+  const t = TBY[UI.at], id = UI.at + ':' + UI.ai, mine = assignedIn(UI.at) === id, it = ideasOf(UI.at)[UI.ai];
+  edHost.assign.style.setProperty('--tc', t.cssColor);
+  edHost.assign.innerHTML = !it ? '' : `<button type="button" class="as-go${mine ? ' done' : ''}" data-a="assign" ${mine ? 'disabled' : ''} title="${esc(`${it.title} – ${mine ? 'läuft im Studio auf der Tonspur ' + t.name : 'im Studio der Tonspur ' + t.name + ' zuweisen'}`)}">${mine ? `✓ Zugewiesen an ${esc(t.name)}` : 'Zuweisen'}</button>`
+    + (mine ? '<button type="button" class="as-link" data-a="studio" title="Zur Gesamtansicht im Studio – alle Spuren übereinander">Im Studio ansehen →</button>' : '');
 }
 function buildEdit() {
   if (!edHost) {
-    edHost = Editor.mount($('av-edit'));
-    edHost.chips.addEventListener('click', ev => { const b = ev.target.closest('.ed-chip'); if (b) { UI.ai = +b.dataset.i; saveUI(); buildEdit(); } });
-    edHost.assign.addEventListener('click', ev => { if (ev.target.closest('[data-a="assign"]')) { assignTo(UI.at + ':' + UI.ai); updateAssign(); } });
+    edHost = Editor.mount($('av-edit'), { ratio: 16 / 9 });
+    Editor.onView = setWaveView; Editor.onWork = setWaveWork;
+    Editor.dockTimeline($('tlDock'));
+    Editor.host = { time: () => audio.paused ? audio.currentTime : nowT(), seek: t => seek(t), playing: () => !audio.paused, toggle: togglePlay, pause: () => audio.pause(), ended: () => audio.ended, dur: DUR, offset: OFFSET, bar: BAR, beat: BEAT };
+    edHost.assign.addEventListener('click', ev => {
+      if (ev.target.closest('[data-a="assign"]')) { assignTo(UI.at + ':' + UI.ai); updateAssign(); renderChips(); }
+      else if (ev.target.closest('[data-a="studio"]')) { setView('mix'); setWs('studio'); }
+    });
   }
   const ideas = ideasOf(UI.at); UI.ai = clamp(UI.ai, 0, Math.max(0, ideas.length - 1)); saveUI();
   const it = ideas[UI.ai];
-  edHost.chips.innerHTML = ideas.map((x, i) => `<button type="button" class="ed-chip" data-i="${i}" aria-pressed="${i === UI.ai}" title="${esc(x.title)}"><span class="n">${i + 1}</span><span class="t">${esc(x.title)}</span></button>`).join('');
-  const act = edHost.chips.querySelector('[aria-pressed="true"]'); if (act) edHost.chips.scrollLeft = act.offsetLeft - edHost.chips.clientWidth / 2 + act.offsetWidth / 2;
-  updateAssign();
-  Editor.load(UI.at + ':' + (it ? it.title : '-'), it || { title: '-', draw() {} });
+  renderChips(); updateAssign();
+  const id = UI.at + ':' + UI.ai, L = layerById('track:' + UI.at);
+  Editor.load(UI.at + ':' + (it ? it.title : '-'), it ? baseIdea(id, L && L.anim === id ? L.P : {}) : { title: '-', draw() {} });
 }
 
 /* ---------- Fenster-Raster: „Alle Animationen“ und Zuordnung „Spur“ ---------- */
@@ -90,9 +120,13 @@ new ResizeObserver(() => { if (UI.ws === 'anim' && UI.av === 'zu' && UI.zm === '
 /* ---------- Bedienung ---------- */
 $('avsw').addEventListener('click', ev => { const b = ev.target.closest('button[data-v]'); if (b && b.dataset.v !== UI.av) { UI.av = b.dataset.v; saveUI(); renderAnim(); } });
 $('atrk').addEventListener('click', ev => {
-  const z = ev.target.closest('button[data-z]'); if (z) { UI.zm = z.dataset.z; saveUI(); renderAnim(); return; }
-  const b = ev.target.closest('.atp'); if (!b) return; if (UI.av === 'all') UI.af = b.dataset.k; else { UI.at = b.dataset.k; UI.ai = 0; } saveUI(); renderAnim();
+  const b = ev.target.closest('.atp'); if (!b) return; const k = b.dataset.k;
+  if (UI.av === 'all') UI.af = k;
+  else { if (UI.av === 'zu') UI.zm = k ? 'spur' : 'alle'; if (k && k !== UI.at) { UI.at = k; UI.ai = 0; } }
+  saveUI(); renderAnim();
 });
+$('achiptog').addEventListener('click', () => { UI.achips = UI.achips === false; saveUI(); showChips(); if (UI.achips) renderChips(); });
+$('achips').addEventListener('click', ev => { const b = ev.target.closest('.ach'); if (b) { UI.ai = +b.dataset.i; saveUI(); buildEdit(); } });
 const openTile = el => { const t = allTiles[+el.dataset.n]; UI.at = t.tr.key; UI.ai = t.i; UI.av = 'edit'; saveUI(); renderAnim(); };
 $('av-all').addEventListener('click', ev => { const el = ev.target.closest('.at'); if (el) openTile(el); });
 $('av-zu').addEventListener('click', ev => {
@@ -120,7 +154,7 @@ function animFrame() {
     if (tl.st) { const on = isOn(tr, shown); tl.el.classList.toggle('live', on); const lab = on ? 'klingt' : ''; if (tl.st._v !== lab) { tl.st._v = lab; tl.st.textContent = lab; } }
     if (!st.anim) continue;
     ctx.save();
-    try { drawAnim(ctx, { t: tt, bar: BAR, beat: BEAT, phase: ((tt / BAR) % 1 + 1) % 1, w: W, h: H, col: tr.col, fg: COL.fg, bg: COL.bg }, st); } catch (e) { console.error(e); }
+    try { drawAnim(ctx, { t: tt, kt: shown, bar: BAR, beat: BEAT, phase: ((tt / BAR) % 1 + 1) % 1, w: W, h: H, col: tr.col, fg: COL.fg, bg: COL.bg }, st); } catch (e) { console.error(e); }
     ctx.restore();
   }
 }

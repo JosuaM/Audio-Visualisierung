@@ -20,6 +20,7 @@ function frame() {
 (async function boot() {
   readColors(); readWaveColors();
   await loadProject();
+  Editor.onPresets = () => { takeEditor(); touch(); };
   $('gate').checked = UI.gate; $('idle').checked = UI.idle; $('tlSig').checked = UI.tlSig;
   $('gate').onchange = () => { UI.gate = $('gate').checked; saveUI(); };
   $('idle').onchange = () => { UI.idle = $('idle').checked; saveUI(); resync(audio.currentTime || 0); };
@@ -27,6 +28,7 @@ function frame() {
   $('save').onclick = saveProject;
   $('nav-studio').onclick = () => setWs('studio'); $('nav-labor').onclick = () => setWs('labor'); $('nav-anim').onclick = () => setWs('anim');
   $('theme').onclick = toggleTheme;
+  $('focus').onclick = () => setFocus(!UI.focus); setFocus(!!UI.focus);
   $('fs').onclick = () => { const st = $('stage'); if (document.fullscreenElement) document.exitFullscreen(); else if (st.requestFullscreen) { if (UI.view === 'grid') setView('mix'); st.requestFullscreen(); } };
   document.addEventListener('fullscreenchange', () => { fitStage(); sizeCv($('cv')); });
   $('tDur').textContent = fmtT(DUR); $('wave').setAttribute('aria-valuemax', DUR.toFixed(1));

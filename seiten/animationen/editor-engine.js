@@ -93,75 +93,130 @@
   const SEL = (id, l, opts, def, tip) => ({ id, l, t: 's', opts, def, tip });
   const COL = (id, l, def, tip) => ({ id, l, t: 'c', def, tip });
   const KRV = (id, l, tip) => ({ id, l, t: 'k', def: { p: 'linear' }, tip });
-  const TIME_PROPS = [
-    N('speed', 'Tempo', .1, 4, .01, 1, '×', 'Wie schnell die Animation läuft (1 = im Songtempo).'),
-    N('offset', 'Zeit-Versatz', -8, 8, .05, 0, ' Schl.', 'Verschiebt die Animation gegenüber dem Song, in Schlägen (¼-Takten).'),
-    KRV('tcurve', 'Zeit-Kurve', 'Verbiegt den Zeitverlauf innerhalb jeder Periode – die Bewegung beschleunigt, bremst, federt … Steigt die Kurve anfangs flach und später steil, läuft es erst langsam und dann schnell.'),
-    SEL('tper', 'Kurve pro', TIME_PER_OPTS, 'bar', 'Länge der Periode, auf die die Zeit-Kurve angewendet wird. Am Anfang jeder Periode bleibt alles im Takt.'),
-    N('tlen', 'Eigene Länge', .25, 32, .05, 2, ' Schl.', 'Länge einer Periode in Schlägen (¼-Takten).'),
-    N('tph', 'Kurve verschieben', -8, 8, .05, 0, ' Schl.', 'Verschiebt, wo jede Periode beginnt – so lässt sich die Kurve auf den Einsatz eines Elements legen.'),
-    N('tamt', 'Kurven-Stärke', 0, 100, 1, 100, '%', '0 % = Kurve aus, 100 % = volle Kurve.'),
+  // Eine Gruppe besteht aus Abschnitten (Zwischenüberschrift + Regler) – so ordnet die Oberfläche sie an
+  const GRP = (id, title, secs) => ({ id, title, secs, props: secs.flatMap(s => s[1]) });
+  const TIME_SECS = [
+    ['Ablauf', [
+      N('speed', 'Tempo', .1, 4, .01, 1, '×', 'Wie schnell die Animation läuft (1 = im Songtempo).'),
+      N('offset', 'Versatz', -8, 8, .05, 0, ' Schl.', 'Verschiebt die Animation gegenüber dem Song, in Schlägen (¼-Takten).'),
+    ]],
+    ['Zeit-Kurve', [
+      KRV('tcurve', 'Kurve', 'Verbiegt den Zeitverlauf innerhalb jeder Periode – die Bewegung beschleunigt, bremst, federt … Steigt die Kurve anfangs flach und später steil, läuft es erst langsam und dann schnell.'),
+      SEL('tper', 'Wiederholt alle', TIME_PER_OPTS, 'bar', 'Länge der Periode, auf die die Zeit-Kurve angewendet wird. Am Anfang jeder Periode bleibt alles im Takt.'),
+      N('tlen', 'Eigene Länge', .25, 32, .05, 2, ' Schl.', 'Länge einer Periode in Schlägen (¼-Takten).'),
+      N('tph', 'Verschieben', -8, 8, .05, 0, ' Schl.', 'Verschiebt, wo jede Periode beginnt – so lässt sich die Kurve auf den Einsatz eines Elements legen.'),
+      N('tamt', 'Stärke', 0, 100, 1, 100, '%', '0 % = Kurve aus, 100 % = volle Kurve.'),
+    ]],
   ];
   const GLOBAL_GROUPS = [
-    { id: 'time', title: 'Zeit & Kurve', props: TIME_PROPS },
-    { id: 'tf', title: 'Transformieren', props: [
-      N('px', 'Position X', -100, 100, .5, 0, '%'), N('py', 'Position Y', -100, 100, .5, 0, '%'),
-      N('scale', 'Skalierung', 5, 400, 1, 100, '%'), N('sx', 'Breite', 10, 300, 1, 100, '%'), N('sy', 'Höhe', 10, 300, 1, 100, '%'),
-      N('rot', 'Drehung', -720, 720, 1, 0, '°'), B('fx', 'Horizontal spiegeln'), B('fy', 'Vertikal spiegeln'),
-      N('op', 'Deckkraft', 0, 100, 1, 100, '%'),
-      SEL('blend', 'Mischmodus', [['source-over', 'Normal'], ['screen', 'Aufhellen (Screen)'], ['lighter', 'Addieren'], ['multiply', 'Multiplizieren'], ['overlay', 'Überlagern'], ['difference', 'Differenz']], 'source-over', 'Wie das Bild mit dem Hintergrund verrechnet wird.'),
-    ] },
-    { id: 'col', title: 'Farbe', props: [
-      SEL('fgm', 'Zeichenfarbe', [['orig', 'Original (Hell/Dunkel)'], ['track', 'Spurfarbe'], ['custom', 'Eigene Farbe']], 'orig', 'Farbe, in der die Animation zeichnet.'),
-      COL('fgc', 'Eigene Farbe', '#ff8a2a'),
-      B('bgo', 'Hintergrund färben'), COL('bgc', 'Hintergrundfarbe', '#000000'),
-      N('hue', 'Farbton drehen', -180, 180, 1, 0, '°'), N('sat', 'Sättigung', 0, 300, 1, 100, '%'), N('bri', 'Helligkeit', 0, 300, 1, 100, '%'),
-      N('con', 'Kontrast', 0, 300, 1, 100, '%'), N('inv', 'Invertieren', 0, 100, 1, 0, '%'),
-      B('gro', 'Farbverlauf / Tönung', 0, 'Legt einen Farbverlauf über alles, was gezeichnet wird (zwei gleiche Farben = einfache Tönung).'),
-      COL('gra', 'Verlauf: Farbe 1', '#ff3fa6'), COL('grb', 'Verlauf: Farbe 2', '#46d9ee'),
-      N('gran', 'Verlauf: Winkel', 0, 360, 1, 90, '°'), N('gram', 'Verlauf: Stärke', 0, 100, 1, 100, '%'), N('gras', 'Verlauf: Verschieben', -100, 100, 1, 0, '%'),
-    ] },
-    { id: 'fx', title: 'Unschärfe & Leuchten', props: [
-      N('blur', 'Unschärfe', 0, 60, .5, 0, ' px'),
-      N('glow', 'Leuchten', 0, 100, 1, 0, '%', 'Weicher Schein um alles Gezeichnete.'), N('glr', 'Leuchten-Radius', 1, 80, 1, 16, ' px'),
-      N('dsa', 'Schlagschatten', 0, 100, 1, 0, '%'), COL('dsc', 'Schattenfarbe', '#000000'),
-      N('dsx', 'Schatten X', -60, 60, 1, 6, ' px'), N('dsy', 'Schatten Y', -60, 60, 1, 6, ' px'), N('dsb', 'Schatten-Unschärfe', 0, 60, 1, 8, ' px'),
-    ] },
-    { id: 'mo', title: 'Echo & Bewegungsunschärfe', props: [
-      N('mbs', 'Bewegungsunschärfe', 0, 2, .01, 0, ' Schl.', 'Wie lange der „Verschluss“ offen ist: mehrere Zeitpunkte werden übereinandergelegt.'), N('mbn', 'Bewegungsunschärfe: Qualität', 2, 16, 1, 6, ' Bilder'),
-      N('ecn', 'Echos', 0, 16, 1, 0, '', 'Zeichnet frühere Zustände der Animation als verblassende Nachbilder dazu.'), N('ecd', 'Echo-Abstand', .02, 2, .01, .25, ' Schl.'), N('ecf', 'Echo-Deckkraft', 10, 100, 1, 70, '%', 'Wie viel Deckkraft von Echo zu Echo bleibt.'),
-    ] },
-    { id: 'dist', title: 'Verzerren & Look', props: [
-      N('kal', 'Kaleidoskop (Segmente)', 1, 16, 1, 1, '×', 'Spiegelt und wiederholt das Bild kreisförmig. Gerade Zahlen passen nahtlos.'), N('kar', 'Kaleidoskop drehen', 0, 360, 1, 0, '°'),
-      N('wva', 'Wellen-Verzerrung', 0, 80, .5, 0, ' px'), N('wvl', 'Wellenlänge', 10, 400, 1, 120, ' px'), N('wvs', 'Wellen-Tempo', -4, 4, .05, 1, ' /Schl.'),
-      N('mos', 'Mosaik', 0, 60, 1, 0, ' px'), N('rgb', 'RGB-Versatz', 0, 40, .5, 0, ' px', 'Trennt die Farbkanäle (Chromatische Aberration). Das Bild wird dabei auf den Hintergrund gesetzt.'),
-      N('vig', 'Vignette', 0, 100, 1, 0, '%'), N('scan', 'Scanlines', 0, 100, 1, 0, '%'), N('scs', 'Scanline-Abstand', 2, 16, 1, 4, ' px'), N('grn', 'Körnung', 0, 100, 1, 0, '%'),
-    ] },
+    GRP('tf', 'Größe & Position', [
+      ['Größe', [N('scale', 'Gesamt', 5, 400, 1, 100, '%'), N('sx', 'Breite', 10, 300, 1, 100, '%'), N('sy', 'Höhe', 10, 300, 1, 100, '%')]],
+      ['Position', [N('px', 'X', -100, 100, .5, 0, '%'), N('py', 'Y', -100, 100, .5, 0, '%')]],
+      ['Drehen & Spiegeln', [N('rot', 'Drehung', -720, 720, 1, 0, '°'), B('fx', 'Horizontal spiegeln'), B('fy', 'Vertikal spiegeln')]],
+      ['Ebene', [
+        N('op', 'Deckkraft', 0, 100, 1, 100, '%'),
+        SEL('blend', 'Mischmodus', [['source-over', 'Normal'], ['screen', 'Aufhellen (Screen)'], ['lighter', 'Addieren'], ['multiply', 'Multiplizieren'], ['overlay', 'Überlagern'], ['difference', 'Differenz']], 'source-over', 'Wie das Bild mit dem Hintergrund verrechnet wird.'),
+      ]],
+    ]),
+    GRP('col', 'Farbe', [
+      ['Zeichnung', [
+        SEL('fgm', 'Zeichenfarbe', [['orig', 'Original (Hell/Dunkel)'], ['track', 'Spurfarbe'], ['custom', 'Eigene Farbe']], 'orig', 'Farbe, in der die Animation zeichnet.'),
+        COL('fgc', 'Eigene Farbe', '#ff8a2a'),
+      ]],
+      ['Hintergrund', [B('bgo', 'Färben'), COL('bgc', 'Farbe', '#000000')]],
+      ['Korrektur', [
+        N('hue', 'Farbton', -180, 180, 1, 0, '°'), N('sat', 'Sättigung', 0, 300, 1, 100, '%'), N('bri', 'Helligkeit', 0, 300, 1, 100, '%'),
+        N('con', 'Kontrast', 0, 300, 1, 100, '%'), N('inv', 'Invertieren', 0, 100, 1, 0, '%'),
+      ]],
+      ['Verlauf', [
+        B('gro', 'Einschalten', 0, 'Legt einen Farbverlauf über alles, was gezeichnet wird (zwei gleiche Farben = einfache Tönung).'),
+        COL('gra', 'Farbe 1', '#ff3fa6'), COL('grb', 'Farbe 2', '#46d9ee'),
+        N('gran', 'Winkel', 0, 360, 1, 90, '°'), N('gram', 'Stärke', 0, 100, 1, 100, '%'), N('gras', 'Verschieben', -100, 100, 1, 0, '%'),
+      ]],
+    ]),
+    GRP('time', 'Zeit & Kurve', TIME_SECS),
+    GRP('mo', 'Echo & Bewegungsunschärfe', [
+      ['Echo', [
+        N('ecn', 'Anzahl', 0, 16, 1, 0, '', 'Zeichnet frühere Zustände der Animation als verblassende Nachbilder dazu.'), N('ecd', 'Abstand', .02, 2, .01, .25, ' Schl.'),
+        N('ecf', 'Deckkraft', 10, 100, 1, 70, '%', 'Wie viel Deckkraft von Echo zu Echo bleibt.'),
+      ]],
+      ['Bewegungsunschärfe', [N('mbs', 'Dauer', 0, 2, .01, 0, ' Schl.', 'Wie lange der „Verschluss“ offen ist: mehrere Zeitpunkte werden übereinandergelegt.'), N('mbn', 'Qualität', 2, 16, 1, 6, ' Bilder')]],
+    ]),
+    GRP('fx', 'Unschärfe & Leuchten', [
+      ['Unschärfe', [N('blur', 'Stärke', 0, 60, .5, 0, ' px')]],
+      ['Leuchten', [N('glow', 'Stärke', 0, 100, 1, 0, '%', 'Weicher Schein um alles Gezeichnete.'), N('glr', 'Radius', 1, 80, 1, 16, ' px')]],
+      ['Schlagschatten', [
+        N('dsa', 'Stärke', 0, 100, 1, 0, '%'), COL('dsc', 'Farbe', '#000000'),
+        N('dsx', 'Versatz X', -60, 60, 1, 6, ' px'), N('dsy', 'Versatz Y', -60, 60, 1, 6, ' px'), N('dsb', 'Unschärfe', 0, 60, 1, 8, ' px'),
+      ]],
+    ]),
+    GRP('dist', 'Verzerren & Look', [
+      ['Kaleidoskop', [N('kal', 'Segmente', 1, 16, 1, 1, '×', 'Spiegelt und wiederholt das Bild kreisförmig. Gerade Zahlen passen nahtlos.'), N('kar', 'Drehung', 0, 360, 1, 0, '°')]],
+      ['Welle', [N('wva', 'Stärke', 0, 80, .5, 0, ' px'), N('wvl', 'Länge', 10, 400, 1, 120, ' px'), N('wvs', 'Tempo', -4, 4, .05, 1, ' /Schl.')]],
+      ['Pixel', [N('mos', 'Mosaik', 0, 60, 1, 0, ' px'), N('rgb', 'RGB-Versatz', 0, 40, .5, 0, ' px', 'Trennt die Farbkanäle (Chromatische Aberration). Das Bild wird dabei auf den Hintergrund gesetzt.')]],
+      ['Film', [N('vig', 'Vignette', 0, 100, 1, 0, '%'), N('grn', 'Körnung', 0, 100, 1, 0, '%'), N('scan', 'Scanlines', 0, 100, 1, 0, '%'), N('scs', 'Zeilenabstand', 2, 16, 1, 4, ' px')]],
+    ]),
   ];
   const OBJ_GROUPS = [
-    { id: 'look', title: 'Aussehen', props: [
-      B('vis', 'Sichtbar', 1), N('op', 'Deckkraft', 0, 100, 1, 100, '%'),
-      SEL('om', 'Farbe', [['orig', 'Original'], ['custom', 'Eigene Farbe']], 'orig'), COL('oc', 'Eigene Farbe', '#ff8a2a'),
-      N('hue', 'Farbton drehen', -180, 180, 1, 0, '°'), N('sat', 'Sättigung', 0, 300, 1, 100, '%'), N('bri', 'Helligkeit', 0, 300, 1, 100, '%'),
-      N('blur', 'Unschärfe', 0, 60, .5, 0, ' px'), N('glow', 'Leuchten', 0, 100, 1, 0, '%'), N('glr', 'Leuchten-Radius', 1, 60, 1, 12, ' px'),
-      N('lw', 'Strichstärke', 0, 500, 1, 100, '%'),
-    ] },
-    { id: 'tf', title: 'Größe & Position', props: [
-      N('esz', 'Größe je Element', 0, 400, 1, 100, '%', 'Jedes Element (z. B. jede Kugel) wird um seinen eigenen Mittelpunkt größer/kleiner.'),
-      N('gsc', 'Größe der Gruppe', 0, 400, 1, 100, '%', 'Skaliert das ganze Objekt um die Bildmitte (Abstände ändern sich mit).'),
-      N('rot', 'Drehung', -720, 720, 1, 0, '°', 'Dreht das ganze Objekt um die Bildmitte.'),
-      N('ox', 'Versatz X', -100, 100, .5, 0, '%'), N('oy', 'Versatz Y', -100, 100, .5, 0, '%'),
-    ] },
-    { id: 'time', title: 'Zeit & Kurve', props: TIME_PROPS },
+    GRP('tf', 'Größe & Position', [
+      ['Größe', [
+        N('esz', 'Je Element', 0, 400, 1, 100, '%', 'Jedes Element (z. B. jede Kugel) wird um seinen eigenen Mittelpunkt größer/kleiner.'),
+        N('gsc', 'Ganze Gruppe', 0, 400, 1, 100, '%', 'Skaliert das ganze Objekt um die Bildmitte (Abstände ändern sich mit).'),
+      ]],
+      ['Position', [N('ox', 'X', -100, 100, .5, 0, '%'), N('oy', 'Y', -100, 100, .5, 0, '%'), N('rot', 'Drehung', -720, 720, 1, 0, '°', 'Dreht das ganze Objekt um die Bildmitte.')]],
+    ]),
+    GRP('look', 'Aussehen', [
+      ['Deckkraft & Linie', [B('vis', 'Sichtbar', 1), N('op', 'Deckkraft', 0, 100, 1, 100, '%'), N('lw', 'Strichstärke', 0, 500, 1, 100, '%')]],
+      ['Farbe', [
+        SEL('om', 'Farbe', [['orig', 'Original'], ['custom', 'Eigene Farbe']], 'orig'), COL('oc', 'Eigene Farbe', '#ff8a2a'),
+        N('hue', 'Farbton', -180, 180, 1, 0, '°'), N('sat', 'Sättigung', 0, 300, 1, 100, '%'), N('bri', 'Helligkeit', 0, 300, 1, 100, '%'),
+      ]],
+      ['Unschärfe & Leuchten', [N('blur', 'Unschärfe', 0, 60, .5, 0, ' px'), N('glow', 'Leuchten', 0, 100, 1, 0, '%'), N('glr', 'Radius', 1, 60, 1, 12, ' px')]],
+    ]),
+    GRP('time', 'Zeit & Kurve', TIME_SECS),
   ];
   const flat = gs => { const m = {}; for (const g of gs) for (const p of g.props) m[p.id] = p; return m; };
   const GP = flat(GLOBAL_GROUPS), OP = flat(OBJ_GROUPS);
   const DEFS = { g: Object.fromEntries(Object.values(GP).map(p => [p.id, p.def])), o: Object.fromEntries(Object.values(OP).map(p => [p.id, p.def])) };
 
-  // Animierter Wert (Stoppuhr): { an: 1, a, b, per, mode: 'loop' | 'pp', cv }
+  // „Alle Objekte“ + einzelnes Objekt: Verschiebungen addieren sich, Prozentwerte werden multipliziert,
+  // bei Farbe, Radius und Zeit-Kurve gilt die Einstellung des einzelnen Objekts, falls es eine eigene hat
+  const OBJ_ADD = ['ox', 'oy', 'rot', 'hue', 'blur', 'glow', 'offset'], OBJ_MUL = ['op', 'esz', 'gsc', 'sat', 'bri', 'lw', 'speed'];
+  const OBJ_WITH = { oc: 'om', tper: 'tcurve', tlen: 'tcurve', tph: 'tcurve', tamt: 'tcurve' };
+  function combine(all, own, raw) {
+    const o = {};
+    for (const id in OP) {
+      if (OBJ_ADD.includes(id)) o[id] = all[id] + own[id] - OP[id].def;
+      else if (OBJ_MUL.includes(id)) o[id] = all[id] * own[id] / OP[id].def;
+      else if (id === 'vis') o[id] = !!(all.vis && own.vis);
+      else o[id] = raw[OBJ_WITH[id] || id] !== undefined ? own[id] : all[id];
+    }
+    o.glow = clamp(o.glow, 0, 100);
+    return o;
+  }
+
+  /* ───────────── Keyframes (wie in After Effects) ─────────────
+     Wert = { kf: [ { t: Sekunde im Song, v: Wert, ei: weich ankommen, eo: weich loslaufen, h: halten, cv: eigene Kurve bis zum nächsten } ] }, nach t sortiert */
+  const isKf = v => !!(v && typeof v === 'object' && v.kf && v.kf.length);
+  const segCurve = (a, b) => a.cv || (a.eo || b.ei ? { p: 'custom', b: [1 / 3, a.eo ? 0 : 1 / 3, 2 / 3, b.ei ? 1 : 2 / 3] } : null);     // null = gleichmäßig
+  const rgbOf = h => { const v = parseInt(String(h).replace('#', ''), 16) || 0; return [v >> 16 & 255, v >> 8 & 255, v & 255]; };
+  function mix(a, b, f) {
+    if (typeof a === 'number') return a + (b - a) * f;
+    const x = rgbOf(a), y = rgbOf(b); return '#' + x.map((c, i) => Math.round(clamp(c + (y[i] - c) * f, 0, 255)).toString(16).padStart(2, '0')).join('');
+  }
+  function kfValue(v, t) {                       // Wert zum Zeitpunkt t: vor dem ersten bzw. nach dem letzten Keyframe bleibt er stehen
+    const k = v.kf, n = k.length;
+    if (t <= k[0].t) return k[0].v; if (t >= k[n - 1].t) return k[n - 1].v;
+    let i = 0; while (t >= k[i + 1].t) i++;
+    const a = k[i], b = k[i + 1]; if (a.h) return a.v;
+    const u = (t - a.t) / (b.t - a.t), c = segCurve(a, b); return mix(a.v, b.v, c ? curveFn(c)(u) : u);
+  }
+
+  // Frühere Takt-Animation (nur noch in alten Vorlagen): { an: 1, a, b, per, mode: 'loop' | 'pp', cv }
   const isAn = v => !!(v && typeof v === 'object' && v.an);
-  function ev(v, def, t) {
+  function ev(v, def, t, kt) {
     if (v === undefined) return def;
+    if (isKf(v)) return kfValue(v, kt === undefined ? t : kt);
     if (isAn(v)) {
       const P = (PER[v.per] || PER.bar)(); let x = ((t / P) % 1 + 1) % 1;
       if (v.mode === 'pp') x = x < .5 ? x * 2 : 2 - x * 2;
@@ -169,10 +224,21 @@
     }
     return v;
   }
-  function evalBag(bag, defs, t) {
+  function evalBag(bag, defs, t, kt) {
     const o = {};
-    for (const id in defs) { const d = defs[id], v = bag ? bag[id] : undefined; o[id] = d.t === 'n' ? ev(v, d.def, t) : v === undefined ? d.def : v; }
+    for (const id in defs) { const d = defs[id], v = bag ? bag[id] : undefined; o[id] = d.t === 'n' || (d.t === 'c' && isKf(v)) ? ev(v, d.def, t, kt) : v === undefined ? d.def : v; }
     return o;
+  }
+  // Ändert sich das Tempo per Keyframe, zählt die aufsummierte Zeit (sonst würde die Animation bei jeder Änderung springen).
+  // Ergebnis: um wie viele Sekunden die Animation an der Stelle kt dadurch vor- oder nachläuft
+  function timeShift(kt, speeds) {
+    const lo = Math.min(0, kt), hi = Math.max(0, kt), br = [lo, hi, ...speeds.filter(isKf).flatMap(s => s.kf.map(k => k.t)).filter(x => x > lo && x < hi)].sort((a, b) => a - b);
+    let sum = 0;
+    for (let i = 1; i < br.length; i++) {
+      const d = (br[i] - br[i - 1]) / 24;
+      for (let j = 0; j < 24; j++) { const x = br[i - 1] + (j + .5) * d; sum += (speeds.reduce((p, s) => p * ev(s, 1, x, x), 1) - 1) * d; }
+    }
+    return kt < 0 ? -sum : sum;
   }
 
   /* ───────────── Aufnahme-Zeichenfläche (Rec) ─────────────
@@ -283,7 +349,8 @@
     // Alle Objekte einer Animation finden: sie wird ohne Zeichnen über 8 Takte „durchgespielt“
     setIdea(idea) {
       this.reset(idea); if (!idea) return;
-      const W = 320, H = 240, n = 130, span = 8 * BAR, t0 = performance.now();
+      const W = 320, H = 240, n = 130, span = 8 * BAR, t0 = performance.now(), gate = window.IDEEN_GATE;
+      window.IDEEN_GATE = false;                                           // beim Suchen immer alles zeichnen, auch vor dem Einsatz der Spur
       for (let i = 0; i < n && !this.noRec; i++) {
         if (i > 10 && performance.now() - t0 > 140) break;                // schwere Animationen: nicht länger als ~0,15 s suchen (später gefundene Objekte kommen beim Zeichnen dazu)
         const t = i * span / n + .013, r = new Rec(W, H, k => this.idOf(k));
@@ -293,6 +360,7 @@
         for (const op of r.ops) { cnt[op.id] = (cnt[op.id] || 0) + 1; const o = this.byId[op.id]; if (!o.kind) o.kind = classify(op); }
         for (const id in cnt) this.byId[id].max = Math.max(this.byId[id].max, cnt[id]);
       }
+      window.IDEEN_GATE = gate;
       this.nameAll();
     }
     nameAll() {
@@ -318,9 +386,12 @@
       let ops = base;
       if (E.custom.length) {
         ops = base.filter(op => E.custom.indexOf(op.id) < 0);
+        const seen = new Map();                                  // gleiche Zeit (z. B. durch „Alle Objekte“) nur einmal aufnehmen
         for (const id of E.custom) {
           const o = E.O[id]; if (!o) continue;
-          const rr = this.record(mk(warp(tt, o.speed, o.offset, o.tcurve, o.tper, o.tamt / 100, o.tlen, o.tph)), E);
+          const kfs = o.shift !== undefined, tw = warp(kfs ? tt + o.shift : tt, kfs ? 1 : o.speed, o.offset, o.tcurve, o.tper, o.tamt / 100, o.tlen, o.tph);
+          if (!seen.has(tw)) seen.set(tw, this.record(mk(tw), E));
+          const rr = seen.get(tw);
           if (rr) for (const op of rr) if (op.id === id) ops.push(op);
         }
       }
@@ -381,27 +452,38 @@
       clear(sm).drawImage(src, 0, 0, sm.width, sm.height); x.imageSmoothingEnabled = true; x.drawImage(sm, 0, 0, sm.width, sm.height, 0, 0, dst.width, dst.height);
     }
     /* ───── ein Bild ───── */
-    render(out, W, H, dpr, sb, S) {
+    // layered = die Animation ist eine Ebene von mehreren: nichts deckt die Ebenen darunter zu
+    // (Hintergrund und Mischmodus setzt dann der Aufrufer, der Look wirkt nur auf Gezeichnetes)
+    render(out, W, H, dpr, sb, S, layered) {
       const Wd = out.width, Hd = out.height, c0 = out.getContext('2d'), idea = this.idea; this.frameNo++;
       clear(out);
       if (!idea) return;
-      const tS = sb.t;
-      const G = evalBag(S.g, GP, tS);
-      const E = { W, H, dpr, fg: sb.fg, bg: sb.bg, col: sb.col, rec: false, custom: [], O: {}, OD: evalBag({}, OP, tS) };
+      const tS = sb.t, kt = sb.kt === undefined ? tS + OFFSET : sb.kt;          // kt = Stelle im Song, an der die Keyframes gelesen werden
+      const G = evalBag(S.g, GP, tS, kt);
+      const E = { W, H, dpr, fg: sb.fg, bg: sb.bg, col: sb.col, rec: false, custom: [], O: {}, OD: evalBag({}, OP, tS, kt) };
       // Objekt-Einstellungen auswerten – nur wenn etwas verändert ist (oder hervorgehoben wird), muss aufgezeichnet werden
-      const SO = S.o || {};
-      for (const id in SO) {
-        if (!this.byId[id] || !Object.keys(SO[id]).length) continue;
-        E.O[id] = evalBag(SO[id], OP, tS); E.rec = true;
-        const o = E.O[id]; if (o.speed !== 1 || o.offset !== 0 || (o.tamt > 0 && o.tcurve && o.tcurve.p !== 'linear')) E.custom.push(id);
+      const SO = S.o || {}, all = SO['*'] && Object.keys(SO['*']).length ? SO['*'] : null;
+      if (all) { E.OD = evalBag(all, OP, tS, kt); E.rec = true; }
+      for (const id of Object.keys(all ? this.byId : SO)) {
+        const own = SO[id];
+        if (!this.byId[id] || (!all && !Object.keys(own).length)) continue;
+        const o = evalBag(own, OP, tS, kt);
+        E.O[id] = all ? combine(E.OD, o, own || {}) : o; E.rec = true;
+        const c = E.O[id], speeds = [all && all.speed, own && own.speed];
+        if (speeds.some(isKf)) c.shift = timeShift(kt, speeds);
+        if (c.shift !== undefined || c.speed !== 1 || c.offset !== 0 || (c.tamt > 0 && c.tcurve && c.tcurve.p !== 'linear')) E.custom.push(id);
       }
       if (this.hl || this.solo) E.rec = true;
       if (this.noRec) E.rec = false;
+      // Pixel-Werte gelten für ein Bild von 640 × 480 und wachsen mit – so sieht es in Editor, Studio und Video gleich aus
+      const k = Math.min(W / 640, H / 480);
+      for (const id of ['blur', 'glr', 'dsx', 'dsy', 'dsb', 'wva', 'wvl', 'mos', 'rgb', 'scs']) G[id] *= k;
+      for (const o of [E.OD, ...Object.values(E.O)]) { o.blur *= k; o.glr *= k; }
       if (this.bypass) { E.rec = false; E.custom = []; const x = out.getContext('2d'); this.scene(x, tS, E); return; }
       if (G.fgm === 'custom') E.fg = G.fgc; else if (G.fgm === 'track') E.fg = sb.col;
       const bgc = G.bgo ? G.bgc : sb.bg;
-      if (G.bgo) { c0.fillStyle = G.bgc; c0.fillRect(0, 0, Wd, Hd); }
-      const tg = warp(tS, G.speed, G.offset, G.tcurve, G.tper, G.tamt / 100, G.tlen, G.tph);
+      if (G.bgo && !layered) { c0.fillStyle = G.bgc; c0.fillRect(0, 0, Wd, Hd); }
+      const kfs = isKf(S.g.speed), tg = warp(kfs ? tS + timeShift(kt, [S.g.speed]) : tS, kfs ? 1 : G.speed, G.offset, G.tcurve, G.tper, G.tamt / 100, G.tlen, G.tph);
       // 1) Animation in die Ebene zeichnen – mit Bewegungsunschärfe und Echos
       const L = this.buf('L', Wd, Hd), lx = clear(L);
       const mbN = G.mbs > 0 ? Math.round(G.mbn) : 1;
@@ -443,10 +525,12 @@
       }
       if (G.rgb > 0) {
         const d = next(), x = clear(d), ch = this.buf('CH', Wd, Hd), off = G.rgb * dpr, fb = this.buf('FB', Wd, Hd), fx = clear(fb);
-        fx.fillStyle = bgc; fx.fillRect(0, 0, Wd, Hd); fx.drawImage(cur, 0, 0);          // erst auf den Hintergrund setzen, dann Kanäle trennen
+        if (!layered) { fx.fillStyle = bgc; fx.fillRect(0, 0, Wd, Hd); }
+        fx.drawImage(cur, 0, 0);          // erst auf den Hintergrund setzen, dann Kanäle trennen
         x.globalCompositeOperation = 'lighter';
         [['#ff0000', -off], ['#00ff00', 0], ['#0000ff', off]].forEach(([col, dx]) => {
           const cx = clear(ch); cx.drawImage(fb, 0, 0); cx.globalCompositeOperation = 'multiply'; cx.fillStyle = col; cx.fillRect(0, 0, Wd, Hd);
+          if (layered) { cx.globalCompositeOperation = 'destination-in'; cx.drawImage(fb, 0, 0); }
           x.drawImage(ch, dx, 0);
         });
         x.globalCompositeOperation = 'source-over'; cur = d;
@@ -470,7 +554,7 @@
         if (G.con !== 100) fl.push(`contrast(${G.con}%)`); if (G.inv > 0) fl.push(`invert(${G.inv}%)`);
       }
       c0.save();
-      c0.globalAlpha = clamp(G.op / 100, 0, 1); c0.globalCompositeOperation = G.blend;
+      c0.globalAlpha = clamp(G.op / 100, 0, 1); c0.globalCompositeOperation = layered ? 'source-over' : G.blend;
       if (fl.length) c0.filter = fl.join(' ');
       if (G.dsa > 0) { c0.shadowColor = hexA(G.dsc, G.dsa / 100); c0.shadowBlur = G.dsb * dpr; c0.shadowOffsetX = G.dsx * dpr; c0.shadowOffsetY = G.dsy * dpr; }
       c0.translate(Wd / 2 + G.px / 100 * Wd, Hd / 2 + G.py / 100 * Hd); c0.rotate(G.rot * Math.PI / 180);
@@ -478,15 +562,19 @@
       c0.drawImage(cur, 0, 0);
       c0.restore();
       // 4) Look über allem
+      c0.save(); if (layered) c0.globalCompositeOperation = 'source-atop';
       if (G.vig > 0) { const g = c0.createRadialGradient(Wd / 2, Hd / 2, Math.min(Wd, Hd) * .25, Wd / 2, Hd / 2, Math.hypot(Wd, Hd) / 2); g.addColorStop(0, hexA(bgc, 0)); g.addColorStop(1, hexA(bgc, G.vig / 100)); c0.fillStyle = g; c0.fillRect(0, 0, Wd, Hd); }
-      if (G.scan > 0) { c0.fillStyle = hexA(bgc, G.scan / 100 * .7); const st = G.scs * dpr; for (let y = 0; y < Hd; y += st) c0.fillRect(0, y, Wd, Math.max(1, dpr)); }
+      if (G.scan > 0) { c0.fillStyle = hexA(bgc, G.scan / 100 * .7); const st = Math.max(2, G.scs * dpr); for (let y = 0; y < Hd; y += st) c0.fillRect(0, y, Wd, Math.max(1, Math.min(dpr, st / 2))); }
+      c0.restore();
       if (G.grn > 0) {
         if (!this.noise) { const n = mkCanvas(128, 128), x = n.getContext('2d'), im = x.createImageData(128, 128); for (let i = 0; i < im.data.length; i += 4) { const v = Math.random() * 255; im.data[i] = im.data[i + 1] = im.data[i + 2] = v; im.data[i + 3] = 255; } x.putImageData(im, 0, 0); this.noise = n; }
-        c0.save(); c0.globalAlpha = G.grn / 100 * .45; c0.globalCompositeOperation = 'overlay';
-        c0.fillStyle = c0.createPattern(this.noise, 'repeat'); c0.translate(Math.random() * 128 | 0, Math.random() * 128 | 0); c0.fillRect(-128, -128, Wd + 256, Hd + 256); c0.restore();
+        const gr = this.buf('GR', Wd, Hd), gx = clear(gr);
+        gx.save(); gx.fillStyle = gx.createPattern(this.noise, 'repeat'); gx.translate(Math.random() * 128 | 0, Math.random() * 128 | 0); gx.fillRect(-128, -128, Wd + 256, Hd + 256); gx.restore();
+        if (layered) { gx.globalCompositeOperation = 'destination-in'; gx.drawImage(out, 0, 0); gx.globalCompositeOperation = 'source-over'; }
+        c0.save(); c0.globalAlpha = G.grn / 100 * .45; c0.globalCompositeOperation = 'overlay'; c0.drawImage(gr, 0, 0); c0.restore();
       }
     }
   }
 
-  window.AE = { Renderer, Rec, FILTER, CURVES, curveFn, curveBez, bez, BEZ, PER, PER_OPTS, TIME_PER_OPTS, warp, ev, isAn, evalBag, GLOBAL_GROUPS, OBJ_GROUPS, GP, OP, DEFS, hexA };
+  window.AE = { Renderer, Rec, FILTER, CURVES, curveFn, curveBez, bez, BEZ, PER, PER_OPTS, TIME_PER_OPTS, warp, ev, isAn, isKf, kfValue, segCurve, timeShift, evalBag, GLOBAL_GROUPS, OBJ_GROUPS, GP, OP, DEFS, hexA };
 })();
